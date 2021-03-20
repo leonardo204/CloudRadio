@@ -15,6 +15,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
@@ -24,12 +25,13 @@ import okhttp3.Interceptor
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
+import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.logging.HttpLoggingInterceptor.Logger
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
-import retrofit2.http.Path
 import retrofit2.http.Query
 import java.io.IOException
 import java.time.LocalDateTime
@@ -49,39 +51,66 @@ mdl.11.json에서 11은 위에서 알아댄 시,도 코드입니다. 해당 코�
 
 http://www.kma.go.kr/DFSROOT/POINT/DATA/leaf.11545.json.txt
 leaf.11545,json에서 11545는 위의 과정에서 알아낸 시군구 코드입니다. 이 코드를 통해 자신이 원하는 자료를 알아내실 수 있습니다.
+
+
+// 2021-03-20 google geocoding api 로 변경함
+https://maps.googleapis.com/maps/api/geocode/json?latlng=37.566535,126.977969&language=ko&key=AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w
  */
 
-var location_mid_code = 0
-
-data class LOCATIONLEAF (
-    val code: Int,
-    val value: String,
-    val x: String,
-    val y: String
+data class GEO_RESPONSE(
+    val plus_code: GEO_PLUSCODE,
+    val results: List<GEO_RESULT>,
+    val status: String               // INVALID_REQUEST, OK
 )
 
-data class LOCATIONINFO(
-    val code: Int,
-    val value: String
+data class GEO_PLUSCODE(
+    val compound_code: String,
+    val global_code: String
 )
 
-interface LocationLeafInterface {
-    @GET("{filename}")
-    fun getLocation(
-        @Path("filename") filename: String
-    ): Call<List<LOCATIONLEAF>>
-}
+data class GEO_RESULT(
+    val address_components: List<GEO_ADDRESS>,
+    val formatted_address: String,
+    val geometry: GEO_GEOMETRY,
+    val place_id: String,
+    val plus_code: GEO_PLUSCODE,
+    val types: List<String>
+)
 
-interface LocationMidInterface {
-    @GET("{filename}")
-    fun getLocation(
-        @Path("filename") filename: String
-    ): Call<List<LOCATIONINFO>>
-}
+data class GEO_ADDRESS(
+    val long_name: String,
+    val short_name: String,
+    val types: List<String>
+)
 
-interface LocationTopInterface {
-    @GET("top.json.txt")
-    fun getLocation(): Call<List<LOCATIONINFO>>
+// [ "postal_code" ]
+// [ "country", "political" ]
+// [ administrative_area_level_1, political ]
+// [ "political", "sublocality", "sublocality_level_1" ]
+// [ "political", "sublocality", "sublocality_level_2" ]
+// [ "premise" ]
+
+data class GEO_GEOMETRY(
+    val location: GEO_LOCATION,
+    val location_type: String,
+    val viewport: GEO_VIEWPORT
+)
+
+data class GEO_LOCATION(
+    val lat: String,
+    val lng: String
+)
+
+data class GEO_VIEWPORT(
+    val northeast: GEO_LOCATION,
+    val southwest: GEO_LOCATION
+)
+
+interface GeocodingAPIInterface {
+    @GET("json?language=ko&key=AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w")
+    fun getGeoInfo(
+        @Query("latlng") latlng: String
+    ): Call<GEO_RESPONSE>
 }
 
 internal class FixEncodingInterceptor : Interceptor {
@@ -104,42 +133,31 @@ internal class FixEncodingInterceptor : Interceptor {
     }
 }
 
+private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
+    val interceptor = HttpLoggingInterceptor(object : Logger {
+        override fun log(message: String) {
+            Log.e(onairTag, message + "")
+        }
+    })
+    return interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
+}
+
 val client = OkHttpClient.Builder()
     .addInterceptor(FixEncodingInterceptor())
+    //.addInterceptor(httpLoggingInterceptor())         // http request inspector debugging
     .build()
 
-private val locationRetrofit = Retrofit.Builder()
-    .baseUrl("http://www.kma.go.kr/DFSROOT/POINT/DATA/")
+private val geoRetrofit = Retrofit.Builder()
+    .baseUrl("https://maps.googleapis.com/maps/api/geocode/")
     .addConverterFactory(GsonConverterFactory.create())
     .client(client)
     .build() // retrofit 객체 생성
 
-object locationTopObj {
-    val retrofitService: LocationTopInterface by lazy {
-        locationRetrofit.create(LocationTopInterface::class.java)
+object geoObj {
+    val retrofitService: GeocodingAPIInterface by lazy {
+        geoRetrofit.create(GeocodingAPIInterface::class.java)
     }
 }
-
-object locationMidObj {
-    val retrofitService: LocationMidInterface by lazy {
-        locationRetrofit.create(LocationMidInterface::class.java)
-    }
-}
-
-object locationLeafObj {
-    val retrofitService: LocationLeafInterface by lazy {
-        locationRetrofit.create(LocationLeafInterface::class.java)
-    }
-}
-
-// request wether
-val num_of_rows = 10
-val page_no = 1
-val data_type = "JSON"
-var base_time = 1700
-var base_date = 20210316
-var nx = "60"
-var ny = "125"
 
 // response
 data class WEATHER(
@@ -175,8 +193,8 @@ interface WeatherInterface {
         @Query("dataType") data_type: String,
         @Query("numOfRows") num_of_rows: Int,
         @Query("pageNo") page_no: Int,
-        @Query("base_date") base_date: Int,
-        @Query("base_time") base_time: Int,
+        @Query("base_date") base_date: String,
+        @Query("base_time") base_time: String,
         @Query("nx") nx: String,
         @Query("ny") ny: String
     ): Call<WEATHER>
@@ -204,9 +222,37 @@ internal class LatXLngY {
 
 class OnAir : Fragment(), LocationListener {
 
+    // request wether (fixed)
+    val num_of_rows = 10
+    val page_no = 1
+    val data_type = "JSON"
+
     private lateinit var mContext: Context
     private var mLatitude: Double = 0.0  // 위도 (가로...)
     private var mLongitude: Double = 0.0 // 경도 (세로...)
+
+    private lateinit var timeTextView: TextView
+    private lateinit var weatherTextView: TextView
+    private lateinit var addrTextView: TextView
+    var notLoadedMessage: String = "PLEASE WAIT..."
+
+    lateinit var mDateText: String
+    lateinit var mAddressText: String
+    lateinit var mWeatherText: String
+
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        Log.d(onairTag, "onViewCreated")
+
+        timeTextView = view.findViewById(R.id.timeTextView)
+        addrTextView = view.findViewById(R.id.addrTextView)
+        weatherTextView = view.findViewById(R.id.weatherTextView)
+
+        timeTextView.setText(notLoadedMessage)
+        addrTextView.setText(notLoadedMessage)
+        weatherTextView.setText(notLoadedMessage)
+
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
@@ -217,8 +263,8 @@ class OnAir : Fragment(), LocationListener {
             mContext = container.context
         }
 
-        // location
-        getLocation()
+        // get current gps info
+        getGPSInfo()
 
         return inflater.inflate(R.layout.fragment_onair, container, false)
     }
@@ -237,68 +283,191 @@ class OnAir : Fragment(), LocationListener {
         return calBase
     }
 
+    private fun getSnowAmount(value: Double): String {
+        if ( value < 0.1f ) return "없음"
+        else if(value >= 0.1f && value < 1.0f) return "1cm미만";
+        else if(value >= 1.0f && value < 5.0f) return "1~4cm";
+        else if(value >= 5.0f && value < 10.0f) return "5~9cm";
+        else if(value >= 10.0f && value < 20.0f) return "10~19cm";
+        else return "20cm이상";
+    }
+
+    private fun getWindDirectionString(value: Int): String {
+        var data: Int = ((value + 22.5 * 0.5) / 22.5).toInt()
+        when(data) {
+            0 -> return "북풍"
+            1 -> return "북북동"
+            2 -> return "북동"
+            3 -> return "동북동"
+            4 -> return "동"
+            5 -> return "동남동"
+            6 -> return "남동"
+            7 -> return "남남동"
+            8 -> return "남"
+            9 -> return "남남서"
+            10 -> return "남서"
+            11 -> return "서남서"
+            12 -> return "서"
+            13 -> return "서북서"
+            14 -> return "북서"
+            15 -> return "북북서"
+            16 -> return "북"
+            else -> return "알 수 없음"
+        }
+    }
+
+    private fun getRainAmount(value: Double): String {
+        if ( value < 0.1f ) return "없음"
+        else if(value >= 0.1f && value < 1.0f) return "1mm미만";
+        else if(value >= 1.0f && value < 5.0f) return "1~4mm";
+        else if(value >= 5.0f && value < 10.0f) return "5~9mm";
+        else if(value >= 10.0f && value < 20.0f) return "10~19mm";
+        else if(value >= 20.0f && value < 40.0f) return "20~39mm";
+        else if(value >= 40.0f && value < 70.0f) return "40~69mm";
+        else return "70mm이상";
+    }
+
+    private fun getSkyType(type: Int): String {
+        when( type ) {
+            1 -> return "맑음"
+            3 -> return "구름 많음"
+            4 -> return "흐림"
+            else -> return "알 수 없음"
+        }
+    }
+
+    private fun getRainType(type: Int): String {
+        when( type ) {
+            0 -> return "없음"
+            1 -> return "비"
+            2 -> return "비/눈(진눈개비)"
+            3 -> return "눈"
+            4 -> return "소나기"
+            5 -> return "빗방울"
+            6 -> return "빗방울/눈날림"
+            7 -> return "눈날림"
+            else -> return "없음"
+        }
+    }
+
+    /*
+     * POP	강수확률	 %
+     * PTY	강수형태	코드값 (없음(0), 비(1), 비/눈(진눈개비)(2), 눈(3), 소나기(4), 빗방울(5), 빗방울/눈날림(6), 눈날림(7))
+     * R06	6시간 강수량	범주 (1 mm)
+     * REH	습도	 %
+     * S06	6시간 신적설	범주(1 cm)
+     * SKY	하늘상태	코드값 (맑음(1), 구름많음(3), 흐림(4))
+     * T3H	3시간 기온	 ℃
+     * TMN	아침 최저기온	 ℃
+     * TMX	낮 최고기온	 ℃
+     * UUU	풍속(동서성분)	 m/s
+     * VVV	풍속(남북성분)	 m/s
+     * VEC  풍향      deg 10bit
+     */
     private fun parseItems(items: ITEMS) {
         Log.d(onairTag, items.item.toString())
-        for(i in 0..(num_of_rows-1) ) {
-            Log.d(onairTag, "  --  $i -- ")
-            Log.d(onairTag, "* category: " + items.item[i].category)
-            Log.d(onairTag, "* baseDate: " + items.item[i].baseDate)
-            Log.d(onairTag, "* baseTime: " + items.item[i].baseTime)
-            Log.d(onairTag, "* fcstDate: " + items.item[i].fcstDate)
-            Log.d(onairTag, "* fcstTime: " + items.item[i].fcstTime)
-            Log.d(onairTag, "* fcstValue: " + items.item[i].fcstValue)
+        Log.d(onairTag, "- 날짜: "+items.item[0].baseDate)
+        Log.d(onairTag, "- 발표시간: "+items.item[0].baseTime)
+        Log.d(onairTag, "- 예보시간: "+items.item[0].fcstTime)
+        mDateText = "- 날짜: "+items.item[0].baseDate +"\n"
+        mDateText += "- 발표시간: "+items.item[0].baseTime +"\n"
+        mDateText += "- 예보시간: "+items.item[0].fcstTime
+        timeTextView.setText(mDateText)
+        mWeatherText = ""
+        for (i in items.item.indices) {
+            when( items.item[i].category ) {
+                "POP" -> {
+                    Log.d(onairTag, "- 강수확률(%): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 강수확률(%): "+ items.item[i].fcstValue + "\n"
+                }
+                "PTY" -> {
+                    Log.d(onairTag, "- 강수형태(code): "+ getRainType(items.item[i].fcstValue.toInt()))
+                    mWeatherText += "- 강수형태(code): "+ getRainType(items.item[i].fcstValue.toInt()) + "\n"
+                }
+                "R06" -> {
+                    Log.d(onairTag, "- 6시간 강수량(mm): "+ getRainAmount(items.item[i].fcstValue.toDouble()))
+                    mWeatherText += "- 6시간 강수량(mm): "+ getRainAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                }
+                "REH" -> {
+                    Log.d(onairTag, "- 습도(%): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 습도(%): "+ items.item[i].fcstValue + "\n"
+                }
+                "S06" -> {
+                    Log.d(onairTag, "- 6시간 신적설(mm): "+ getSnowAmount(items.item[i].fcstValue.toDouble()))
+                    mWeatherText += "- 6시간 신적설(mm): "+ getSnowAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                }
+                "SKY" -> {
+                    Log.d(onairTag, "- 하늘상태(code): "+ getSkyType(items.item[i].fcstValue.toInt()))
+                    mWeatherText += "- 하늘상태(code): "+ getSkyType(items.item[i].fcstValue.toInt()) + "\n"
+                }
+                "T3H" -> {
+                    Log.d(onairTag, "- 3시간 기온(℃): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 3시간 기온(℃): "+ items.item[i].fcstValue + "\n"
+                }
+                "TMN" -> {
+                    Log.d(onairTag, "- 아침 최저 기온(℃): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 아침 최저 기온(℃): "+ items.item[i].fcstValue + "\n"
+                }
+                "TMX" -> {
+                    Log.d(onairTag, "- 낮 최고 기온(℃): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 낮 최고 기온(℃): "+ items.item[i].fcstValue + "\n"
+                }
+                "UUU" -> {
+                    Log.d(onairTag, "- 풍속(동서성분)(m/s): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 풍속(동서성분)(m/s): "+ items.item[i].fcstValue + "\n"
+                }
+                "VVV" -> {
+                    Log.d(onairTag, "- 풍속(남북성분)(m/s): "+ items.item[i].fcstValue)
+                    mWeatherText += "- 풍속(남북성분)(m/s): "+ items.item[i].fcstValue + "\n"
+                }
+                "VEC" -> {
+                    Log.d(onairTag, "- 풍향: "+ getWindDirectionString(items.item[i].fcstValue.toInt()))
+                    mWeatherText += "- 풍향: "+ getWindDirectionString(items.item[i].fcstValue.toInt()) + "\n"
+                }
+                else -> Log.d(onairTag, "Invalid category: "+items.item[i].category)
+            }
         }
         Log.d(onairTag, "")
+        weatherTextView.setText(mWeatherText)
     }
 
-    private fun getLocationLeafDetail(code: Int): Boolean {
-        val filename = "leaf." + code + ".json.txt"
-        var locationLeafCall = locationLeafObj.retrofitService.getLocation(filename)
-        locationLeafCall.enqueue((object: retrofit2.Callback<List<LOCATIONLEAF>> {
-            override fun onResponse(
-                call: Call<List<LOCATIONLEAF>>,
-                response: Response<List<LOCATIONLEAF>>
-            ) {
+    private fun updateAddressView() {
+        Log.d(onairTag, "current_address : " + mAddressText)
+        addrTextView.setText("- 현재 위치: "+mAddressText)
+    }
+
+    private fun requestAddressInfo() {
+        var call = geoObj.retrofitService.getGeoInfo(mLatitude.toString() + "," + mLongitude.toString())
+        Log.d(onairTag, "req URL: " + call.request().url().toString())
+        var findit: Boolean = false
+        call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
+            override fun onResponse(call: Call<GEO_RESPONSE>, response: Response<GEO_RESPONSE>) {
                 if (response.isSuccessful && response.body() != null) {
-                    Log.d(onairTag, "LEAF: " + response.body())
-                    Log.d(onairTag, "LEAF[0] code: " + response.body()!![0].code)
-                    Log.d(onairTag, "LEAF[0] value: " + response.body()!![0].value)
-                    Log.d(onairTag, "LEAF[0] x: " + response.body()!![0].x)
-                    Log.d(onairTag, "LEAF[0] y: " + response.body()!![0].y)
+                    Log.d(onairTag, "address req. response: " + response.body())
+                    for(i in response.body()!!.results.indices ) {
+                        for(j in response.body()!!.results[i].types.indices ) {
+                            Log.d(onairTag, "search result["+i+"].types["+j+"]: "+ response.body()!!.results[i].types[j])
+                            if (response.body()!!.results[i].types[j].equals("postal_code")) {
+                                Log.d(onairTag, "find it! : " + response.body()!!.results[i].formatted_address)
+                                mAddressText = response.body()!!.results[i].formatted_address
+                                findit = true
+                                break
+                            }
+                        }
+                        if ( findit ) break;
+                    }
+                }
+
+                if ( findit ) {
+                    updateAddressView()
                 }
             }
 
-            override fun onFailure(call: Call<List<LOCATIONLEAF>>, t: Throwable) {
-                Log.d(onairTag, "locationMidCall fail : " + t.message)
+            override fun onFailure(call: Call<GEO_RESPONSE>, t: Throwable) {
+                Log.d(onairTag, "requestAddressInfo fail : " + t.message)
             }
 
-        }))
-        return false
-    }
-
-    private fun getLocationMidDetail(code: Int) :Boolean {
-        val filename = "mdl." + code + ".json.txt"
-        var locationMidCall = locationMidObj.retrofitService.getLocation(filename)
-        locationMidCall.enqueue((object: retrofit2.Callback<List<LOCATIONINFO>> {
-            override fun onResponse(
-                call: Call<List<LOCATIONINFO>>,
-                response: Response<List<LOCATIONINFO>>
-            ) {
-                if (response.isSuccessful && response.body() != null) {
-                    Log.d(onairTag, "MID: " + response.body())
-                    Log.d(onairTag, "MID[0] code: " + response.body()!![0].code)
-                    Log.d(onairTag, "MID[0] value: " + response.body()!![0].value)
-
-                    getLocationLeafDetail( response.body()!![0].code )
-                }
-            }
-
-            override fun onFailure(call: Call<List<LOCATIONINFO>>, t: Throwable) {
-                Log.d(onairTag, "locationMidCall fail : " + t.message)
-            }
-
-        }))
-        return false;
+        })
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -308,29 +477,8 @@ class OnAir : Fragment(), LocationListener {
         Log.d(onairTag, "Check GPS. Latitude: " + mLatitude + " , Longitude: " + mLongitude)
         val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(mLatitude), Math.abs(mLongitude))
         Log.d(onairTag, "Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
-        nx = CurGPS.x.toInt().toString()
-        ny = CurGPS.y.toInt().toString()
-
-        // get location detail
-        var locationTopCall = locationTopObj.retrofitService.getLocation()
-        locationTopCall.enqueue(object : retrofit2.Callback<List<LOCATIONINFO>> {
-            override fun onResponse(
-                call: Call<List<LOCATIONINFO>>,
-                response: Response<List<LOCATIONINFO>>
-            ) {
-                if (response.isSuccessful && response.body() != null) {
-                    Log.d(onairTag, "TOP: " + response.body())
-                    Log.d(onairTag, "TOP[0] code: " + response.body()!![0].code)
-                    Log.d(onairTag, "TOP[0] value: " + response.body()!![0].value)
-
-                    getLocationMidDetail( response.body()!![0].code )
-                }
-            }
-
-            override fun onFailure(call: Call<List<LOCATIONINFO>>, t: Throwable) {
-                Log.d(onairTag, "locationTopCall fail : " + t.message)
-            }
-        })
+        var nx = CurGPS.x.toInt().toString()
+        var ny = CurGPS.y.toInt().toString()
 
         // time
         val current = LocalDateTime.now()
@@ -341,8 +489,8 @@ class OnAir : Fragment(), LocationListener {
         var curtime = getLastBaseTime(Calendar.getInstance())
         var curtime2 = f.format(curtime.get(Calendar.HOUR_OF_DAY)) + f.format(curtime.get(Calendar.MINUTE))
 
-        base_date = currdate1.toInt()
-        base_time = curtime2.toInt()
+        var base_date = currdate1
+        var base_time = curtime2
 
         Log.d(onairTag, "- request weather - ")
         Log.d(onairTag, "data_type: $data_type")
@@ -360,6 +508,8 @@ class OnAir : Fragment(), LocationListener {
             nx,
             ny
         )
+
+        Log.d(onairTag, "URL: " + call.request().url().toString())
 
         call.enqueue(object : retrofit2.Callback<WEATHER> {
             override fun onResponse(call: Call<WEATHER>, response: Response<WEATHER>) {
@@ -381,7 +531,7 @@ class OnAir : Fragment(), LocationListener {
     private lateinit var locationManager: LocationManager
     private val locationPermissionCode = 2
 
-    private fun getLocation() {
+    private fun getGPSInfo() {
         locationManager = getActivity()?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if ((ContextCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
             ActivityCompat.requestPermissions(
@@ -393,6 +543,7 @@ class OnAir : Fragment(), LocationListener {
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5f, this)
     }
 
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onLocationChanged(location: Location) {
         Log.d(
@@ -401,6 +552,9 @@ class OnAir : Fragment(), LocationListener {
         )
         mLatitude = location.latitude
         mLongitude = location.longitude
+
+        // call address information
+        requestAddressInfo()
 
         // call weather after get location
         requestWeather()
@@ -422,15 +576,15 @@ class OnAir : Fragment(), LocationListener {
     }
 
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
     }
 
     override fun onProviderEnabled(provider: String?) {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
     }
 
     override fun onProviderDisabled(provider: String?) {
-        TODO("Not yet implemented")
+//        TODO("Not yet implemented")
     }
 
     var TO_GRID = 0
