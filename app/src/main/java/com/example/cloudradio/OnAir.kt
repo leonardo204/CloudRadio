@@ -1,14 +1,8 @@
 package com.example.cloudradio
 
-import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.pm.PackageManager
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
-import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -16,10 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import okhttp3.Interceptor
 import okhttp3.MediaType
@@ -220,7 +211,7 @@ internal class LatXLngY {
     var y = 0.0
 }
 
-class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsResultCallback {
+class OnAir : Fragment() {
 
     // request wether (fixed)
     val num_of_rows = 10
@@ -228,29 +219,38 @@ class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsR
     val data_type = "JSON"
 
     private lateinit var mContext: Context
-    private var mLatitude: Double = 0.0  // 위도 (가로...)
-    private var mLongitude: Double = 0.0 // 경도 (세로...)
 
-    private lateinit var timeTextView: TextView
-    private lateinit var weatherTextView: TextView
-    private lateinit var addrTextView: TextView
     var notLoadedMessage: String = "PLEASE WAIT..."
 
-    lateinit var mDateText: String
-    lateinit var mAddressText: String
-    lateinit var mWeatherText: String
+    companion object {
+        private lateinit var timeTextView: TextView
+        private lateinit var weatherTextView: TextView
+        private lateinit var addrTextView: TextView
 
+        private lateinit var mDateText: String
+        private lateinit var mAddressText: String
+        private lateinit var mWeatherText: String
+
+        private var instance: OnAir? = null
+
+        fun getInstance(): OnAir =
+                instance ?: synchronized(this) {
+                    instance ?: OnAir().also {
+                        instance = it
+                    }
+                }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         Log.d(onairTag, "onViewCreated")
 
-        timeTextView = view.findViewById(R.id.timeTextView)
-        addrTextView = view.findViewById(R.id.addrTextView)
-        weatherTextView = view.findViewById(R.id.weatherTextView)
+        OnAir.timeTextView = view.findViewById(R.id.timeTextView)
+        OnAir.addrTextView = view.findViewById(R.id.addrTextView)
+        OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
 
-        timeTextView.setText(notLoadedMessage)
-        addrTextView.setText(notLoadedMessage)
-        weatherTextView.setText(notLoadedMessage)
+        OnAir.timeTextView.setText(notLoadedMessage)
+        OnAir.addrTextView.setText(notLoadedMessage)
+        OnAir.weatherTextView.setText(notLoadedMessage)
 
     }
 
@@ -265,14 +265,7 @@ class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsR
             mContext = container.context
         }
 
-        // get current gps info
-        checkPermissions()
-
         return inflater.inflate(R.layout.fragment_onair, container, false)
-    }
-
-    private fun makeToast(message: String) {
-        Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show()
     }
 
     private fun getLastBaseTime(calBase: Calendar):Calendar {
@@ -375,84 +368,80 @@ class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsR
         Log.d(onairTag, "- 날짜: " + items.item[0].baseDate)
         Log.d(onairTag, "- 발표시간: " + items.item[0].baseTime)
         Log.d(onairTag, "- 예보시간: " + items.item[0].fcstTime)
-        mDateText = "- 날짜: "+items.item[0].baseDate +"\n"
-        mDateText += "- 발표시간: "+items.item[0].baseTime +"\n"
-        mDateText += "- 예보시간: "+items.item[0].fcstTime
-        timeTextView.setText(mDateText)
-        mWeatherText = ""
+        OnAir.mDateText = "- 날짜: "+items.item[0].baseDate +"\n"
+        OnAir.mDateText += "- 발표시간: "+items.item[0].baseTime +"\n"
+        OnAir.mDateText += "- 예보시간: "+items.item[0].fcstTime
+        OnAir.timeTextView.setText(mDateText)
+        OnAir.mWeatherText = ""
         for (i in items.item.indices) {
+            Log.d(onairTag, "category: " + items.item[i].category)
             when( items.item[i].category ) {
                 "POP" -> {
                     Log.d(onairTag, "- 강수확률(%): " + items.item[i].fcstValue)
-                    mWeatherText += "- 강수확률(%): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 강수확률(%): " + items.item[i].fcstValue + "\n"
                 }
                 "PTY" -> {
                     Log.d(onairTag, "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
-                    mWeatherText += "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()) + "\n"
+                    OnAir.mWeatherText += "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()) + "\n"
                 }
                 "R06" -> {
-                    Log.d(
-                        onairTag,
-                        "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble())
-                    )
-                    mWeatherText += "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                    Log.d(onairTag, "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()) )
+                    OnAir.mWeatherText += "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()) + "\n"
                 }
                 "REH" -> {
                     Log.d(onairTag, "- 습도(%): " + items.item[i].fcstValue)
-                    mWeatherText += "- 습도(%): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 습도(%): " + items.item[i].fcstValue + "\n"
                 }
                 "S06" -> {
-                    Log.d(
-                        onairTag,
-                        "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble())
-                    )
-                    mWeatherText += "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                    Log.d(onairTag,"- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()) )
+                    OnAir.mWeatherText += "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()) + "\n"
                 }
                 "SKY" -> {
                     Log.d(onairTag, "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
-                    mWeatherText += "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()) + "\n"
+                    OnAir.mWeatherText += "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()) + "\n"
                 }
                 "T3H" -> {
                     Log.d(onairTag, "- 3시간 기온(℃): " + items.item[i].fcstValue)
-                    mWeatherText += "- 3시간 기온(℃): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 3시간 기온(℃): " + items.item[i].fcstValue + "\n"
                 }
                 "TMN" -> {
                     Log.d(onairTag, "- 아침 최저 기온(℃): " + items.item[i].fcstValue)
-                    mWeatherText += "- 아침 최저 기온(℃): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 아침 최저 기온(℃): " + items.item[i].fcstValue + "\n"
                 }
                 "TMX" -> {
                     Log.d(onairTag, "- 낮 최고 기온(℃): " + items.item[i].fcstValue)
-                    mWeatherText += "- 낮 최고 기온(℃): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 낮 최고 기온(℃): " + items.item[i].fcstValue + "\n"
                 }
                 "UUU" -> {
                     Log.d(onairTag, "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue)
-                    mWeatherText += "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue + "\n"
                 }
                 "VVV" -> {
                     Log.d(onairTag, "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue)
-                    mWeatherText += "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue + "\n"
+                    OnAir.mWeatherText += "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue + "\n"
                 }
                 "VEC" -> {
-                    Log.d(
-                        onairTag,
-                        "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt())
-                    )
-                    mWeatherText += "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()) + "\n"
+                    Log.d(onairTag,"- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()) )
+                    OnAir.mWeatherText += "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()) + "\n"
+                }
+                "WSD" -> {
+                    Log.d(onairTag, "- 풍속(m/s): "+ items.item[i].fcstValue)
+                    OnAir.mWeatherText += "- 풍속(m/s): " + items.item[i].fcstValue + "\n"
                 }
                 else -> Log.d(onairTag, "Invalid category: " + items.item[i].category)
             }
         }
         Log.d(onairTag, "")
-        weatherTextView.setText(mWeatherText)
+        OnAir.weatherTextView.setText(mWeatherText)
     }
 
     private fun updateAddressView() {
         Log.d(onairTag, "current_address : " + mAddressText)
-        addrTextView.setText("- 현재 위치: " + mAddressText)
+        OnAir.addrTextView.setText("- 현재 위치: " + mAddressText)
     }
 
-    private fun requestAddressInfo() {
-        var call = geoObj.retrofitService.getGeoInfo(mLatitude.toString() + "," + mLongitude.toString())
+    fun requestAddressInfo(lat: Double, lng: Double) {
+        var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
         Log.d(onairTag, "req URL: " + call.request().url().toString())
         var findit: Boolean = false
         call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
@@ -491,11 +480,10 @@ class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsR
         })
     }
 
-    private fun requestWeather() {
-
+    fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location
-        Log.d(onairTag, "Check GPS. Latitude: " + mLatitude + " , Longitude: " + mLongitude)
-        val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(mLatitude), Math.abs(mLongitude))
+        Log.d(onairTag, "Check GPS. Latitude: " + lat + " , Longitude: " + lng)
+        val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(lat), Math.abs(lng))
         Log.d(onairTag, "Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
         var nx = CurGPS.x.toInt().toString()
         var ny = CurGPS.y.toInt().toString()
@@ -546,99 +534,6 @@ class OnAir : Fragment(), LocationListener, ActivityCompat.OnRequestPermissionsR
                 Log.d(onairTag, "api fail : " + t.message)
             }
         })
-    }
-
-    private lateinit var locationManager: LocationManager
-    private val locationPermissionCode = 204
-    var REQUIRED_PERMISSIONS = arrayOf(
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION
-    )
-
-    private fun checkPermissions() {
-        val finePerm = ContextCompat.checkSelfPermission(mContext, REQUIRED_PERMISSIONS[0])
-        val coastPerm = ContextCompat.checkSelfPermission(mContext, REQUIRED_PERMISSIONS[1])
-
-        if ( finePerm == PackageManager.PERMISSION_GRANTED
-            && coastPerm == PackageManager.PERMISSION_GRANTED )
-        {
-            Log.d(onairTag, "Permissions ok")
-            getGPSInfo()
-        }
-        else {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(mContext as Activity, REQUIRED_PERMISSIONS[0])
-                || ActivityCompat.shouldShowRequestPermissionRationale(mContext as Activity, REQUIRED_PERMISSIONS[1])) {
-
-                makeToast("이 앱을 실행하려면 위치 권한이 필요합니다.")
-                Log.d(onairTag, "Permissions are requested")
-                ActivityCompat.requestPermissions( mContext as Activity, REQUIRED_PERMISSIONS, locationPermissionCode )
-            } else {
-                Log.d(onairTag, "Permissions are requested")
-                ActivityCompat.requestPermissions( mContext as Activity, REQUIRED_PERMISSIONS, locationPermissionCode )
-            }
-        }
-    }
-
-    private fun getGPSInfo() {
-        Log.d(onairTag, "getGPSInfo()")
-        locationManager = getActivity()?.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        if (ActivityCompat.checkSelfPermission(
-                mContext,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                mContext,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            Log.d(onairTag, "permission denied")
-            makeToast("위치 권한을 허용해주세요")
-            return
-        }
-        Log.d(onairTag, "getGPSInfo() 1")
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5f, this)
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 5f, this)
-        Log.d(onairTag, "getGPSInfo() 2")
-    }
-
-    override fun onLocationChanged(location: Location) {
-        Log.d(onairTag,"Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude )
-        mLatitude = location.latitude
-        mLongitude = location.longitude
-
-        // call address information
-        requestAddressInfo()
-
-        // call weather after get location
-        requestWeather()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        Log.d(onairTag, "onRequestPermissionsResult: " + requestCode)
-        if (requestCode == locationPermissionCode) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(mContext, "Permission Granted", Toast.LENGTH_SHORT).show()
-                getGPSInfo()
-            }
-            else {
-                Toast.makeText(mContext, "Permission Denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(onairTag, "onStatusChanged")
-    }
-
-    override fun onProviderEnabled(provider: String?) {
-        Log.d(onairTag, "onProviderEnabled")
-    }
-
-    override fun onProviderDisabled(provider: String?) {
-        Log.d(onairTag, "onProviderDisabled")
     }
 
     var TO_GRID = 0
