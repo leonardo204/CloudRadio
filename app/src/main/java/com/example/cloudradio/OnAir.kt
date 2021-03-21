@@ -223,6 +223,7 @@ class OnAir : Fragment() {
     var notLoadedMessage: String = "PLEASE WAIT..."
 
     companion object {
+        private var bInitialized: Boolean = false
         private lateinit var timeTextView: TextView
         private lateinit var weatherTextView: TextView
         private lateinit var addrTextView: TextView
@@ -244,14 +245,29 @@ class OnAir : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         Log.d(onairTag, "onViewCreated")
 
-        OnAir.timeTextView = view.findViewById(R.id.timeTextView)
-        OnAir.addrTextView = view.findViewById(R.id.addrTextView)
-        OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
+        if ( OnAir.bInitialized != true ) {
+            Log.d(onairTag, "load data")
 
-        OnAir.timeTextView.setText(notLoadedMessage)
-        OnAir.addrTextView.setText(notLoadedMessage)
-        OnAir.weatherTextView.setText(notLoadedMessage)
+            OnAir.timeTextView = view.findViewById(R.id.timeTextView)
+            OnAir.addrTextView = view.findViewById(R.id.addrTextView)
+            OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
 
+            OnAir.timeTextView.setText(notLoadedMessage)
+            OnAir.addrTextView.setText(notLoadedMessage)
+            OnAir.weatherTextView.setText(notLoadedMessage)
+
+            OnAir.bInitialized = true
+        } else {
+            Log.d(onairTag, "use previous data")
+
+            OnAir.timeTextView = view.findViewById(R.id.timeTextView)
+            OnAir.addrTextView = view.findViewById(R.id.addrTextView)
+            OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
+
+            OnAir.timeTextView.setText(OnAir.mDateText)
+            OnAir.addrTextView.setText("- 현재 위치: " + OnAir.mAddressText)
+            OnAir.weatherTextView.setText(OnAir.mWeatherText)
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -260,10 +276,6 @@ class OnAir : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         Log.d(onairTag, "onCreateView")
-
-        if (container != null) {
-            mContext = container.context
-        }
 
         return inflater.inflate(R.layout.fragment_onair, container, false)
     }
@@ -371,7 +383,7 @@ class OnAir : Fragment() {
         OnAir.mDateText = "- 날짜: "+items.item[0].baseDate +"\n"
         OnAir.mDateText += "- 발표시간: "+items.item[0].baseTime +"\n"
         OnAir.mDateText += "- 예보시간: "+items.item[0].fcstTime
-        OnAir.timeTextView.setText(mDateText)
+        OnAir.timeTextView.setText(OnAir.mDateText)
         OnAir.mWeatherText = ""
         for (i in items.item.indices) {
             Log.d(onairTag, "category: " + items.item[i].category)
@@ -432,12 +444,12 @@ class OnAir : Fragment() {
             }
         }
         Log.d(onairTag, "")
-        OnAir.weatherTextView.setText(mWeatherText)
+        OnAir.weatherTextView.setText(OnAir.mWeatherText)
     }
 
     private fun updateAddressView() {
         Log.d(onairTag, "current_address : " + mAddressText)
-        OnAir.addrTextView.setText("- 현재 위치: " + mAddressText)
+        OnAir.addrTextView.setText("- 현재 위치: " + OnAir.mAddressText)
     }
 
     fun requestAddressInfo(lat: Double, lng: Double) {
