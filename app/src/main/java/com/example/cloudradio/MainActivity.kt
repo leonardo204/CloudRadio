@@ -101,7 +101,12 @@ class MainActivity : AppCompatActivity() {
 
         locListener = LocListener()
 
-        checkPermissions()
+        if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
+            Log.d(onairTag, "Network is not available")
+            Toast.makeText(this, "인터넷 연결이 필요합니다. \n연결 후 앱을 다시 실행하여 주십시오.", Toast.LENGTH_LONG).show()
+        } else {
+            checkPermissions()
+        }
     }
 
     private val locationPermissionCode = 204

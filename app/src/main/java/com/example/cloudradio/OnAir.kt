@@ -9,10 +9,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import okhttp3.Interceptor
@@ -216,24 +213,25 @@ internal class LatXLngY {
 
 class OnAir : Fragment() {
 
-    // request wether (fixed)
-    val num_of_rows = 10
-    val page_no = 1
-    val data_type = "JSON"
-
-    var notLoadedMessage: String = "PLEASE WAIT..."
-
     companion object {
+        var TO_GRID = 0
+        var TO_GPS = 1
+
+        // request wether (fixed)
+        val num_of_rows = 10
+        val page_no = 1
+        val data_type = "JSON"
+
+        val SKY_NO_RAIN: Int = 0
+        val SKY_WITH_RAIN: Int = 1
+
+        var notLoadedMessage: String = "PLEASE WAIT..."
+
         private lateinit var mContext: Context
 
         private var bInitialized: Boolean = false
-        private lateinit var timeTextView: TextView
-        private lateinit var weatherTextView: TextView
-        private lateinit var addrTextView: TextView
 
-        private lateinit var mDateText: String
-        private lateinit var mAddressText: String
-        private lateinit var mWeatherText: String
+        private var mAddressText: String = "N/A"
 
         private var instance: OnAir? = null
 
@@ -245,43 +243,106 @@ class OnAir : Fragment() {
                 }
 
         private lateinit var mBtn_weather_refresh: ImageButton
+
+        private lateinit var txt_timeView: TextView
+        private lateinit var txt_addrView: TextView
+        private lateinit var txt_skyView: TextView
+        private lateinit var txt_windView: TextView
+        private lateinit var txt_rainView: TextView
+        private lateinit var txt_fcstView: TextView
+
+        private lateinit var img_skyView: ImageView
+        private lateinit var img_rainView: ImageView
+        private lateinit var img_weatherView: ImageView
+
+        private var mRainType: Int = 0
+        private var mSkyType: Int = 0
+        private var mTemperatureText: String = "N/A"
+        private var mWindText: String = "N/A"
+        private var mRainText: String = "N/A"
+        private var mFcstTimeText: String = "N/A"
     }
 
     private fun onRefreshClick() {
-        Log.d(onairTag, "weather refresh")
-        OnAir.timeTextView.setText(notLoadedMessage)
-        OnAir.addrTextView.setText(notLoadedMessage)
-        OnAir.weatherTextView.setText(notLoadedMessage)
-        OnAir.bInitialized = true
+        Log.d(onairTag, "information refresh")
+        setCurrentTimeView()
+        bInitialized = true
+        txt_fcstView.setText("")
         MainActivity.getInstance().getGPSInfo()
-        Toast.makeText(mContext, " 4현재 지역의 날씨 정보를 업데이트합니다. \n잠시만 기다려주십시오.", Toast.LENGTH_LONG).show()
+
+        var text = "현재 지역의 날씨 정보를 업데이트합니다.\n잠시만 기다려주십시오."
+        Toast.makeText(mContext, text, Toast.LENGTH_LONG).show()
+    }
+
+    private fun setCurrentTimeView() {
+        var result: String
+        val current: LocalDateTime = LocalDateTime.now()
+        var formatter = DateTimeFormatter.ofPattern("yyyy")
+        var str = current.format(formatter)
+        result = str + "년"
+
+        formatter = DateTimeFormatter.ofPattern("MM")
+        str = current.format(formatter)
+        result = result + " " + str + "월"
+
+        formatter = DateTimeFormatter.ofPattern("dd")
+        str = current.format(formatter)
+        result = result + " " + str + "일"
+
+        result += "  "
+        formatter = DateTimeFormatter.ofPattern("a")
+        str = current.format(formatter)
+        if (str.equals("am")) {
+            result += "오전"
+        }
+        else {
+            result += "오후"
+        }
+
+        formatter = DateTimeFormatter.ofPattern("hh")
+        str = current.format(formatter)
+        result = result + " " + str + "시"
+
+        formatter = DateTimeFormatter.ofPattern("mm")
+        str = current.format(formatter)
+        result = result + " " + str + "분"
+
+
+        txt_timeView.setText(result)
+
+        Log.d(onairTag, "setCurrentTimeView(): " + result)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         Log.d(onairTag, "onViewCreated")
 
-        if ( OnAir.bInitialized != true ) {
+        txt_timeView = view.findViewById(R.id.text_time)
+        txt_addrView = view.findViewById(R.id.text_address)
+        txt_skyView = view.findViewById(R.id.text_sky)
+        txt_rainView = view.findViewById(R.id.text_rain)
+        txt_fcstView = view.findViewById(R.id.text_fcstTime)
+        txt_windView = view.findViewById(R.id.text_wind)
+
+        img_weatherView = view.findViewById(R.id.image_empty_weather)
+        img_skyView = view.findViewById(R.id.img_sky)
+        img_rainView = view.findViewById(R.id.img_humidity)
+
+        setCurrentTimeView()
+
+        if ( bInitialized != true ) {
             Log.d(onairTag, "load data")
-
-            OnAir.timeTextView = view.findViewById(R.id.timeTextView)
-            OnAir.addrTextView = view.findViewById(R.id.addrTextView)
-            OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
-
-            OnAir.timeTextView.setText(notLoadedMessage)
-            OnAir.addrTextView.setText(notLoadedMessage)
-            OnAir.weatherTextView.setText(notLoadedMessage)
-
-            OnAir.bInitialized = true
+            bInitialized = true
         } else {
             Log.d(onairTag, "use previous data")
 
-            OnAir.timeTextView = view.findViewById(R.id.timeTextView)
-            OnAir.addrTextView = view.findViewById(R.id.addrTextView)
-            OnAir.weatherTextView = view.findViewById(R.id.weatherTextView)
+            txt_addrView.setText(mAddressText)
+            txt_rainView.setText(mRainText)
+            txt_windView.setText(mWindText)
+            txt_skyView.setText(mTemperatureText)
+            txt_fcstView.setText(mFcstTimeText)
 
-            OnAir.timeTextView.setText(OnAir.mDateText)
-            OnAir.addrTextView.setText("- 현재 위치: " + OnAir.mAddressText)
-            OnAir.weatherTextView.setText(OnAir.mWeatherText)
+            setSkyStatusImage(mSkyType)
+            setRainStatusImage(mRainType)
         }
 
         mBtn_weather_refresh = view.findViewById(R.id.btn_weatherRefresh)
@@ -384,6 +445,86 @@ class OnAir : Fragment() {
     }
 
     /*
+        1 -> return "맑음"
+        3 -> return "구름 많음"
+        4 -> return "흐림"
+     */
+    private fun setSkyStatusImage(skyType: Int) {
+        mSkyType = skyType
+        Log.d(onairTag, "rainType code is invalid: " + skyType)
+
+        when (skyType) {
+            1 -> img_skyView.setImageResource(R.drawable.ic_sunny)
+            3 -> img_skyView.setImageResource(R.drawable.ic_cloudy)
+            4 -> img_skyView.setImageResource(R.drawable.ic_clouds)
+            else -> Log.d(onairTag, "skyType code is invalid: " + skyType)
+        }
+    }
+
+    /*
+       (없음(0), 비(1), 비/눈(진눈개비)(2), 눈(3), 소나기(4), 빗방울(5), 빗방울/눈날림(6), 눈날림(7))
+     */
+    private fun setRainStatusImage(rainType: Int){
+        mRainType = rainType
+        Log.d(onairTag, "rainType code is invalid: " + rainType)
+
+        when(rainType) {
+            1 -> img_rainView.setImageResource(R.drawable.ic_rain1)
+            2 -> img_rainView.setImageResource(R.drawable.ic_rain2)
+            3 -> img_rainView.setImageResource(R.drawable.ic_rain3)
+            4 -> img_rainView.setImageResource(R.drawable.ic_rain4)
+            5 -> img_rainView.setImageResource(R.drawable.ic_rain5)
+            6 -> img_rainView.setImageResource(R.drawable.ic_rain6)
+            7 -> img_rainView.setImageResource(R.drawable.ic_rain7)
+            else -> Log.d(onairTag, "rainType code is invalid: " + rainType)
+        }
+    }
+
+
+    private fun updateRainProperty(humidity: String, rainPercent: String) {
+        Log.d(
+            onairTag,
+            "updateRainProperty  humidity: " + humidity + ", rain percent: " + rainPercent
+        )
+        var text: String = "습도  "+humidity +" %\n"
+        text += "강수확률  "+rainPercent +" %\n"
+        txt_rainView.setText(text)
+        mRainText = text
+    }
+
+    private fun updateWindProperty(windSpeed: Double, windDirection: String) {
+        Log.d(onairTag, "updateWindProperty  direction: " + windDirection + ", speed: " + windSpeed)
+        var text:String = "풍향  "+windDirection +"\n"
+        text += "풍속  "+ windSpeed + " m/s"
+        txt_windView.setText(text)
+        mWindText = text
+    }
+
+    private fun updateTemperature(cur: String, high: String, low: String) {
+        Log.d(onairTag, "updateTemperature cur: " + cur + ", high: " + high + ", low: " + low)
+        var text:String = "현재  "+cur +"℃\n"
+        if ( high.equals("N/A") == false) text += "낮 최고 " + high +"℃\n"
+        if ( low.equals("N/A") == false) text += "낮 최저 " + low +"℃\n"
+        txt_skyView.setText(text)
+        mTemperatureText = text
+    }
+
+    private fun updateFcstTimeView(basetime: String, fcstTime: String) {
+        val new_basetime = basetime.substring(0, 2) + ":" + basetime.subSequence(2, basetime.length)
+        val new_fcstTime = fcstTime.substring(0, 2) + ":" + fcstTime.subSequence(2, fcstTime.length)
+        val updateText = "유효 ( " + new_basetime + " ~ " + new_fcstTime+ " )"
+
+        Log.d(onairTag, "updateFcstTimeView: " + updateText)
+        txt_fcstView.setText(updateText)
+        mFcstTimeText = updateText
+    }
+
+    private fun updateAddressView() {
+        Log.d(onairTag, "current_address : " + mAddressText)
+        txt_addrView.setText(mAddressText)
+    }
+
+    /*
      * POP	강수확률	 %
      * PTY	강수형태	코드값 (없음(0), 비(1), 비/눈(진눈개비)(2), 눈(3), 소나기(4), 빗방울(5), 빗방울/눈날림(6), 눈날림(7))
      * R06	6시간 강수량	범주 (1 mm)
@@ -402,11 +543,18 @@ class OnAir : Fragment() {
         Log.d(onairTag, "- 날짜: " + items.item[0].baseDate)
         Log.d(onairTag, "- 발표시간: " + items.item[0].baseTime)
         Log.d(onairTag, "- 예보시간: " + items.item[0].fcstTime)
-        OnAir.mDateText = "- 날짜: "+items.item[0].baseDate +"\n"
-        OnAir.mDateText += "- 발표시간: "+items.item[0].baseTime +"\n"
-        OnAir.mDateText += "- 예보시간: "+items.item[0].fcstTime
-        OnAir.timeTextView.setText(OnAir.mDateText)
-        OnAir.mWeatherText = ""
+
+        updateFcstTimeView(items.item[0].baseTime.toString(), items.item[0].fcstTime.toString())
+
+        var currentTemperature: String = "N/A"
+        var higherTempearture: String = "N/A"
+        var lowerTempearture: String = "N/A"
+
+        var windDirection: String = "N/A"
+        var windSpeed: Double = 0.0
+
+        var humidity: String = "N/A"
+        var rainPercent: String = "N/A"
 
         var fcstTime = items.item[0].fcstTime
 
@@ -414,70 +562,82 @@ class OnAir : Fragment() {
             Log.d(onairTag, "category: " + items.item[i].category)
             when( items.item[i].category ) {
                 "POP" -> {
-                    if ( fcstTime.equals(items.item[i].fcstTime) ) {
+                    if (fcstTime.equals(items.item[i].fcstTime)) {
                         Log.d(onairTag, "- 강수확률(%): " + items.item[i].fcstValue)
-                        OnAir.mWeatherText += "- 강수확률(%): " + items.item[i].fcstValue + "\n"
+                        rainPercent = items.item[i].fcstValue
                     }
                 }
                 "PTY" -> {
                     Log.d(onairTag, "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
-                    OnAir.mWeatherText += "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()) + "\n"
+                    setRainStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "R06" -> {
-                    Log.d(onairTag, "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()) )
-                    OnAir.mWeatherText += "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                    Log.d(
+                        onairTag,
+                        "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble())
+                    )
                 }
                 "REH" -> {
                     Log.d(onairTag, "- 습도(%): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 습도(%): " + items.item[i].fcstValue + "\n"
+                    humidity = items.item[i].fcstValue
                 }
                 "S06" -> {
-                    Log.d(onairTag,"- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()) )
-                    OnAir.mWeatherText += "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()) + "\n"
+                    Log.d(
+                        onairTag,
+                        "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble())
+                    )
                 }
                 "SKY" -> {
                     Log.d(onairTag, "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
-                    OnAir.mWeatherText += "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()) + "\n"
+                    setSkyStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "T3H" -> {
                     Log.d(onairTag, "- 3시간 기온(℃): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 3시간 기온(℃): " + items.item[i].fcstValue + "\n"
+                    currentTemperature = items.item[i].fcstValue;
                 }
                 "TMN" -> {
                     Log.d(onairTag, "- 아침 최저 기온(℃): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 아침 최저 기온(℃): " + items.item[i].fcstValue + "\n"
+                    lowerTempearture = items.item[i].fcstValue
                 }
                 "TMX" -> {
                     Log.d(onairTag, "- 낮 최고 기온(℃): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 낮 최고 기온(℃): " + items.item[i].fcstValue + "\n"
+                    higherTempearture = items.item[i].fcstValue
                 }
                 "UUU" -> {
                     Log.d(onairTag, "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue + "\n"
+                    if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
+                        items.item[i].fcstValue.toDouble()
                 }
                 "VVV" -> {
                     Log.d(onairTag, "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue + "\n"
+                    if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
+                        items.item[i].fcstValue.toDouble()
                 }
                 "VEC" -> {
-                    Log.d(onairTag,"- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()) )
-                    OnAir.mWeatherText += "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()) + "\n"
+                    Log.d(
+                        onairTag,
+                        "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt())
+                    )
+                    windDirection = getWindDirectionString(items.item[i].fcstValue.toInt())
                 }
                 "WSD" -> {
-                    Log.d(onairTag, "- 풍속(m/s): "+ items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 풍속(m/s): " + items.item[i].fcstValue + "\n"
+                    Log.d(onairTag, "- 풍속(m/s): " + items.item[i].fcstValue)
+                    if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
+                        items.item[i].fcstValue.toDouble()
                 }
                 else -> Log.d(onairTag, "Invalid category: " + items.item[i].category)
             }
         }
         Log.d(onairTag, "")
-        OnAir.weatherTextView.setText(OnAir.mWeatherText)
+
+        updateTemperature(currentTemperature, higherTempearture, lowerTempearture)
+
+        updateWindProperty(windSpeed, windDirection)
+
+        updateRainProperty(humidity, rainPercent)
     }
 
-    private fun updateAddressView() {
-        Log.d(onairTag, "current_address : " + mAddressText)
-        OnAir.addrTextView.setText("- 현재 위치: " + OnAir.mAddressText)
-    }
+
 
     fun requestAddressInfo(lat: Double, lng: Double) {
         var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
@@ -575,8 +735,7 @@ class OnAir : Fragment() {
         })
     }
 
-    var TO_GRID = 0
-    var TO_GPS = 1
+
 
     private fun convertGRID_GPS(mode: Int, lat_X: Double, lng_Y: Double):LatXLngY {
         val RE = 6371.00877 // 지구 반경(km)
