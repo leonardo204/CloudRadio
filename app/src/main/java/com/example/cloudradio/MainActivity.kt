@@ -2,8 +2,6 @@ package com.example.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -17,14 +15,59 @@ import androidx.core.content.ContextCompat
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 
-var MainTag = "MainActivity"
+class LocListener: LocationListener {
 
-class MainActivity : AppCompatActivity(), LocationListener {
+    //위치 정보 전달 목적으로 호출
+    override fun onLocationChanged(location: Location?) {
+
+        if (location != null) {
+            Log.d(onairTag,"Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude )
+
+            // call address information
+            OnAir.getInstance().requestAddressInfo(location.latitude, location.longitude)
+
+            // call weather after get location
+            OnAir.getInstance().requestWeather(location.latitude, location.longitude)
+        }
+
+        // remove gps tracking
+        MainActivity.getInstance().removeGPSTracking()
+    }
+
+    //provider의 상태가 변경되때마다 호출
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
+        Log.d(onairTag,"onStatusChanged. Not yet implemented")
+    }
+
+    //provider가 사용 가능한 상태가 되는 순간 호출
+    override fun onProviderEnabled(provider: String?) {
+        Log.d(onairTag,"onProviderEnabled. Not yet implemented")
+    }
+
+    //provider가 사용 불가능 상황이 되는 순간 호출
+    override fun onProviderDisabled(provider: String?) {
+        Log.d(onairTag,"onProviderDisabled. Not yet implemented")
+    }
+
+}
+
+class MainActivity : AppCompatActivity() {
 
     lateinit var tabLayout: TabLayout
     lateinit var viewPager: ViewPager
 
-    lateinit var locationManager: LocationManager
+    companion object {
+        private var instance: MainActivity? = null
+        lateinit var locationManager: LocationManager
+        lateinit var locListener: LocListener
+
+        fun getInstance(): MainActivity =
+                instance ?: synchronized(this) {
+                    instance ?: MainActivity().also {
+                        instance = it
+                    }
+                }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +99,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
         Log.d(onairTag, "set locationManager")
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 
+        locListener = LocListener()
+
         checkPermissions()
     }
 
@@ -81,11 +126,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0])
                     || ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[1])) {
 
-                //makeToast("이 앱을 실행하려면 위치 권한이 필요합니다.")
                 Log.d(onairTag, "Permissions are requested 1")
                 ActivityCompat.requestPermissions( this, REQUIRED_PERMISSIONS, locationPermissionCode )
             } else {
-                //makeToast("이 앱을 실행하려면 위치 권한이 필요합니다.")
                 Log.d(onairTag, "Permissions are requested 2")
                 ActivityCompat.requestPermissions( this, REQUIRED_PERMISSIONS, locationPermissionCode )
             }
@@ -100,44 +143,26 @@ class MainActivity : AppCompatActivity(), LocationListener {
         Log.d(onairTag, "onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
                 Log.d(onairTag, "Permissions CB: Granted")
                 getGPSInfo()
             }
             else {
                 Log.d(onairTag, "Permissions CB: Denied")
-                Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Permission Denied", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
-        Log.d(onairTag, "getGPSInfo() 1")
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5f, this)
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 5f, this)
-        Log.d(onairTag, "getGPSInfo() 2")
+        Log.d(onairTag, "getGPSInfo()")
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 10f, locListener)
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000, 10f, locListener)
     }
 
-    override fun onLocationChanged(location: Location) {
-        Log.d(onairTag,"Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude )
-
-        // call address information
-        OnAir.getInstance().requestAddressInfo(location.latitude, location.longitude)
-
-        // call weather after get location
-        OnAir.getInstance().requestWeather(location.latitude, location.longitude)
-    }
-
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(onairTag,"onStatusChanged. Not yet implemented")
-    }
-
-    override fun onProviderEnabled(provider: String?) {
-        Log.d(onairTag,"onProviderEnabled. Not yet implemented")
-    }
-
-    override fun onProviderDisabled(provider: String?) {
-        Log.d(onairTag,"onProviderDisabled. Not yet implemented")
+    fun removeGPSTracking() {
+        Log.d(onairTag, "removeGPSTracking()")
+        locationManager.removeUpdates(locListener)
     }
 }

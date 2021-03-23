@@ -9,7 +9,10 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import okhttp3.Interceptor
@@ -218,11 +221,11 @@ class OnAir : Fragment() {
     val page_no = 1
     val data_type = "JSON"
 
-    private lateinit var mContext: Context
-
     var notLoadedMessage: String = "PLEASE WAIT..."
 
     companion object {
+        private lateinit var mContext: Context
+
         private var bInitialized: Boolean = false
         private lateinit var timeTextView: TextView
         private lateinit var weatherTextView: TextView
@@ -240,6 +243,18 @@ class OnAir : Fragment() {
                         instance = it
                     }
                 }
+
+        private lateinit var mBtn_weather_refresh: ImageButton
+    }
+
+    private fun onRefreshClick() {
+        Log.d(onairTag, "weather refresh")
+        OnAir.timeTextView.setText(notLoadedMessage)
+        OnAir.addrTextView.setText(notLoadedMessage)
+        OnAir.weatherTextView.setText(notLoadedMessage)
+        OnAir.bInitialized = true
+        MainActivity.getInstance().getGPSInfo()
+        Toast.makeText(mContext, " 4현재 지역의 날씨 정보를 업데이트합니다. \n잠시만 기다려주십시오.", Toast.LENGTH_LONG).show()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -268,6 +283,9 @@ class OnAir : Fragment() {
             OnAir.addrTextView.setText("- 현재 위치: " + OnAir.mAddressText)
             OnAir.weatherTextView.setText(OnAir.mWeatherText)
         }
+
+        mBtn_weather_refresh = view.findViewById(R.id.btn_weatherRefresh)
+        mBtn_weather_refresh.setOnClickListener { onRefreshClick() }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -276,6 +294,10 @@ class OnAir : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         Log.d(onairTag, "onCreateView")
+
+        if ( container != null ) {
+            mContext = container.context
+        }
 
         return inflater.inflate(R.layout.fragment_onair, container, false)
     }
@@ -385,12 +407,17 @@ class OnAir : Fragment() {
         OnAir.mDateText += "- 예보시간: "+items.item[0].fcstTime
         OnAir.timeTextView.setText(OnAir.mDateText)
         OnAir.mWeatherText = ""
+
+        var fcstTime = items.item[0].fcstTime
+
         for (i in items.item.indices) {
             Log.d(onairTag, "category: " + items.item[i].category)
             when( items.item[i].category ) {
                 "POP" -> {
-                    Log.d(onairTag, "- 강수확률(%): " + items.item[i].fcstValue)
-                    OnAir.mWeatherText += "- 강수확률(%): " + items.item[i].fcstValue + "\n"
+                    if ( fcstTime.equals(items.item[i].fcstTime) ) {
+                        Log.d(onairTag, "- 강수확률(%): " + items.item[i].fcstValue)
+                        OnAir.mWeatherText += "- 강수확률(%): " + items.item[i].fcstValue + "\n"
+                    }
                 }
                 "PTY" -> {
                     Log.d(onairTag, "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
