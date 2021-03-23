@@ -3,6 +3,9 @@ package com.example.cloudradio
 import android.content.Context
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -274,6 +277,23 @@ class OnAir : Fragment() {
         Toast.makeText(mContext, text, Toast.LENGTH_LONG).show()
     }
 
+    @Suppress("DEPRECATION")
+    private fun onClickPlay() {
+        Log.d(onairTag, "onClickPlay: ")
+        val url: Uri = Uri.parse("android.resource://" + mContext.getPackageName().toString() + "/" + R.raw.kbs_classic_fm )
+        var fileText = FileIO.fileRead(mContext, url)
+        Log.d(onairTag, "fileText: "+fileText)
+
+        var urlText = "https://1fm.gscdn.kbs.co.kr/1fm_192_1.m3u8?Expires=1616669502&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly8xZm0uZ3NjZG4ua2JzLmNvLmtyLzFmbV8xOTJfMS5tM3U4IiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNjE2NjY5NTAyfX19XX0_&Signature=YErRYtA6MoVFSv8fJNvO7hIFeToA6jJP9nRSR2haXmE0N9hRePfdbRaORW1d6ntAT8PwlR70z2OPNffbXJq1HJsTnOnCHWSN7SMEloh0YftRbww5heRg3DpPIbeHGW-t9jW4-8vyPCjh4UB5ejajP7000sVFcKdTL2-DckYEToqnMPXGSBQ5A3IVZYpazkgBQeZny1IbXjU9SPp3C7XkC6MY-mVvT2IK7VQW7j9RXqqgpmq1RZDZYcOdJjxy2vKlVKebgC58qI~fqSApU298rZmdcBzjK1UCLmk2Nzy5ohCVCX6nRfFRlsEV7nUrvM8ykbDFehQBGF9TIGTxrbdnYQ__&Key-Pair-Id=APKAICDSGT3Y7IXGJ3TA"
+        val mediaPlayer: MediaPlayer? = MediaPlayer().apply {
+            setAudioStreamType(AudioManager.STREAM_MUSIC)
+            setDataSource(urlText)
+            prepare() // 오랜 시간이 걸릴 수도 있습니다! (buffering 혹은 기타 등등)
+            start()
+        }
+
+    }
+
     private fun setCurrentTimeView() {
         var result: String
         val current: LocalDateTime = LocalDateTime.now()
@@ -347,6 +367,10 @@ class OnAir : Fragment() {
 
         mBtn_weather_refresh = view.findViewById(R.id.btn_weatherRefresh)
         mBtn_weather_refresh.setOnClickListener { onRefreshClick() }
+
+
+        var btn_play: Button = view.findViewById(R.id.btn_play)
+        btn_play.setOnClickListener { onClickPlay() }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
