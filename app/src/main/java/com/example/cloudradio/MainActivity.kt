@@ -2,11 +2,13 @@ package com.example.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.SystemClock.sleep
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -21,13 +23,16 @@ class LocListener: LocationListener {
     override fun onLocationChanged(location: Location?) {
 
         if (location != null) {
-            Log.d(onairTag,"Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude )
+            Log.d(
+                onairTag,
+                "Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude
+            )
 
             // call address information
-            OnAir.getInstance().requestAddressInfo(location.latitude, location.longitude)
+            GeoInfomation.getInstance().requestAddressInfo(location.latitude, location.longitude)
 
             // call weather after get location
-            OnAir.getInstance().requestWeather(location.latitude, location.longitude)
+            WeatherStatus.getInstance().requestWeather(location.latitude, location.longitude)
         }
 
         // remove gps tracking
@@ -36,17 +41,17 @@ class LocListener: LocationListener {
 
     //provider의 상태가 변경되때마다 호출
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(onairTag,"onStatusChanged. Not yet implemented")
+        Log.d(onairTag, "onStatusChanged. Not yet implemented")
     }
 
     //provider가 사용 가능한 상태가 되는 순간 호출
     override fun onProviderEnabled(provider: String?) {
-        Log.d(onairTag,"onProviderEnabled. Not yet implemented")
+        Log.d(onairTag, "onProviderEnabled. Not yet implemented")
     }
 
     //provider가 사용 불가능 상황이 되는 순간 호출
     override fun onProviderDisabled(provider: String?) {
-        Log.d(onairTag,"onProviderDisabled. Not yet implemented")
+        Log.d(onairTag, "onProviderDisabled. Not yet implemented")
     }
 
 }
@@ -78,9 +83,9 @@ class MainActivity : AppCompatActivity() {
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
 
-        tabLayout.addTab( tabLayout.newTab().setText("OnAir"))
-        tabLayout.addTab( tabLayout.newTab().setText("Program"))
-        tabLayout.addTab( tabLayout.newTab().setText("More"))
+        tabLayout.addTab(tabLayout.newTab().setText("OnAir"))
+        tabLayout.addTab(tabLayout.newTab().setText("Program"))
+        tabLayout.addTab(tabLayout.newTab().setText("More"))
 
         tabLayout.tabGravity = TabLayout.GRAVITY_FILL
 
@@ -92,27 +97,58 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 viewPager.currentItem = tab.position
             }
+
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
+        if ( checkNetworkStatus() ) {
+            init()
+        } else {
+            makeNoticePopup()
+        }
+    }
+
+    fun systemRestart() {
+        sleep(5000)
+        finishAffinity()
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        System.exit(0)
+    }
+
+    // network 연결이 되어 있는 경우 여기서 init 을 불러준다.
+    fun checkNetworkStatus(): Boolean {
+        if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
+            Log.d(onairTag, "Network is not available")
+            return false
+        }
+        return true
+    }
+
+    private fun makeNoticePopup() {
+        val dlg = NoticePopupActivity(this)
+        dlg.setOnOKClickedListener{ content ->
+            Log.d(onairTag, "received message: "+ content)
+            Log.d(onairTag, "received on OK Click event")
+            systemRestart()
+        }
+        dlg.start("인터넷 연결 확인 필요\n확인을 누르면 5초 후 앱을 다시 시작합니다.")
+    }
+
+    private fun init() {
         Log.d(onairTag, "set locationManager")
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 
         locListener = LocListener()
 
-        if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
-            Log.d(onairTag, "Network is not available")
-            Toast.makeText(this, "인터넷 연결이 필요합니다. \n연결 후 앱을 다시 실행하여 주십시오.", Toast.LENGTH_LONG).show()
-        } else {
-            checkPermissions()
-        }
+        checkPermissions()
     }
 
     private val locationPermissionCode = 204
     var REQUIRED_PERMISSIONS = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
     fun checkPermissions() {
@@ -129,21 +165,32 @@ class MainActivity : AppCompatActivity() {
         }
         else {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0])
-                    || ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[1])) {
+                    || ActivityCompat.shouldShowRequestPermissionRationale(
+                    this,
+                    REQUIRED_PERMISSIONS[1]
+                )) {
 
                 Log.d(onairTag, "Permissions are requested 1")
-                ActivityCompat.requestPermissions( this, REQUIRED_PERMISSIONS, locationPermissionCode )
+                ActivityCompat.requestPermissions(
+                    this,
+                    REQUIRED_PERMISSIONS,
+                    locationPermissionCode
+                )
             } else {
                 Log.d(onairTag, "Permissions are requested 2")
-                ActivityCompat.requestPermissions( this, REQUIRED_PERMISSIONS, locationPermissionCode )
+                ActivityCompat.requestPermissions(
+                    this,
+                    REQUIRED_PERMISSIONS,
+                    locationPermissionCode
+                )
             }
         }
     }
 
     override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<out String>,
-            grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
     ) {
         Log.d(onairTag, "onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
@@ -162,8 +209,18 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
         Log.d(onairTag, "getGPSInfo()")
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 10f, locListener)
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000, 10f, locListener)
+        locationManager.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            10000,
+            10f,
+            locListener
+        )
+        locationManager.requestLocationUpdates(
+            LocationManager.NETWORK_PROVIDER,
+            10000,
+            10f,
+            locListener
+        )
     }
 
     fun removeGPSTracking() {
