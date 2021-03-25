@@ -1,11 +1,8 @@
 package com.example.cloudradio
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.icu.text.DecimalFormat
-import android.icu.text.NumberFormat
-import android.media.AudioManager
-import android.media.MediaPlayer
-import android.net.Uri
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -14,36 +11,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
-import okhttp3.Interceptor
-import okhttp3.MediaType
-import okhttp3.OkHttpClient
-import okhttp3.ResponseBody
-import okhttp3.logging.HttpLoggingInterceptor
-import okhttp3.logging.HttpLoggingInterceptor.Logger
-import retrofit2.Call
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Query
-import java.io.IOException
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-
 var onairTag = "OnAir"
-
-
-
-
-
 
 class OnAir : Fragment() {
 
     private var bInitialized: Boolean = false
-    private lateinit var mContext: Context
 
     companion object {
 
@@ -51,6 +30,7 @@ class OnAir : Fragment() {
         val num_of_rows = 10
         val page_no = 1
         val data_type = "JSON"
+        lateinit var mContext: Context
 
 
         var mAddressText: String = "N/A"
@@ -77,18 +57,26 @@ class OnAir : Fragment() {
         lateinit var img_rainView: ImageView
         lateinit var img_weatherView: ImageView
 
+        lateinit var img_airStatus: ImageView
+        lateinit var txt_pmValue: TextView
+        lateinit var txt_pmGrade: TextView
+
+        lateinit var btn_play: Button
+
         var mRainType: Int = 0
         var mSkyType: Int = 0
         var mTemperatureText: String = "N/A"
         var mWindText: String = "N/A"
         var mRainText: String = "N/A"
         var mFcstTimeText: String = "N/A"
+        var mTimeText:String = "N/A"
+        lateinit var mPMData: PMData
     }
 
     private fun onRefreshClick() {
         Log.d(onairTag, "information refresh")
         setCurrentTimeView()
-        bInitialized = true
+        bInitialized = false
         txt_fcstView.setText("")
         MainActivity.getInstance().getGPSInfo()
 
@@ -96,23 +84,35 @@ class OnAir : Fragment() {
         Toast.makeText(mContext, text, Toast.LENGTH_LONG).show()
     }
 
-    @Suppress("DEPRECATION")
-    private fun onClickPlay() {
-        Log.d(onairTag, "onClickPlay: ")
-        val url: Uri = Uri.parse("android.resource://" + mContext.getPackageName().toString() + "/" + R.raw.kbs_classic_fm )
-        var fileText = FileIO.fileRead(mContext, url)
-        Log.d(onairTag, "fileText: "+fileText)
-
-        var urlText = "https://1fm.gscdn.kbs.co.kr/1fm_192_1.m3u8?Expires=1616669502&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly8xZm0uZ3NjZG4ua2JzLmNvLmtyLzFmbV8xOTJfMS5tM3U4IiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNjE2NjY5NTAyfX19XX0_&Signature=YErRYtA6MoVFSv8fJNvO7hIFeToA6jJP9nRSR2haXmE0N9hRePfdbRaORW1d6ntAT8PwlR70z2OPNffbXJq1HJsTnOnCHWSN7SMEloh0YftRbww5heRg3DpPIbeHGW-t9jW4-8vyPCjh4UB5ejajP7000sVFcKdTL2-DckYEToqnMPXGSBQ5A3IVZYpazkgBQeZny1IbXjU9SPp3C7XkC6MY-mVvT2IK7VQW7j9RXqqgpmq1RZDZYcOdJjxy2vKlVKebgC58qI~fqSApU298rZmdcBzjK1UCLmk2Nzy5ohCVCX6nRfFRlsEV7nUrvM8ykbDFehQBGF9TIGTxrbdnYQ__&Key-Pair-Id=APKAICDSGT3Y7IXGJ3TA"
-        val mediaPlayer: MediaPlayer? = MediaPlayer().apply {
-            setAudioStreamType(AudioManager.STREAM_MUSIC)
-            setDataSource(urlText)
-            prepare() // 오랜 시간이 걸릴 수도 있습니다! (buffering 혹은 기타 등등)
-            start()
+    private fun onClickPlayStop() {
+        if ( RadioPlayer.isPlaying() ) {
+            Log.d(onairTag, "stop")
+            stopRadioForegroundService()
+            btn_play.setText("Stopped ( Touch to play )")
+        } else {
+            Log.d(onairTag, "play")
+            startRadioForegroundService()
+            btn_play.setText("Playing ( Touch to stop )")
         }
-
     }
 
+    /*
+     Service
+    */
+    fun startRadioForegroundService() {
+        Intent(mContext, RadioService::class.java).run {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) startForegroundService(mContext, Intent(mContext, RadioService::class.java))
+            else requireActivity().startService(Intent(mContext, RadioService::class.java))
+        }
+    }
+
+    fun stopRadioForegroundService() {
+        Intent(mContext, RadioService::class.java).run {
+            requireActivity().stopService(Intent(mContext, RadioService::class.java))
+        }
+    }
+
+    @SuppressLint("NewApi")
     private fun setCurrentTimeView() {
         var result: String
         val current: LocalDateTime = LocalDateTime.now()
@@ -131,12 +131,8 @@ class OnAir : Fragment() {
         result += "  "
         formatter = DateTimeFormatter.ofPattern("a")
         str = current.format(formatter)
-        if (str.equals("am")) {
-            result += "오전"
-        }
-        else {
-            result += "오후"
-        }
+        Log.d(onairTag, "오전/오후: "+str)
+        result += str
 
         formatter = DateTimeFormatter.ofPattern("hh")
         str = current.format(formatter)
@@ -146,8 +142,8 @@ class OnAir : Fragment() {
         str = current.format(formatter)
         result = result + " " + str + "분"
 
-
         txt_timeView.setText(result)
+        mTimeText = result
 
         Log.d(onairTag, "setCurrentTimeView(): " + result)
     }
@@ -161,16 +157,29 @@ class OnAir : Fragment() {
         txt_rainView = view.findViewById(R.id.text_rain)
         txt_fcstView = view.findViewById(R.id.text_fcstTime)
         txt_windView = view.findViewById(R.id.text_wind)
+        txt_pmGrade = view.findViewById(R.id.txt_pmGrade)
+        txt_pmValue = view.findViewById(R.id.txt_pmValue)
 
         img_weatherView = view.findViewById(R.id.image_empty_weather)
         img_skyView = view.findViewById(R.id.img_sky)
         img_rainView = view.findViewById(R.id.img_humidity)
+        img_airStatus = view.findViewById(R.id.image_airStatus)
 
-        setCurrentTimeView()
+        btn_play = view.findViewById(R.id.btn_play)
 
         if ( bInitialized != true ) {
             Log.d(onairTag, "load data")
             bInitialized = true
+
+            // 시간은 최초 1회만 ... 혹은 refresh 인 경우
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                setCurrentTimeView()
+            } else {
+                val sdf = SimpleDateFormat("dd/M/yyyy hh:mm:ss")
+                val currentDate = sdf.format(Date())
+                txt_timeView.setText(currentDate)
+            }
+
         } else {
             Log.d(onairTag, "use previous data")
 
@@ -179,9 +188,11 @@ class OnAir : Fragment() {
             txt_windView.setText(mWindText)
             txt_skyView.setText(mTemperatureText)
             txt_fcstView.setText(mFcstTimeText)
+            txt_timeView.setText(mTimeText)
 
             setSkyStatusImage(mSkyType)
             setRainStatusImage(mRainType)
+            updateAirStatus(mPMData)
         }
 
         mBtn_weather_refresh = view.findViewById(R.id.btn_weatherRefresh)
@@ -189,7 +200,7 @@ class OnAir : Fragment() {
 
 
         var btn_play: Button = view.findViewById(R.id.btn_play)
-        btn_play.setOnClickListener { onClickPlay() }
+        btn_play.setOnClickListener { onClickPlayStop() }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -243,10 +254,32 @@ class OnAir : Fragment() {
         }
     }
 
-    fun updateAddressView() {
-        Log.d(onairTag, "current_address : " + mAddressText)
-        txt_addrView.setText(mAddressText)
+    fun updateAddressView(status: Boolean) {
+        if ( status ) {
+            Log.d(onairTag, "current_address : " + mAddressText)
+            txt_addrView.setText(mAddressText)
+        } else {
+            Log.d(onairTag, "Address info receiving is failed")
+            txt_addrView.setText("알 수 없음")
+        }
+    }
+
+    fun updateAirStatus(data: PMData) {
+        mPMData = data
+        var grade: String = "1"
+        var gradeName: String
+        if ( data.pm10Grade1h.toInt() > grade.toInt() ) grade = data.pm10Grade1h
+        if ( data.pm25Grade1h.toInt() > grade.toInt() ) grade = data.pm25Grade1h
+        Log.d(onairTag, "worst grade: "+AirStatus.getInstance().getGradeString(grade))
+        when(grade) {
+            "1" -> { img_airStatus.setImageResource(R.drawable.skyblue_circle); gradeName = "좋음" }
+            "2" -> { img_airStatus.setImageResource(R.drawable.green_circle); gradeName = "보통" }
+            "3" -> { img_airStatus.setImageResource(R.drawable.orange_circle); gradeName = "나쁨" }
+            "4" -> { img_airStatus.setImageResource(R.drawable.red_circle); gradeName = "매우나쁨" }
+            else -> { Log.d(onairTag, "Can't know pm grade"); gradeName = "알수없음" }
+        }
+        txt_pmGrade.setText(gradeName)
+        txt_pmValue.setText("초미세먼지 ("+data.pm25Value+") / 미세먼지 ("+data.pm10Value+")")
     }
 
 }
-

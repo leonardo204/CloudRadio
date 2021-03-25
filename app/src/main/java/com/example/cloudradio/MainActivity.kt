@@ -2,15 +2,19 @@ package com.example.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -102,10 +106,15 @@ class MainActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
-        if ( checkNetworkStatus() ) {
-            init()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if ( checkNetworkStatus() ) {
+                init()
+            } else {
+                makeNoticePopup()
+            }
         } else {
-            makeNoticePopup()
+            Log.d(onairTag, "skip checking network status. reason: version")
+            init()
         }
     }
 
@@ -118,6 +127,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // network 연결이 되어 있는 경우 여기서 init 을 불러준다.
+    @RequiresApi(Build.VERSION_CODES.M)
     fun checkNetworkStatus(): Boolean {
         if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
             Log.d(onairTag, "Network is not available")
@@ -143,6 +153,8 @@ class MainActivity : AppCompatActivity() {
         locListener = LocListener()
 
         checkPermissions()
+
+        RadioPlayer.init()
     }
 
     private val locationPermissionCode = 204

@@ -3,7 +3,9 @@ package com.example.cloudradio
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 
 
 object NetworkStatus {
@@ -12,6 +14,7 @@ object NetworkStatus {
     const val TYPE_NOT_CONNECTED = 3
 
     //해당 context의 서비스를 사용하기위해서 context 객체를 받는다.
+    @RequiresApi(Build.VERSION_CODES.M)
     fun getConnectivityStatus(context: Context): Int {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 

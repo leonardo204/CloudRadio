@@ -151,22 +151,31 @@ class GeoInfomation {
         var findit: Boolean = false
         call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
             override fun onResponse(call: Call<GEO_RESPONSE>, response: Response<GEO_RESPONSE>) {
+                var umdName: String = "N/A"
                 if (response.isSuccessful && response.body() != null) {
                     Log.d(onairTag, "address req. response: " + response.body())
                     for (i in response.body()!!.results.indices) {
                         for (j in response.body()!!.results[i].types.indices) {
-                            Log.d(
-                                onairTag,
-                                "search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j]
-                            )
+                            Log.d( onairTag,"search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j])
                             if (response.body()!!.results[i].types[j].equals("postal_code")) {
-                                Log.d(
-                                    onairTag,
-                                    "find it! : " + response.body()!!.results[i].formatted_address
-                                )
+                                Log.d(onairTag,"find it! : " + response.body()!!.results[i].formatted_address  )
                                 OnAir.mAddressText = response.body()!!.results[i].formatted_address
                                 findit = true
-                                break
+
+                                // 미세먼지를 위한 지역구 이름 획득
+                                var findumdName:Boolean = false
+                                for(k in response.body()!!.results[i].address_components.indices) {
+                                    for (p in response.body()!!.results[i].address_components[k].types.indices ) {
+                                        if ( response.body()!!.results[i].address_components[k].types[p].equals("sublocality_level_1") ) {
+                                            findumdName = true
+                                            umdName = response.body()!!.results[i].address_components[k].long_name
+                                            Log.d(onairTag,"find umdName! : " + umdName  )
+                                        }
+                                        if (findumdName) break
+                                    }
+                                    if (findumdName) break
+                                }
+                               if (findit) break
                             }
                         }
                         if (findit) break;
@@ -174,12 +183,16 @@ class GeoInfomation {
                 }
 
                 if (findit) {
-                    OnAir.getInstance().updateAddressView()
+                    OnAir.getInstance().updateAddressView(true)
+
+                    // air information
+                    AirStatus.getInstance().requestTMCoordination(umdName)
                 }
             }
 
             override fun onFailure(call: Call<GEO_RESPONSE>, t: Throwable) {
                 Log.d(onairTag, "requestAddressInfo fail : " + t.message)
+                OnAir.getInstance().updateAddressView(false)
             }
 
         })

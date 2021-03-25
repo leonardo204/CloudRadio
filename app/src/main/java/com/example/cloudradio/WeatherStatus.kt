@@ -2,42 +2,45 @@ package com.example.cloudradio
 
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
 // response
 data class WEATHER(
-    val response: RESPONSE
+    val response: WEATHER_RESPONSE
 )
-data class RESPONSE(
-    val header: HEADER,
-    val body: BODY
+data class WEATHER_RESPONSE(
+    val header: WEATHER_HEADER,
+    val body: WEATHER_BODY
 )
-data class HEADER(
+data class WEATHER_HEADER(
     val resultCode: Int,
     val resultMsg: String
 )
-data class BODY(
+data class WEATHER_BODY(
     val dataType: String,
-    val items: ITEMS
+    val items: WEATHER_ITEMS
 )
-data class ITEMS(
-    val item: List<ITEM>
+data class WEATHER_ITEMS(
+    val item: List<WEATHER_ITEM>
 )
-data class ITEM(
+data class WEATHER_ITEM(
     val baseDate: Int,
     val baseTime: Int,
     val category: String,
     val fcstDate: String,
-    val fcstTime: String,
+    val fcstTime: Int,
     val fcstValue: String
 )
 
@@ -224,13 +227,22 @@ class WeatherStatus {
      * VVV	풍속(남북성분)	 m/s
      * VEC  풍향      deg 10bit
      */
-    private fun parseItems(items: ITEMS) {
+    private fun parseItems(items: WEATHER_ITEMS) {
         Log.d(onairTag, items.item.toString())
         Log.d(onairTag, "- 날짜: " + items.item[0].baseDate)
         Log.d(onairTag, "- 발표시간: " + items.item[0].baseTime)
         Log.d(onairTag, "- 예보시간: " + items.item[0].fcstTime)
 
-        updateFcstTimeView(items.item[0].baseTime.toString(), items.item[0].fcstTime.toString())
+        var basetime: String
+        var fcsttime: String
+
+        if ( items.item[0].baseTime < 1000 ) basetime = "0"+items.item[0].baseTime.toString()
+        else basetime = items.item[0].baseTime.toString()
+
+        if ( items.item[0].fcstTime < 1000 ) fcsttime = "0"+items.item[0].fcstTime.toString()
+        else fcsttime = items.item[0].fcstTime.toString()
+
+        updateFcstTimeView(basetime, fcsttime)
 
         var currentTemperature: String = "N/A"
         var higherTempearture: String = "N/A"
@@ -323,6 +335,7 @@ class WeatherStatus {
         updateRainProperty(humidity, rainPercent)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location
         Log.d(onairTag, "Check GPS. Latitude: " + lat + " , Longitude: " + lng)
@@ -332,13 +345,31 @@ class WeatherStatus {
         var ny = CurGPS.y.toInt().toString()
 
         // time
-        val current: LocalDateTime = LocalDateTime.now()
-        val formatter1 = DateTimeFormatter.ofPattern("yyyyMMdd")
-        val currdate1 = current.format(formatter1)
-        val f: NumberFormat = DecimalFormat("00")
-
         var curtime = getLastBaseTime(Calendar.getInstance())
-        var curtime2 = f.format(curtime.get(Calendar.HOUR_OF_DAY)) + f.format(curtime.get(Calendar.MINUTE))
+        var curtime2:String
+        var currdate1:String
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        {
+            val current: LocalDateTime = LocalDateTime.now()
+            val formatter1 = DateTimeFormatter.ofPattern("yyyyMMdd")
+            currdate1 = current.format(formatter1)
+            val f: NumberFormat = DecimalFormat("00")
+            curtime2 = f.format(curtime.get(Calendar.HOUR_OF_DAY)) + f.format(curtime.get(Calendar.MINUTE))
+
+        } else {
+            var sdf = SimpleDateFormat("yyyyMMdd")
+            currdate1 = sdf.format(Date())
+            sdf = SimpleDateFormat("hh")
+            var hh:String
+            var mm:String
+            if ( sdf.format(Date()).toInt() < 10 ) hh = "0"+sdf.format(Date())
+            else hh = sdf.format(Date())
+            sdf = SimpleDateFormat("mm")
+            if ( sdf.format(Date()).toInt() < 10 ) mm = "0"+sdf.format(Date())
+            else mm = sdf.format(Date())
+            curtime2 = hh + mm
+        }
 
         var base_date = currdate1
         var base_time = curtime2

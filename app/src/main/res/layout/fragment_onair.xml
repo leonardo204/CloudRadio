@@ -24,6 +24,48 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <ImageView
+            android:id="@+id/image_airStatus"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            app:layout_constraintVertical_bias="0.07"
+            app:layout_constraintHorizontal_bias="0.05"
+            app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
+            app:layout_constraintEnd_toEndOf="@+id/image_empty_weather"
+            app:layout_constraintStart_toStartOf="@+id/image_empty_weather"
+            app:layout_constraintTop_toTopOf="@+id/image_empty_weather"
+            />
+
+        <TextView
+            android:id="@+id/txt_pmGrade"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-- --"
+            android:textSize="6pt"
+            android:textStyle="bold"
+            app:layout_constraintVertical_bias="0.06"
+            app:layout_constraintHorizontal_bias="0.13"
+            app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
+            app:layout_constraintEnd_toEndOf="@+id/image_empty_weather"
+            app:layout_constraintStart_toStartOf="@+id/image_empty_weather"
+            app:layout_constraintTop_toTopOf="@+id/image_empty_weather"
+            />
+
+        <TextView
+            android:id="@+id/txt_pmValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-- --"
+            android:textSize="4pt"
+            android:textAlignment="textStart"
+            app:layout_constraintVertical_bias="0.17"
+            app:layout_constraintHorizontal_bias="0.08"
+            app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
+            app:layout_constraintEnd_toEndOf="@+id/image_empty_weather"
+            app:layout_constraintStart_toStartOf="@+id/image_empty_weather"
+            app:layout_constraintTop_toTopOf="@+id/image_empty_weather"
+            />
+
         <TextView
             android:id="@+id/text_address"
             android:layout_width="wrap_content"
@@ -31,6 +73,7 @@
             android:text="Pleaset Wait"
             android:textSize="6pt"
             android:textStyle="bold"
+            android:textAlignment="textEnd"
             app:layout_constraintVertical_bias="0.05"
             app:layout_constraintHorizontal_bias="0.9"
             app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
@@ -44,9 +87,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Pleaset Wait"
-            android:textSize="5pt"
+            android:textSize="4pt"
+            android:textAlignment="textEnd"
             app:layout_constraintVertical_bias="0.17"
-            app:layout_constraintHorizontal_bias="0.9"
+            app:layout_constraintHorizontal_bias="0.92"
             app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
             app:layout_constraintEnd_toEndOf="@+id/image_empty_weather"
             app:layout_constraintStart_toStartOf="@+id/image_empty_weather"
@@ -177,7 +221,7 @@
             android:id="@+id/btn_play"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="PLAY / STOP"
+            android:text="PLAY"
             app:layout_constraintBottom_toBottomOf="@+id/layout_radio"
             app:layout_constraintEnd_toEndOf="@+id/layout_radio"
             app:layout_constraintStart_toStartOf="@+id/layout_radio"
