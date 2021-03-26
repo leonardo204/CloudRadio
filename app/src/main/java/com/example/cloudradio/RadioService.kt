@@ -3,13 +3,18 @@ package com.example.cloudradio
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Intent
-import android.media.session.PlaybackState.ACTION_PAUSE
-import android.media.session.PlaybackState.ACTION_STOP
+import android.os.AsyncTask
 import android.os.Build
+import android.os.Environment
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import java.io.*
+import java.net.URL
+import java.net.URLConnection
+import java.nio.charset.Charset
+
 
 
 class RadioService : Service() {
@@ -22,8 +27,19 @@ class RadioService : Service() {
         private const val CHANNEL_DESCRIPTION = "This is default notification channel"
     }
 
+    private var channels: RadioCompletionMap? = null
+
     private val notificationManager @SuppressLint("ServiceCast")
     get() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+    private fun getChannels(name: String): RadioCompletionMap? {
+        for(i in RadioChannelResources.channelList.indices) {
+            if ( RadioChannelResources.channelList.get(i).filename.equals(name) ) {
+                return RadioChannelResources.channelList.get(i)
+            }
+        }
+        return null
+    }
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -34,7 +50,33 @@ class RadioService : Service() {
         Log.d(onairTag, "RadioService onStartCommand")
         startForeground(NOTIFICATION_DOWNLOAD_ID, createRadioNotification())
 
-        RadioPlayer.play(RadioPlayer.KBS_CLASSIC_FM)
+        var name = intent?.getStringExtra("name")
+        var address = intent?.getStringExtra("address")
+        channels = name?.let { getChannels(it) }
+
+        if ( address == null ) {
+            for(i in RadioRawChannels.values().indices) {
+                if ( name.equals( RadioRawChannels.values()[i].getChannelFilename() ) ) {
+                    var map = RadioCompletionMap(RadioRawChannels.values()[i].getChannelTitle(), 999, RadioRawChannels.values()[i].getChannelFilename(), RadioRawChannels.values()[i].getChannelAddress(), "N/A")
+                    OnAir.getInstance().notifyRadioServiceDestroyed(map, false)
+                    stopSelf()
+                    break
+                }
+            }
+        }
+
+        Log.d(onairTag, "start service: "+name)
+        Log.d(onairTag, "start service: "+address)
+        try {
+            address?.let {
+                if ( !RadioPlayer.play(it) ) {
+                    RadioPlayer.stop()
+                    channels?.let { OnAir.getInstance().notifyRadioServiceDestroyed(it, false) }
+                }
+            }
+        } catch ( e: Exception ) {
+            Log.d(onairTag, "error: "+e.message)
+        }
 
         return START_STICKY
     }
@@ -72,6 +114,6 @@ class RadioService : Service() {
         super.onDestroy()
         Log.d(onairTag, "RadioService onDestroy")
         RadioPlayer.stop()
+        channels?.let { OnAir.getInstance().notifyRadioServiceDestroyed(it, true) }
     }
-
 }

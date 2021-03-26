@@ -10,7 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-
+    <!-- storage permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -22,7 +24,7 @@
         <service
             android:name=".RadioService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
 
         <activity android:name=".MainActivity">
             <intent-filter>
@@ -33,6 +35,7 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

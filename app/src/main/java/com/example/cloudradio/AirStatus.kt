@@ -179,10 +179,10 @@ object AirPMDataObject {
 // 등급	   좋음	보통	나쁨	매우나쁨
 //Grade 값	1	2	3	4
 data class PMData (
-    val pm25Grade1h: String,
-    val pm25Value: String,
-    val pm10Grade1h: String,
-    val pm10Value: String
+    val pm25Grade1h: String?,
+    val pm25Value: String?,
+    val pm10Grade1h: String?,
+    val pm10Value: String?
 )
 
 class AirStatus {
@@ -210,8 +210,8 @@ class AirStatus {
 
     private fun dumpAirStatus(data: PMData) {
         Log.d(onairTag, "==   AirStatus  ==")
-        Log.d(onairTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data.pm10Grade1h)+")")
-        Log.d(onairTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data.pm25Grade1h)+")")
+        Log.d(onairTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data.pm10Grade1h!!)+")")
+        Log.d(onairTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data.pm25Grade1h!!)+")")
         OnAir.getInstance().updateAirStatus(data)
     }
 
@@ -277,10 +277,13 @@ class AirStatus {
                     Log.d(onairTag, "getAirPMData: "+response.body())
                     var pm10Value: String = response.body()!!.response.body.items[0].pm10Value
                     var pm10Grade1h: String = response.body()!!.response.body.items[0].pm10Grade1h
-                    var pm25Value: String = response.body()!!.response.body.items[0].pm25Value
+                    var pm25Value: String? = response.body()!!.response.body.items[0].pm25Value
                     var pm25Grade1h: String = response.body()!!.response.body.items[0].pm25Grade1h
-                    var data: PMData = PMData(pm25Grade1h, pm25Value, pm10Grade1h, pm10Value)
-                    dumpAirStatus(data)
+                    var data = PMData(pm25Grade1h, pm25Value, pm10Grade1h, pm10Value)
+                    if ( pm10Value!=null && pm10Grade1h!= null
+                        && pm25Value!=null && pm25Grade1h!= null ) {
+                            dumpAirStatus(data)
+                    }
                 }
             }
 

@@ -2,6 +2,7 @@ package com.example.cloudradio
 
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
+import android.os.AsyncTask
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -488,5 +489,4 @@ class WeatherStatus {
         }
         return rs
     }
-
 }

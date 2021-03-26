@@ -2,13 +2,12 @@ package com.example.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
@@ -24,6 +23,7 @@ import com.google.android.material.tabs.TabLayout
 class LocListener: LocationListener {
 
     //위치 정보 전달 목적으로 호출
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onLocationChanged(location: Location?) {
 
         if (location != null) {
@@ -33,10 +33,12 @@ class LocListener: LocationListener {
             )
 
             // call address information
-            GeoInfomation.getInstance().requestAddressInfo(location.latitude, location.longitude)
+            val geoInfoTask = GeoInfoTask()
+            geoInfoTask.execute(location)
 
             // call weather after get location
-            WeatherStatus.getInstance().requestWeather(location.latitude, location.longitude)
+            val weatherTask = WeatherTask()
+            weatherTask.execute(location)
         }
 
         // remove gps tracking
@@ -57,7 +59,24 @@ class LocListener: LocationListener {
     override fun onProviderDisabled(provider: String?) {
         Log.d(onairTag, "onProviderDisabled. Not yet implemented")
     }
+}
 
+class GeoInfoTask: AsyncTask<Location, Void, Void>() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun doInBackground(vararg params: Location?): Void? {
+        // call address information
+        GeoInfomation.getInstance().requestAddressInfo(params[0]!!.latitude, params[0]!!.longitude)
+        return null
+    }
+}
+
+class WeatherTask: AsyncTask<Location, Void, Void>() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun doInBackground(vararg params: Location?): Void? {
+        // call weather after get location
+        WeatherStatus.getInstance().requestWeather(params[0]!!.latitude, params[0]!!.longitude)
+        return null
+    }
 }
 
 class MainActivity : AppCompatActivity() {
@@ -139,7 +158,7 @@ class MainActivity : AppCompatActivity() {
     private fun makeNoticePopup() {
         val dlg = NoticePopupActivity(this)
         dlg.setOnOKClickedListener{ content ->
-            Log.d(onairTag, "received message: "+ content)
+            Log.d(onairTag, "received message: " + content)
             Log.d(onairTag, "received on OK Click event")
             systemRestart()
         }
@@ -147,9 +166,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun init() {
-        Log.d(onairTag, "set locationManager")
-        locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
+        Log.d(onairTag, "MainActivity init")
+        RadioChannelResources.getInstance().initResources(this)
 
+        locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
         locListener = LocListener()
 
         checkPermissions()
@@ -233,6 +253,7 @@ class MainActivity : AppCompatActivity() {
             10f,
             locListener
         )
+        Log.d(onairTag, "getGPSInfo end")
     }
 
     fun removeGPSTracking() {
