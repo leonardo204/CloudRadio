@@ -3,19 +3,15 @@ package com.example.cloudradio
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Intent
-import android.os.AsyncTask
 import android.os.Build
-import android.os.Environment
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import java.io.*
-import java.net.URL
-import java.net.URLConnection
-import java.nio.charset.Charset
 
-
+enum class RESULT {
+    PLAY_FAILED, PLAY_SUCCESS, DESTROYED
+}
 
 class RadioService : Service() {
 
@@ -27,19 +23,10 @@ class RadioService : Service() {
         private const val CHANNEL_DESCRIPTION = "This is default notification channel"
     }
 
-    private var channels: RadioCompletionMap? = null
+    private var filename: String? = null
 
     private val notificationManager @SuppressLint("ServiceCast")
     get() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
-    private fun getChannels(name: String): RadioCompletionMap? {
-        for(i in RadioChannelResources.channelList.indices) {
-            if ( RadioChannelResources.channelList.get(i).filename.equals(name) ) {
-                return RadioChannelResources.channelList.get(i)
-            }
-        }
-        return null
-    }
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -50,35 +37,47 @@ class RadioService : Service() {
         Log.d(onairTag, "RadioService onStartCommand")
         startForeground(NOTIFICATION_DOWNLOAD_ID, createRadioNotification())
 
-        var name = intent?.getStringExtra("name")
-        var address = intent?.getStringExtra("address")
-        channels = name?.let { getChannels(it) }
-
-        if ( address == null ) {
-            for(i in RadioRawChannels.values().indices) {
-                if ( name.equals( RadioRawChannels.values()[i].getChannelFilename() ) ) {
-                    var map = RadioCompletionMap(RadioRawChannels.values()[i].getChannelTitle(), 999, RadioRawChannels.values()[i].getChannelFilename(), RadioRawChannels.values()[i].getChannelAddress(), "N/A")
-                    OnAir.getInstance().notifyRadioServiceDestroyed(map, false)
-                    stopSelf()
-                    break
-                }
-            }
+        if ( intent?.action.equals(Constants.ACTION.STARTFOREGROUND_ACTION) ) {
+            Log.d(onairTag, "start foreground services")
+        } else if ( intent?.action.equals(Constants.ACTION.STOPFOREGROUND_ACTION) ) {
+            Log.d(onairTag, "stop foreground services")
         }
 
-        Log.d(onairTag, "start service: "+name)
-        Log.d(onairTag, "start service: "+address)
+        filename = intent?.getStringExtra("name")
+        var address = intent?.getStringExtra("address")
+
+        // address 가 null 이어서 실패
+        // 실패되는 정보에 대한 channel map 을 임의로 생성하여 callback 에 담아 보낸다
+        if ( address == null ) {
+            filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
+            return START_STICKY
+        }
+
+        Log.d(onairTag, "start service filename: "+filename)
+        Log.d(onairTag, "start service httpAddress: "+address)
+
+        // address 가 valid 하지만 재생 실패되는 경우
+        // 이 경우도 실패에 대한 callback 을 전달한다.
         try {
             address?.let {
                 if ( !RadioPlayer.play(it) ) {
                     RadioPlayer.stop()
-                    channels?.let { OnAir.getInstance().notifyRadioServiceDestroyed(it, false) }
+                    filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
+                    return START_STICKY
                 }
             }
         } catch ( e: Exception ) {
             Log.d(onairTag, "error: "+e.message)
         }
 
+        // success callback
+        filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
+
         return START_STICKY
+    }
+
+    private fun sendCallback(filename: String, result: RESULT) {
+        OnAir.getInstance().notifyRadioServiceStatus(filename, result)
     }
 
     override fun onCreate() {
@@ -114,6 +113,6 @@ class RadioService : Service() {
         super.onDestroy()
         Log.d(onairTag, "RadioService onDestroy")
         RadioPlayer.stop()
-        channels?.let { OnAir.getInstance().notifyRadioServiceDestroyed(it, true) }
+        filename?.let { it1 -> sendCallback(it1, RESULT.DESTROYED) }
     }
 }

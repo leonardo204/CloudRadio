@@ -86,8 +86,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private var instance: MainActivity? = null
-        lateinit var locationManager: LocationManager
-        lateinit var locListener: LocListener
+        var locationManager: LocationManager? = null
+        var locListener: LocListener? = null
 
         fun getInstance(): MainActivity =
                 instance ?: synchronized(this) {
@@ -170,7 +170,6 @@ class MainActivity : AppCompatActivity() {
         RadioChannelResources.getInstance().initResources(this)
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
-        locListener = LocListener()
 
         checkPermissions()
 
@@ -241,13 +240,16 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
         Log.d(onairTag, "getGPSInfo()")
-        locationManager.requestLocationUpdates(
+
+        locListener = LocListener()
+
+        locationManager?.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             10000,
             10f,
             locListener
         )
-        locationManager.requestLocationUpdates(
+        locationManager?.requestLocationUpdates(
             LocationManager.NETWORK_PROVIDER,
             10000,
             10f,
@@ -258,6 +260,7 @@ class MainActivity : AppCompatActivity() {
 
     fun removeGPSTracking() {
         Log.d(onairTag, "removeGPSTracking()")
-        locationManager.removeUpdates(locListener)
+        locListener?.let { locationManager?.removeUpdates(it) }
+        locListener = null
     }
 }

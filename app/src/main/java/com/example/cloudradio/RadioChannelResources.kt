@@ -9,6 +9,10 @@ import java.net.URL
 import java.net.URLConnection
 import java.nio.charset.Charset
 
+enum class RadioResource {
+    OPEN_FAILED, DOWN_FAILED, SUCCESS
+}
+
 data class RadioCompletionMap (
     val title: String,                // pls 파일에서 읽어들인 title
     val id: Int,                      // channel 별 관리 목적의 id (arrayList 의 index 이기도 함)
@@ -89,17 +93,35 @@ class RadioChannelResources: AsyncCallback {
                 }
     }
 
-    fun requestUpdateResource(map: RadioCompletionMap?) {
-        Log.d(onairTag, "requestUpdateResource: "+map?.title)
+    private fun getRadioChannelHttpAddress(filename: String): String? {
+        var idx = 0
+        for(i in RadioChannelResources.channelList.indices) {
+            if ( RadioChannelResources.channelList.get(i).filename.equals(filename) ) {
+                idx =  i
+                return  RadioChannelResources.channelList.get(idx).httpAddress
+            }
+        }
+        return null
+    }
+
+    private fun removeChannelMapByfilename(filename: String) {
+        for(i in channelList.indices) {
+            if ( channelList.get(i).filename.equals(filename) ) {
+                Log.d(onairTag, "remove channelMap: "+filename)
+                channelList.removeAt(i)
+                break
+            }
+        }
+    }
+
+    fun requestUpdateResource(filename: String) {
+        Log.d(onairTag, "requestUpdateResource: " + filename)
 
         // remove channel array list
-        if ( channelList.contains(map) ) {
-            Log.d(onairTag, "remove channelList")
-            channelList.remove(map)
-        }
+        removeChannelMapByfilename(filename)
 
         // remove exist file
-        var fileobj = File(DEFAULT_FILE_PATH + map?.filename )
+        var fileobj = File(DEFAULT_FILE_PATH + filename )
         if ( fileobj.exists() ) {
             Log.d(onairTag, "remove file: "+fileobj)
             fileobj.delete()
@@ -109,7 +131,7 @@ class RadioChannelResources: AsyncCallback {
 
 
         // download again
-        DownloadFileFromURL(this).execute(map?.fileaddress, map?.filename)
+        DownloadFileFromURL(this).execute(getRadioChannelHttpAddress(filename), filename)
     }
 
 
@@ -149,8 +171,7 @@ class RadioChannelResources: AsyncCallback {
         if ( channelList.size == RadioRawChannels.values().size ) {
             Log.d(onairTag, "initResources are completed")
             bInitCompleted = true
-            Log.d(onairTag, "call resetButtons")
-            OnAir.getInstance().requestResetButtons()
+            OnAir.getInstance().notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
         }
     }
 
@@ -162,8 +183,8 @@ class RadioChannelResources: AsyncCallback {
             "fileopen" -> setChannelsFromFile(arg[1]!!)
             "failed" -> {
                 when( arg[1] ) {
-                    "openFile" -> doFailedAction(arg[1], arg[2])                // filename
-                    "downFile" -> doFailedAction(arg[1], arg[2], arg[3])        // fileaddress , filename
+                    "openFile" -> sendCallback(arg[1], arg[2])                // filename
+                    "downFile" -> sendCallback(arg[1], arg[2], arg[3])        // fileaddress , filename
                     else -> Log.d(onairTag, "ignore failed action")
                 }
             }
@@ -171,21 +192,17 @@ class RadioChannelResources: AsyncCallback {
         }
     }
 
-    private fun doFailedAction(vararg arg: String?) {
+    private fun sendCallback(vararg arg: String?) {
         Log.d(onairTag, "doFailedAction: " + arg[0])
         when( arg[0] ) {
             "openFile" -> {
-                Log.d(onairTag, "open failed name: "+ arg[1])
+                Log.d(onairTag, "open failed filename: "+ arg[1])
+                arg[1]?.let { OnAir.getInstance().notifyRadioResourceUpdate(it, RadioResource.OPEN_FAILED) }
             }
             "downFile" -> {
-                Log.d(onairTag, "down failed addr: "+ arg[1]+ ", name: "+ arg[2])
-                for(i in RadioRawChannels.values().indices) {
-                    if ( arg[2].equals( RadioRawChannels.values()[i].getChannelFilename() ) ) {
-                        var map = RadioCompletionMap(RadioRawChannels.values()[i].getChannelTitle(), 999, RadioRawChannels.values()[i].getChannelFilename(), RadioRawChannels.values()[i].getChannelAddress(), "N/A")
-                        OnAir.getInstance().setFailedChannel(map)
-                        break
-                    }
-                }
+                Log.d(onairTag, "down failed addr: "+ arg[1]+ ", filename: "+ arg[2])
+                Log.d(onairTag, "reset Button Text")
+                arg[2]?.let { OnAir.getInstance().notifyRadioResourceUpdate(it, RadioResource.DOWN_FAILED) }
             }
             else -> Log.d(onairTag, "ignore failed action")
         }
