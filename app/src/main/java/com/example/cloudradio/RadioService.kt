@@ -63,7 +63,7 @@ class RadioService : Service() {
                 if ( !RadioPlayer.play(it) ) {
                     RadioPlayer.stop()
                     filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
             }
         } catch ( e: Exception ) {
@@ -73,7 +73,7 @@ class RadioService : Service() {
         // success callback
         filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun sendCallback(filename: String, result: RESULT) {

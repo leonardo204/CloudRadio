@@ -137,6 +137,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(onairTag, "MainAcitivity onDestroyed")
+        finishAffinity()
+
+        Intent(OnAir.mContext, RadioService::class.java).run {
+            var intent = Intent(OnAir.mContext, RadioService::class.java)
+            intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
+            stopService(intent)
+        }
+    }
+
     fun systemRestart() {
         sleep(5000)
         finishAffinity()
