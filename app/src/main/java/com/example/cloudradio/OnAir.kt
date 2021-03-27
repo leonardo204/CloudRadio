@@ -3,6 +3,7 @@ package com.example.cloudradio
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -28,6 +29,7 @@ object : Handler() {
     override fun handleMessage(msg: Message) {
         Log.d(onairTag, "handler handleMessage: "+msg)
         OnAir.getInstance().resetAllButtonText()
+        OnAir.getInstance().stopRadioForegroundService()
     }
 }
 
@@ -146,7 +148,7 @@ class OnAir : Fragment() {
     @SuppressLint("SetTextI18n")
     fun updateButtonText(filename: String, text: String, enable: Boolean) {
         Log.d(onairTag, "updateButtonText $filename  $text  $enable")
-        //Log.d(onairTag, "btnList size: "+btnList.size)
+
         var iter = btnList.iterator()
         while( iter.hasNext() ) {
             var obj = iter.next()
@@ -155,6 +157,14 @@ class OnAir : Fragment() {
                 //Log.d(onairTag, "updateButtonText ok")
                 var button = obj.value
                 button.setText(text)
+
+                when(text) {
+                    RADIO_BUTTON.PLAYING_MESSAGE.getMessage() -> button.setBackgroundColor(Color.CYAN)
+                    RADIO_BUTTON.STOPPED_MESSAGE.getMessage() -> button.setBackgroundColor(Color.YELLOW)
+                    RADIO_BUTTON.FAILED_MESSAGE.getMessage() -> button.setBackgroundColor(Color.RED)
+                    else -> button.setBackgroundColor(Color.WHITE)
+                }
+
                 button.isEnabled = enable
                 break
             }
@@ -192,6 +202,10 @@ class OnAir : Fragment() {
     // 재생 중이 아니라면
     //   - 내 채널 재생 시작
     fun onRadioButton(filename: String) {
+        // 현재 요청한 채널이 이전 채널과 다르면 우선 버튼 텍스트 초기화
+        if ( !filename.equals(mCurrnetPlayFilename) ) {
+            resetAllButtonText()
+        }
         // 재생 중인 경우 callback 을 받아서 처리한다.
         //  1. 서비스 중지
         //  2. 현재 요청 채널이름 저장
@@ -448,18 +462,20 @@ class OnAir : Fragment() {
                 startForegroundService(mContext, intent)
             }
             else {
+                var activity = activity
                 var intent = Intent(mContext, RadioService::class.java)
                 intent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION)
-                requireActivity().startService(intent)
+                activity?.startService(intent)
             }
         }
     }
 
     fun stopRadioForegroundService() {
+        var activity = activity
         Intent(mContext, RadioService::class.java).run {
             var intent = Intent(mContext, RadioService::class.java)
             intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
-            requireActivity().stopService(intent)
+            activity?.stopService(intent)
         }
     }
 

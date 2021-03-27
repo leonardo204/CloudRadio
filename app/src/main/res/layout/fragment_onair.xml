@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@color/white"
     android:orientation="vertical" >
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -70,7 +71,7 @@
             android:id="@+id/text_address"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pleaset Wait"
+            android:text="Please Wait"
             android:textSize="6pt"
             android:textStyle="bold"
             android:textAlignment="textEnd"
@@ -86,7 +87,7 @@
             android:id="@+id/text_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pleaset Wait"
+            android:text="Please Wait"
             android:textSize="4pt"
             android:textAlignment="textEnd"
             app:layout_constraintVertical_bias="0.17"
