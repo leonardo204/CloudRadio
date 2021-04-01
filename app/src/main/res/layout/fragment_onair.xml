@@ -221,62 +221,30 @@
         android:layout_gravity="start"
         android:layout_marginTop="16dp" >
 
-        <Button
-            android:id="@+id/btn_kbs_classic"
+        <ScrollView
+            android:id="@+id/layout_scroll_radio"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toTopOf="@+id/layout_radio"
-            />
+            android:layout_height="match_parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-        <Button
-            android:id="@+id/btn_kbs_cool"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_kbs_classic"
-            />
+            <LinearLayout
+                android:id="@+id/layout_radio_linear"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
-        <Button
-            android:id="@+id/btn_kbs_happy"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_kbs_cool"
-            />
+            </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_kbs_1_radio"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_kbs_happy"
-            />
+        </ScrollView>
 
-        <Button
-            android:id="@+id/btn_sbs_love"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_kbs_1_radio"
-            />
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@+id/layout_scroll_radio"
+            tools:ignore="MissingConstraints">
 
-        <Button
-            android:id="@+id/btn_sbs_power"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_sbs_love"
-            />
-
-        <Button
-            android:id="@+id/btn_mbc_s"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_sbs_power"
-            />
-
-        <Button
-            android:id="@+id/btn_mbc_fm_foru"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/btn_mbc_s"
-            />
-
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

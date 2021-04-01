@@ -65,6 +65,11 @@ enum class RadioRawChannels {
         override fun getChannelTitle(): String = "KBS 1Radio"
         override fun getChannelFilename(): String = "kbs_1_radio.pls"
         override fun getChannelAddress(): String = "http://serpent0.duckdns.org:8088/kbs1radio.pls"
+    },
+    YOUTUBE_JAZZ_MORNING {
+        override fun getChannelTitle(): String = "Jazz Morning"
+        override fun getChannelFilename(): String = "youtube_isBXh45iY38"
+        override fun getChannelAddress(): String = "https://www.youtube.com/watch?v=isBXh45iY38"
     };
     abstract fun getChannelAddress(): String
     abstract fun getChannelFilename(): String
@@ -132,18 +137,36 @@ object RadioChannelResources: AsyncCallback {
 
         for(i in RadioRawChannels.values().indices) {
             Log.d(onairTag, "initResources( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename() )
-            var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename() )
-            if ( fileobj.exists() ) {
-                Log.d(onairTag, "File exist")
-                readChannelFile( fileobj )
+
+            if ( RadioRawChannels.values()[i].getChannelFilename().contains("youtube") ) {
+                Log.d(onairTag, "for youtube")
+                setYoutubeChannels(RadioRawChannels.values()[i])
             } else {
-                Log.d(onairTag, "File don't exist")
-                DownloadFileFromURL(this).execute(RadioRawChannels.values()[i].getChannelAddress(), RadioRawChannels.values()[i].getChannelFilename())
+                Log.d(onairTag, "for radio")
+                var fileobj =
+                    File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
+                if (fileobj.exists()) {
+                    Log.d(onairTag, "File exist")
+                    readChannelFile(fileobj)
+                } else {
+                    Log.d(onairTag, "File don't exist")
+                    DownloadFileFromURL(this).execute(
+                        RadioRawChannels.values()[i].getChannelAddress(),
+                        RadioRawChannels.values()[i].getChannelFilename()
+                    )
+                }
             }
         }
     }
 
-    private fun setChannelsFromFile(content: String) {
+    private fun setYoutubeChannels(channels: RadioRawChannels) {
+        var map = RadioCompletionMap(channels.getChannelTitle(), channelList.size,
+            channels.getChannelFilename(), channels.getChannelAddress(),  channels.getChannelAddress() )
+        channelList.add(map)
+        Log.d(onairTag, "channel resource add ok - filename(${map.filename}) - channelList.size: "+channelList.size)
+    }
+
+    private fun setChannelsFromPlsFile(content: String) {
         var httpAddress = content.substring(content.indexOf("File1=")+6, content.indexOf("Title1=") - 1)
         var title = content.substring(content.indexOf("Title1=")+7, content.indexOf("Length1=") - 1)
         Log.d(onairTag, "title($title) httpAddress($httpAddress)")
@@ -171,7 +194,7 @@ object RadioChannelResources: AsyncCallback {
         when(arg[0])
         {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
-            "fileopen" -> setChannelsFromFile(arg[1]!!)
+            "fileopen" -> setChannelsFromPlsFile(arg[1]!!)
             "failed" -> {
                 when( arg[1] ) {
                     "openFile" -> sendCallback(arg[1], arg[2])                // filename
@@ -203,7 +226,7 @@ object RadioChannelResources: AsyncCallback {
         if ( fileobj.canRead() ) {
             var ins: InputStream = fileobj.inputStream()
             var content = ins.readBytes().toString(Charset.defaultCharset())
-            setChannelsFromFile( content )
+            setChannelsFromPlsFile( content )
         } else {
             Log.d(onairTag, "Can't read file: "+fileobj.toString())
         }
