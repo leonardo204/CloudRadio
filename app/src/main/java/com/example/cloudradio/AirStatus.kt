@@ -36,7 +36,9 @@ private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
 }
 val airclient = OkHttpClient.Builder()
 //    .addInterceptor(FixEncodingInterceptor())
-//    .addInterceptor(httpLoggingInterceptor())         // http request inspector debugging
+//    .addInterceptor(httpLoggingInterceptor())         // http request inspector debuggin
+    .followRedirects(false)
+    .followSslRedirects(false)
     .build()
 private val air_retrofit = Retrofit.Builder()
     .baseUrl("http://apis.data.go.kr/B552584/") // 마지막 / 반드시 들어가야 함
@@ -185,18 +187,7 @@ data class PMData (
     val pm10Value: String?
 )
 
-class AirStatus {
-    companion object {
-
-        private var instance: AirStatus? = null
-
-        fun getInstance(): AirStatus =
-            instance ?: synchronized(this) {
-                instance ?: AirStatus().also {
-                    instance = it
-                }
-            }
-    }
+object AirStatus {
 
     fun getGradeString(grade: String): String {
         when(grade) {

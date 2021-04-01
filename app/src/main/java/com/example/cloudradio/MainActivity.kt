@@ -65,7 +65,7 @@ class GeoInfoTask: AsyncTask<Location, Void, Void>() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun doInBackground(vararg params: Location?): Void? {
         // call address information
-        GeoInfomation.getInstance().requestAddressInfo(params[0]!!.latitude, params[0]!!.longitude)
+        GeoInfomation.requestAddressInfo(params[0]!!.latitude, params[0]!!.longitude)
         return null
     }
 }
@@ -74,7 +74,7 @@ class WeatherTask: AsyncTask<Location, Void, Void>() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun doInBackground(vararg params: Location?): Void? {
         // call weather after get location
-        WeatherStatus.getInstance().requestWeather(params[0]!!.latitude, params[0]!!.longitude)
+        WeatherStatus.requestWeather(params[0]!!.latitude, params[0]!!.longitude)
         return null
     }
 }
@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun init() {
         Log.d(onairTag, "MainActivity init")
-        RadioChannelResources.getInstance().initResources(this)
+        RadioChannelResources.initResources(this)
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 

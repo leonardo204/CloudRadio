@@ -132,18 +132,7 @@ object geoObj {
     }
 }
 
-class GeoInfomation {
-
-    companion object {
-        private var instance: GeoInfomation? = null
-
-        fun getInstance(): GeoInfomation =
-            instance ?: synchronized(this) {
-                instance ?: GeoInfomation().also {
-                    instance = it
-                }
-            }
-    }
+object GeoInfomation {
 
     fun requestAddressInfo(lat: Double, lng: Double) {
         var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
@@ -186,7 +175,7 @@ class GeoInfomation {
                     OnAir.getInstance().updateAddressView(true)
 
                     // air information
-                    AirStatus.getInstance().requestTMCoordination(umdName)
+                    AirStatus.requestTMCoordination(umdName)
                 }
             }
 

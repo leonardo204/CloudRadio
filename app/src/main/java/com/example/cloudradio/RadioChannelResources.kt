@@ -1,5 +1,6 @@
 package com.example.cloudradio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.AsyncTask
 import android.os.Environment
@@ -74,37 +75,25 @@ interface AsyncCallback {
     fun onTaskDone(vararg string: String?)
 }
 
-class RadioChannelResources: AsyncCallback {
+@SuppressLint("StaticFieldLeak")
+object RadioChannelResources: AsyncCallback {
 
     private lateinit var mContext: Context
     lateinit var DEFAULT_FILE_PATH: String
     var bInitCompleted: Boolean = false
 
-    companion object {
-        var channelList = ArrayList<RadioCompletionMap>()
-
-        private var instance: RadioChannelResources? = null
-
-        fun getInstance(): RadioChannelResources =
-                instance ?: synchronized(this) {
-                    instance ?: RadioChannelResources().also {
-                        instance = it
-                    }
-                }
-    }
+    var channelList = ArrayList<RadioCompletionMap>()
 
     private fun getRadioChannelHttpAddress(filename: String): String? {
-        var idx = 0
-        for(i in RadioChannelResources.channelList.indices) {
-            if ( RadioChannelResources.channelList.get(i).filename.equals(filename) ) {
-                idx =  i
-                return  RadioChannelResources.channelList.get(idx).httpAddress
+        for(i in RadioRawChannels.values().indices) {
+            if ( RadioRawChannels.values()[i].getChannelFilename().equals(filename) ) {
+                return RadioRawChannels.values()[i].getChannelAddress()
             }
         }
         return null
     }
 
-    private fun removeChannelMapByfilename(filename: String) {
+    private fun removeChannelMapByfilename(filename: String): Int {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
                 Log.d(onairTag, "remove channelMap: "+filename)
@@ -112,13 +101,14 @@ class RadioChannelResources: AsyncCallback {
                 break
             }
         }
+        return channelList.size
     }
 
     fun requestUpdateResource(filename: String) {
         Log.d(onairTag, "requestUpdateResource: " + filename)
 
         // remove channel array list
-        removeChannelMapByfilename(filename)
+        Log.d(onairTag, "remove channelMap. reamins size: " + removeChannelMapByfilename(filename) )
 
         // remove exist file
         var fileobj = File(DEFAULT_FILE_PATH + filename )
@@ -129,9 +119,10 @@ class RadioChannelResources: AsyncCallback {
         if ( fileobj.exists() ) { Log.d(onairTag, "remove file is failed") }
         else { Log.d(onairTag, "remove file success") }
 
-
         // download again
-        DownloadFileFromURL(this).execute(getRadioChannelHttpAddress(filename), filename)
+        var httpAddress = getRadioChannelHttpAddress(filename)
+        Log.d(onairTag, "download again: "+httpAddress)
+        DownloadFileFromURL(this).execute(httpAddress, filename)
     }
 
 
@@ -139,7 +130,7 @@ class RadioChannelResources: AsyncCallback {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
-        for(i in 0..RadioRawChannels.values().size-1 ) {
+        for(i in RadioRawChannels.values().indices) {
             Log.d(onairTag, "initResources( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename() )
             var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename() )
             if ( fileobj.exists() ) {
@@ -157,19 +148,19 @@ class RadioChannelResources: AsyncCallback {
         var title = content.substring(content.indexOf("Title1=")+7, content.indexOf("Length1=") - 1)
         Log.d(onairTag, "title($title) httpAddress($httpAddress)")
 
-        for(i in 0..RadioRawChannels.values().size-1) {
+        for(i in RadioRawChannels.values().indices) {
             if ( title.equals( RadioRawChannels.values()[i].getChannelTitle()) ) {
                 var map = RadioCompletionMap(title, channelList.size,
                         RadioRawChannels.values()[i].getChannelFilename(),
                         RadioRawChannels.values()[i].getChannelAddress(),  httpAddress )
-                Log.d(onairTag, "channel resource add ok - title($title) - channelList.size: "+channelList.size)
                 channelList.add(map)
+                Log.d(onairTag, "channel resource add ok - filename(${map.filename}) - channelList.size: "+channelList.size)
                 break
             }
         }
 
         if ( channelList.size == RadioRawChannels.values().size ) {
-            Log.d(onairTag, "initResources are completed")
+            Log.d(onairTag, "setChannelsFromFile completed")
             bInitCompleted = true
             OnAir.getInstance().notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
         }
@@ -253,11 +244,12 @@ class RadioChannelResources: AsyncCallback {
     /**
      * Background Async Task to download file
      */
+    @SuppressLint("StaticFieldLeak")
     internal class DownloadFileFromURL(context: RadioChannelResources) :
             AsyncTask<String?, String?, String?>() {
 
         val callback: AsyncCallback = context
-        var filename: String = RadioChannelResources.getInstance().DEFAULT_FILE_PATH
+        var filename: String = DEFAULT_FILE_PATH
         var bCompleted: Boolean = false
 
         /**

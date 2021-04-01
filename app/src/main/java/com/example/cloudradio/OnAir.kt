@@ -173,14 +173,14 @@ class OnAir : Fragment() {
 
     fun getDefaultTextByFilename(filename: String): String {
         when(filename) {
-            RadioRawChannels.MBC_STANDARD_FM.getChannelFilename() -> return "MBC 표준 FM"
-            RadioRawChannels.MBC_FM_FORU.getChannelFilename() -> return "MBC FM For U"
-            RadioRawChannels.SBS_POWER_FM.getChannelFilename() -> return "SBS POWER FM"
-            RadioRawChannels.SBS_LOVE_FM.getChannelFilename() -> return "SBS LOVE FM"
-            RadioRawChannels.KBS_1_RADIO.getChannelFilename() -> return "KBS 1 라디오"
-            RadioRawChannels.KBS_HAPPY_FM.getChannelFilename() -> return "KBS HAPPY FM"
-            RadioRawChannels.KBS_COOL_FM.getChannelFilename() -> return  "KBS COOL FM"
-            RadioRawChannels.KBS_CLASSIC_FM.getChannelFilename() -> return "KBS 클래식 FM"
+            RadioRawChannels.MBC_STANDARD_FM.getChannelFilename() -> return RADIO_BUTTON.MBC_STANDARD_DEFAULT.getMessage()
+            RadioRawChannels.MBC_FM_FORU.getChannelFilename() -> return RADIO_BUTTON.MBC_FORU_DEFAULT.getMessage()
+            RadioRawChannels.SBS_POWER_FM.getChannelFilename() -> return RADIO_BUTTON.SBS_POWER_DEFAULT.getMessage()
+            RadioRawChannels.SBS_LOVE_FM.getChannelFilename() -> return RADIO_BUTTON.SBS_LOVE_DEFAULT.getMessage()
+            RadioRawChannels.KBS_1_RADIO.getChannelFilename() -> return RADIO_BUTTON.KBS_1_RADIO_DEFAULT.getMessage()
+            RadioRawChannels.KBS_HAPPY_FM.getChannelFilename() -> return RADIO_BUTTON.KBS_HAPPY_DEFAULT.getMessage()
+            RadioRawChannels.KBS_COOL_FM.getChannelFilename() -> return  RADIO_BUTTON.KBS_COOL_DEFAULT.getMessage()
+            RadioRawChannels.KBS_CLASSIC_FM.getChannelFilename() -> return RADIO_BUTTON.KBS_CLASSIC_DEFAULT.getMessage()
             else -> return "Unknown"
         }
     }
@@ -415,7 +415,7 @@ class OnAir : Fragment() {
         var gradeName: String
         if ( data.pm10Grade1h!!.toInt() > grade.toInt() ) grade = data.pm10Grade1h
         if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) grade = data.pm25Grade1h
-        Log.d(onairTag, "worst grade: " + AirStatus.getInstance().getGradeString(grade))
+        Log.d(onairTag, "worst grade: " + AirStatus.getGradeString(grade))
         when(grade) {
             "1" -> {
                 img_airStatus.setImageResource(R.drawable.skyblue_circle); gradeName = "좋음"
@@ -492,7 +492,7 @@ class OnAir : Fragment() {
                 updateButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
             }
             RESULT.PLAY_FAILED -> {
-                RadioChannelResources.getInstance().requestUpdateResource(filename)
+                RadioChannelResources.requestUpdateResource(filename)
                 // 우선 이전 채널에 대해서 초기화 (없으면 null 체크하여 실행 x)
                 mCurrnetPlayFilename?.let { updateButtonText(it, getDefaultTextByFilename(mCurrnetPlayFilename!!), true) }
 
@@ -517,7 +517,13 @@ class OnAir : Fragment() {
     fun notifyRadioResourceUpdate(filename: String?, result: RadioResource) {
         Log.d(onairTag, "resource update result: "+result + ", filename: "+filename)
         when(result) {
-            RadioResource.SUCCESS -> {}
+            RadioResource.SUCCESS -> {
+                var msg = handler.obtainMessage()
+                val timer = timer(initialDelay = 3000, period = 10000) {
+                    handler.sendMessage(msg)
+                    cancel()
+                }
+            }
             RadioResource.OPEN_FAILED, RadioResource.DOWN_FAILED -> {
                 if (!bInitialized) {
                     Log.d(onairTag, "Ignore failed (not initialized)")

@@ -16,10 +16,12 @@
 
         <ImageView
             android:id="@+id/image_empty_weather"
-            android:layout_width="350dp"
-            android:layout_height="200dp"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
             android:scaleType="center"
-            android:src="@drawable/back"
+            android:src="@drawable/weather_round_back"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -216,6 +218,7 @@
         android:id="@+id/layout_radio"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="start"
         android:layout_marginTop="16dp" >
 
         <Button

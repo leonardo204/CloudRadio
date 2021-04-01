@@ -6,6 +6,7 @@ import android.os.AsyncTask
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -58,9 +59,17 @@ interface WeatherInterface {
     ): Call<WEATHER>
 }
 
+val weatherClient = OkHttpClient.Builder()
+//    .addInterceptor(FixEncodingInterceptor())
+//    .addInterceptor(httpLoggingInterceptor())         // http request inspector debuggin
+//    .followRedirects(false)
+//    .followSslRedirects(false)
+    .build()
+
 private val retrofit = Retrofit.Builder()
     .baseUrl("http://apis.data.go.kr/1360000/VilageFcstInfoService/") // 마지막 / 반드시 들어가야 함
     .addConverterFactory(GsonConverterFactory.create()) // converter 지정
+    .client(weatherClient)
     .build() // retrofit 객체 생성
 
 object ApiObject {
@@ -78,21 +87,10 @@ internal class LatXLngY {
     var y = 0.0
 }
 
-class WeatherStatus {
+object WeatherStatus {
 
-    companion object {
-        var TO_GRID = 0
-        var TO_GPS = 1
-
-        private var instance: WeatherStatus? = null
-
-        fun getInstance(): WeatherStatus =
-            instance ?: synchronized(this) {
-                instance ?: WeatherStatus().also {
-                    instance = it
-                }
-            }
-    }
+    var TO_GRID = 0
+    var TO_GPS = 1
 
     private fun getLastBaseTime(calBase: Calendar):Calendar {
         val t = calBase.get(Calendar.HOUR_OF_DAY)
