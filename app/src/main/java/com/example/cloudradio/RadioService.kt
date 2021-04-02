@@ -9,6 +9,8 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 
+var radioServiceTag = "CR_RadioService"
+
 enum class RESULT {
     PLAY_FAILED, PLAY_SUCCESS, DESTROYED
 }
@@ -25,6 +27,8 @@ class RadioService : Service() {
 
     private var filename: String? = null
 
+    var videoId: String? = null
+
     private val notificationManager @SuppressLint("ServiceCast")
     get() = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -34,44 +38,62 @@ class RadioService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(onairTag, "RadioService onStartCommand")
+        Log.d(radioServiceTag, "RadioService onStartCommand")
         startForeground(NOTIFICATION_DOWNLOAD_ID, createRadioNotification())
 
         if ( intent?.action.equals(Constants.ACTION.STARTFOREGROUND_ACTION) ) {
-            Log.d(onairTag, "start foreground services")
+            Log.d(radioServiceTag, "start foreground services")
         } else if ( intent?.action.equals(Constants.ACTION.STOPFOREGROUND_ACTION) ) {
-            Log.d(onairTag, "stop foreground services")
+            Log.d(radioServiceTag, "stop foreground services")
         }
 
+        var serviceName = intent?.getStringExtra("serviceName")
         filename = intent?.getStringExtra("name")
-        var address = intent?.getStringExtra("address")
 
-        // address 가 null 이어서 실패
-        // 실패되는 정보에 대한 channel map 을 임의로 생성하여 callback 에 담아 보낸다
-        if ( address == null ) {
-            filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
-            return START_STICKY
-        }
+        // youtube 요청인 경우 처리
+        when(serviceName) {
+            "youtube" -> {
+                videoId = intent?.getStringExtra("videoId")
+                Log.d(radioServiceTag, "onStartCommand: $videoId")
 
-        Log.d(onairTag, "start service filename: "+filename)
-        Log.d(onairTag, "start service httpAddress: "+address)
+                OnAir.youtubeView?.enableBackgroundPlayback(true)
+                YoutubeHandler.videoId = videoId
+                OnAir.youtubeView?.addYouTubePlayerListener(YoutubeHandler)
 
-        // address 가 valid 하지만 재생 실패되는 경우
-        // 이 경우도 실패에 대한 callback 을 전달한다.
-        try {
-            address?.let {
-                if ( !RadioPlayer.play(it) ) {
-                    RadioPlayer.stop()
-                    filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
-                    return START_NOT_STICKY
-                }
+                return START_NOT_STICKY
             }
-        } catch ( e: Exception ) {
-            Log.d(onairTag, "error: "+e.message)
-        }
+            "radio" -> {
+                var address = intent?.getStringExtra("address")
 
-        // success callback
-        filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
+                // address 가 null 이어서 실패
+                // 실패되는 정보에 대한 channel map 을 임의로 생성하여 callback 에 담아 보낸다
+                if ( address == null ) {
+                    filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
+                    return START_STICKY
+                }
+
+                Log.d(radioServiceTag, "start service filename: "+filename)
+                Log.d(radioServiceTag, "start service httpAddress: "+address)
+
+                // address 가 valid 하지만 재생 실패되는 경우
+                // 이 경우도 실패에 대한 callback 을 전달한다.
+                try {
+                    address?.let {
+                        if ( !RadioPlayer.play(it) ) {
+                            RadioPlayer.stop()
+                            filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
+                            return START_NOT_STICKY
+                        }
+                    }
+                } catch ( e: Exception ) {
+                    Log.d(radioServiceTag, "error: "+e.message)
+                }
+
+                // success callback
+                filename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
+            }
+            else -> filename?.let { sendCallback(it, RESULT.PLAY_FAILED) }
+        }
 
         return START_NOT_STICKY
     }
@@ -82,7 +104,7 @@ class RadioService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(onairTag, "RadioService onCreate")
+        Log.d(radioServiceTag, "RadioService onCreate")
 
         registerDefaultNotificationChannel()
     }
@@ -111,8 +133,12 @@ class RadioService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(onairTag, "RadioService onDestroy")
+        Log.d(radioServiceTag, "RadioService onDestroy")
         RadioPlayer.stop()
+
+        YoutubeHandler.isPlay = false
+        OnAir.youtubeView?.removeYouTubePlayerListener(YoutubeHandler)
+
         filename?.let { it1 -> sendCallback(it1, RESULT.DESTROYED) }
     }
 }

@@ -2,11 +2,13 @@ package com.example.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.net.Uri
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
@@ -17,8 +19,13 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.viewpager.widget.ViewPager
+import com.google.android.material.internal.ContextUtils.getActivity
 import com.google.android.material.tabs.TabLayout
+import java.io.File
+
+var mainTag = "CR_Main"
 
 class LocListener: LocationListener {
 
@@ -28,7 +35,7 @@ class LocListener: LocationListener {
 
         if (location != null) {
             Log.d(
-                onairTag,
+                mainTag,
                 "Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude
             )
 
@@ -47,17 +54,17 @@ class LocListener: LocationListener {
 
     //provider의 상태가 변경되때마다 호출
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(onairTag, "onStatusChanged. Not yet implemented")
+        Log.d(mainTag, "onStatusChanged. Not yet implemented")
     }
 
     //provider가 사용 가능한 상태가 되는 순간 호출
     override fun onProviderEnabled(provider: String?) {
-        Log.d(onairTag, "onProviderEnabled. Not yet implemented")
+        Log.d(mainTag, "onProviderEnabled. Not yet implemented")
     }
 
     //provider가 사용 불가능 상황이 되는 순간 호출
     override fun onProviderDisabled(provider: String?) {
-        Log.d(onairTag, "onProviderDisabled. Not yet implemented")
+        Log.d(mainTag, "onProviderDisabled. Not yet implemented")
     }
 }
 
@@ -88,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         private var instance: MainActivity? = null
         var locationManager: LocationManager? = null
         var locListener: LocListener? = null
+        var mContext: Context? = null
 
         fun getInstance(): MainActivity =
                 instance ?: synchronized(this) {
@@ -99,6 +107,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mContext = this
 
         setContentView(R.layout.activity_main)
         title = "CloudRadio"
@@ -132,14 +142,14 @@ class MainActivity : AppCompatActivity() {
                 makeNoticePopup()
             }
         } else {
-            Log.d(onairTag, "skip checking network status. reason: version")
+            Log.d(mainTag, "skip checking network status. reason: version")
             init()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(onairTag, "MainAcitivity onDestroyed")
+        Log.d(mainTag, "MainAcitivity onDestroyed")
         finishAffinity()
 
         Intent(OnAir.mContext, RadioService::class.java).run {
@@ -161,7 +171,7 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.M)
     fun checkNetworkStatus(): Boolean {
         if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
-            Log.d(onairTag, "Network is not available")
+            Log.d(mainTag, "Network is not available")
             return false
         }
         return true
@@ -170,15 +180,15 @@ class MainActivity : AppCompatActivity() {
     private fun makeNoticePopup() {
         val dlg = NoticePopupActivity(this)
         dlg.setOnOKClickedListener{ content ->
-            Log.d(onairTag, "received message: " + content)
-            Log.d(onairTag, "received on OK Click event")
+            Log.d(mainTag, "received message: " + content)
+            Log.d(mainTag, "received on OK Click event")
             systemRestart()
         }
         dlg.start("인터넷 연결 확인 필요\n확인을 누르면 5초 후 앱을 다시 시작합니다.")
     }
 
     private fun init() {
-        Log.d(onairTag, "MainActivity init")
+        Log.d(mainTag, "MainActivity init")
         RadioChannelResources.initResources(this)
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
@@ -195,7 +205,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     fun checkPermissions() {
-        Log.d(onairTag, "checkPermissions")
+        Log.d(mainTag, "checkPermissions")
 
         val finePerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[0])
         val coastPerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[1])
@@ -203,7 +213,7 @@ class MainActivity : AppCompatActivity() {
         if ( finePerm == PackageManager.PERMISSION_GRANTED
                 && coastPerm == PackageManager.PERMISSION_GRANTED )
         {
-            Log.d(onairTag, "Permissions ok")
+            Log.d(mainTag, "Permissions ok")
             getGPSInfo()
         }
         else {
@@ -213,14 +223,14 @@ class MainActivity : AppCompatActivity() {
                     REQUIRED_PERMISSIONS[1]
                 )) {
 
-                Log.d(onairTag, "Permissions are requested 1")
+                Log.d(mainTag, "Permissions are requested 1")
                 ActivityCompat.requestPermissions(
                     this,
                     REQUIRED_PERMISSIONS,
                     locationPermissionCode
                 )
             } else {
-                Log.d(onairTag, "Permissions are requested 2")
+                Log.d(mainTag, "Permissions are requested 2")
                 ActivityCompat.requestPermissions(
                     this,
                     REQUIRED_PERMISSIONS,
@@ -235,15 +245,15 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        Log.d(onairTag, "onRequestPermissionsResult: " + requestCode)
+        Log.d(mainTag, "onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
-                Log.d(onairTag, "Permissions CB: Granted")
+                Log.d(mainTag, "Permissions CB: Granted")
                 getGPSInfo()
             }
             else {
-                Log.d(onairTag, "Permissions CB: Denied")
+                Log.d(mainTag, "Permissions CB: Denied")
                 Toast.makeText(this, "Permission Denied", Toast.LENGTH_LONG).show()
             }
         }
@@ -251,7 +261,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
-        Log.d(onairTag, "getGPSInfo()")
+        Log.d(mainTag, "getGPSInfo()")
 
         locListener = LocListener()
 
@@ -267,12 +277,54 @@ class MainActivity : AppCompatActivity() {
             10f,
             locListener
         )
-        Log.d(onairTag, "getGPSInfo end")
+        Log.d(mainTag, "getGPSInfo end")
     }
 
     fun removeGPSTracking() {
-        Log.d(onairTag, "removeGPSTracking()")
+        Log.d(mainTag, "removeGPSTracking()")
         locListener?.let { locationManager?.removeUpdates(it) }
         locListener = null
+    }
+
+    @SuppressLint("RestrictedApi")
+    fun installApp(path: String) {
+        Log.d(mainTag, "install: $path")
+        val toInstall = File(path)
+        Log.d(mainTag, "install2: $toInstall")
+        val intent: Intent
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//            val apkUri = FileProvider.getUriForFile(
+//                this,
+//                BuildConfig.APPLICATION_ID,// + ".fileprovider",
+//                toInstall
+//            )
+//            intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
+//            intent.data = apkUri
+//            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+//        }
+//        else
+//        {
+//            val apkUri = Uri.fromFile(toInstall)
+//            intent = Intent(Intent.ACTION_VIEW)
+//            intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+//            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+//        }
+
+
+            val apkUri = FileProvider.getUriForFile(
+                mContext!!,
+                BuildConfig.APPLICATION_ID,// + ".fileprovider",
+                toInstall
+            )
+            intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
+            intent.data = apkUri
+            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        Log.d(mainTag, "this: $this")
+        Log.d(mainTag, "context: $mContext")
+        mContext!!.startActivity(intent)
+    }
+
+    fun makeToast(message: String) {
+        Toast.makeText(mContext, message, Toast.LENGTH_LONG)
     }
 }

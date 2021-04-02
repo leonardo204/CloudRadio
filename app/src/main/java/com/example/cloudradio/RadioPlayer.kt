@@ -5,6 +5,8 @@ import android.os.AsyncTask
 import android.util.Log
 import java.io.IOException
 
+var radioPlayerTag = "CR_RadioPlayer"
+
 /*
   radio player 는 streaming 이라서 resume / pause 가 아니라 start / stop 만 가능
  */
@@ -15,7 +17,7 @@ object RadioPlayer {
     lateinit var mMediaPlayer: MediaPlayer
 
     fun init() {
-        Log.d(onairTag, "RadioPlayer init")
+        Log.d(radioPlayerTag, "RadioPlayer init")
         if ( !initialized ) {
             mMediaPlayer = MediaPlayer()
         }
@@ -30,13 +32,13 @@ object RadioPlayer {
             mMediaPlayer.start()
             ret = true
         } catch (e: IOException) {
-            Log.d(onairTag, "IOException: "+e)
+            Log.d(radioPlayerTag, "IOException: "+e)
             ret = false
         } catch (e:  IllegalStateException) {
-            Log.d(onairTag, "IllegalStateException: "+e)
+            Log.d(radioPlayerTag, "IllegalStateException: "+e)
             ret = false
         } catch (e: Exception) {
-            Log.d(onairTag, "exception: "+e)
+            Log.d(radioPlayerTag, "exception: "+e)
             ret = false
         } finally {
             return ret
@@ -45,7 +47,7 @@ object RadioPlayer {
 
     fun stop() {
         if ( mMediaPlayer.isPlaying ) {
-            Log.d(onairTag, "RadioPlayer stopped")
+            Log.d(radioPlayerTag, "RadioPlayer stopped")
             mMediaPlayer.stop()
             mMediaPlayer.release()
             mMediaPlayer = MediaPlayer()
@@ -58,7 +60,7 @@ object RadioPlayer {
 
 //    fun resume() {
 //        if ( !mMediaPlayer.isPlaying ) {
-//            Log.d(onairTag, "RadioPlayer resume")
+//            Log.d(radioPlayerTag, "RadioPlayer resume")
 //            mMediaPlayer.seekTo(mPosition)
 //            mMediaPlayer.start()
 //        }
@@ -66,7 +68,7 @@ object RadioPlayer {
 //
 //    fun pause() {
 //        if ( mMediaPlayer.isPlaying ) {
-//            Log.d(onairTag, "RadioPlayer paused")
+//            Log.d(radioPlayerTag, "RadioPlayer paused")
 //            mMediaPlayer.pause()
 //            mPosition = mMediaPlayer.currentPosition
 //        }

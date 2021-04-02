@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 
+var netStatusTag = "CR_NetworkStatus"
 
 object NetworkStatus {
     const val TYPE_WIFI = 1
@@ -25,7 +26,7 @@ object NetworkStatus {
             actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> TYPE_MOBILE
             else -> TYPE_NOT_CONNECTED
         }
-        Log.d(onairTag, "network: " + getNetworkTypeString(result.toInt()) )
+        Log.d(netStatusTag, "network: " + getNetworkTypeString(result.toInt()) )
         return result
     }
 

@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_height="match_parent"
-    tools:context=".More">
-    <!-- TODO: Update blank fragment layout -->
+    android:layout_width="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/white">
+
     <TextView
+        android:id="@+id/txt_version_buildtime"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="More Fragment"
-        android:textAlignment="center"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-</FrameLayout>
+        android:layout_height="wrap_content"
+        android:textSize="15dp"
+        android:textStyle="bold"
+        android:layout_marginLeft="10dp"
+        android:layout_marginBottom="5dp"
+        app:layout_constraintBottom_toTopOf="@id/btn_app_download"
+        />
+
+    <Button
+        android:id="@+id/btn_app_download"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:text="앱 다운로드"
+        android:textSize="20dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

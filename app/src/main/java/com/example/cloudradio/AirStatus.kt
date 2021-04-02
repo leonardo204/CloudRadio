@@ -21,6 +21,8 @@ http://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKe
 http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?stationName=종로구&dataTerm=month&pageNo=1&numOfRows=1&returnType=json&serviceKey=ZZSvyzoRPHWzl9Uj650WLGx37OJ%2FQA0VdvtKq4SD8K6au7LhEI4X1l2jx4J4iB05XOq9H%2BQGU%2FmvNTSkC22Fqg%3D%3D
  */
 
+var airTag = "CR_AirStatus"
+
 // common use
 data class AIR_HEADER(
     val resultCode: String,
@@ -29,7 +31,7 @@ data class AIR_HEADER(
 private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
     val interceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
         override fun log(message: String) {
-            Log.e(onairTag, message + "")
+            Log.e(airTag, message + "")
         }
     })
     return interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -200,21 +202,21 @@ object AirStatus {
     }
 
     private fun dumpAirStatus(data: PMData) {
-        Log.d(onairTag, "==   AirStatus  ==")
-        Log.d(onairTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data.pm10Grade1h!!)+")")
-        Log.d(onairTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data.pm25Grade1h!!)+")")
+        Log.d(airTag, "==   AirStatus  ==")
+        Log.d(airTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data.pm10Grade1h!!)+")")
+        Log.d(airTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data.pm25Grade1h!!)+")")
         OnAir.getInstance().updateAirStatus(data)
     }
 
     fun requestTMCoordination(umdName: String) {
-        Log.d(onairTag, "umdName:("+umdName+")")
+        Log.d(airTag, "umdName:("+umdName+")")
 
         val call = AirTMXYObject.retrofitService.GetTMCoordination("json", 1, 1, umdName )
-        Log.d(onairTag, "requestTMCoordination: " + call.request().url().toString())
+        Log.d(airTag, "requestTMCoordination: " + call.request().url().toString())
         call.enqueue(object : retrofit2.Callback<GETTMXY> {
             override fun onResponse(call: Call<GETTMXY>, response: Response<GETTMXY>) {
                 if ( response.isSuccessful ) {
-                    Log.d(onairTag, "TMXY: "+response.body())
+                    Log.d(airTag, "TMXY: "+response.body())
                     var tmx:String = response.body()!!.response.body.items[0].tmX
                     var tmy:String = response.body()!!.response.body.items[0].tmY
                     requestViewLocation(tmx, tmy)
@@ -222,18 +224,18 @@ object AirStatus {
             }
 
             override fun onFailure(call: Call<GETTMXY>, t: Throwable) {
-                Log.d(onairTag, "failed to get TMXY: "+t.message)
+                Log.d(airTag, "failed to get TMXY: "+t.message)
             }
         })
     }
 
     fun requestViewLocation(tmx: String, tmy: String) {
-        Log.d(onairTag, "requestViewLocation(tmx:"+tmx+", tmy:"+tmy+")")
+        Log.d(airTag, "requestViewLocation(tmx:"+tmx+", tmy:"+tmy+")")
         val call = AirViewLocationObject.retrofitService.GetViewLocation("json", tmx, tmy)//, 1.0 )
         call.enqueue(object : retrofit2.Callback<GETVIEWLOCATION> {
             override fun onResponse(call: Call<GETVIEWLOCATION>, response: Response<GETVIEWLOCATION>) {
                 if ( response.isSuccessful ) {
-                    Log.d(onairTag, "requestViewLocation: "+response.body())
+                    Log.d(airTag, "requestViewLocation: "+response.body())
                     var leastIndex: Float = 0.0f
                     var stationName: String = "N/A"
                     for(i in response.body()!!.response.body.items.indices) {
@@ -247,25 +249,25 @@ object AirStatus {
                             }
                         }
                     }
-                    Log.d(onairTag, "least stationName: "+stationName)
+                    Log.d(airTag, "least stationName: "+stationName)
                     getAirPMData( stationName )
                 }
             }
 
             override fun onFailure(call: Call<GETVIEWLOCATION>, t: Throwable) {
-                Log.d(onairTag, "failed to requestViewLocation: "+t.message)
+                Log.d(airTag, "failed to requestViewLocation: "+t.message)
             }
         })
     }
 
     fun getAirPMData(stationName: String) {
-        Log.d(onairTag, "getAirPMData("+stationName+")")
+        Log.d(airTag, "getAirPMData("+stationName+")")
 
         val call = AirPMDataObject.retrofitService.GetPMData("json","DAILY", "1", "1", stationName , "1.3")
         call.enqueue(object : retrofit2.Callback<GETPMDATA> {
             override fun onResponse(call: Call<GETPMDATA>, response: Response<GETPMDATA>) {
                 if ( response.isSuccessful ) {
-                    Log.d(onairTag, "getAirPMData: "+response.body())
+                    Log.d(airTag, "getAirPMData: "+response.body())
                     var pm10Value: String = response.body()!!.response.body.items[0].pm10Value
                     var pm10Grade1h: String = response.body()!!.response.body.items[0].pm10Grade1h
                     var pm25Value: String? = response.body()!!.response.body.items[0].pm25Value
@@ -279,7 +281,7 @@ object AirStatus {
             }
 
             override fun onFailure(call: Call<GETPMDATA>, t: Throwable) {
-                Log.d(onairTag, "failed to getAirPMData: "+t.message)
+                Log.d(airTag, "failed to getAirPMData: "+t.message)
             }
         })
     }

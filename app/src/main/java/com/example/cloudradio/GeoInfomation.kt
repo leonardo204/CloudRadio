@@ -30,6 +30,8 @@ leaf.11545,json에서 11545는 위의 과정에서 알아낸 시군구 코드입
 https://maps.googleapis.com/maps/api/geocode/json?latlng=37.566535,126.977969&language=ko&key=AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w
  */
 
+var geoTag = "CR_GeoInfo"
+
 data class GEO_RESPONSE(
     val plus_code: GEO_PLUSCODE,
     val results: List<GEO_RESULT>,
@@ -109,7 +111,7 @@ internal class FixEncodingInterceptor : Interceptor {
 private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
     val interceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
         override fun log(message: String) {
-            Log.e(onairTag, message + "")
+            Log.e(geoTag, message + "")
         }
     })
     return interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -136,18 +138,18 @@ object GeoInfomation {
 
     fun requestAddressInfo(lat: Double, lng: Double) {
         var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
-        Log.d(onairTag, "req URL: " + call.request().url().toString())
+        Log.d(geoTag, "req URL: " + call.request().url().toString())
         var findit: Boolean = false
         call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
             override fun onResponse(call: Call<GEO_RESPONSE>, response: Response<GEO_RESPONSE>) {
                 var umdName: String = "N/A"
                 if (response.isSuccessful && response.body() != null) {
-                    Log.d(onairTag, "address req. response: " + response.body())
+                    Log.d(geoTag, "address req. response: " + response.body())
                     for (i in response.body()!!.results.indices) {
                         for (j in response.body()!!.results[i].types.indices) {
-                            Log.d( onairTag,"search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j])
+                            Log.d( geoTag,"search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j])
                             if (response.body()!!.results[i].types[j].equals("postal_code")) {
-                                Log.d(onairTag,"find it! : " + response.body()!!.results[i].formatted_address  )
+                                Log.d(geoTag,"find it! : " + response.body()!!.results[i].formatted_address  )
                                 OnAir.mAddressText = response.body()!!.results[i].formatted_address
                                 findit = true
 
@@ -158,7 +160,7 @@ object GeoInfomation {
                                         if ( response.body()!!.results[i].address_components[k].types[p].equals("sublocality_level_1") ) {
                                             findumdName = true
                                             umdName = response.body()!!.results[i].address_components[k].long_name
-                                            Log.d(onairTag,"find umdName! : " + umdName  )
+                                            Log.d(geoTag,"find umdName! : " + umdName  )
                                         }
                                         if (findumdName) break
                                     }
@@ -180,7 +182,7 @@ object GeoInfomation {
             }
 
             override fun onFailure(call: Call<GEO_RESPONSE>, t: Throwable) {
-                Log.d(onairTag, "requestAddressInfo fail : " + t.message)
+                Log.d(geoTag, "requestAddressInfo fail : " + t.message)
                 OnAir.getInstance().updateAddressView(false)
             }
 

@@ -11,8 +11,12 @@
     <!-- foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <!-- storage permissions -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- bluetooth -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_main"
@@ -25,6 +29,15 @@
             android:name=".RadioService"
             android:enabled="true"
             android:exported="true" />
+        <provider
+            android:authorities="com.example.cloudradio"
+            android:name="androidx.core.content.FileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths"/>
+        </provider>
 
         <activity android:name=".MainActivity">
             <intent-filter>
@@ -35,7 +48,6 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>
