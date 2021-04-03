@@ -186,6 +186,12 @@ class OnAir : Fragment() {
         }
     }
 
+    // TODO
+    // - YoutubeView 는 fragment 시작 시 동적 생성해서 가지고 있도록 (static)
+    // - YoutubeView 에서 YoutubeHandler 를 addlistener 붙이고 onReady 를 받으면 player 를 얻을 수 있다
+    // - player 를 얻어서 RadioService 에서 videoId 에 따라서 cueVideo 를 불러서 넣어주고 play 해주면 된다
+    // - view 의 UI 중에 재생 컨트롤은 풀어서 일시정지 가능하도록..
+    // - 나중에 view 를 floating 으로 띄우는 방법도 생각해보자.
     private fun createYoutubeView(filename: String, videoId: String) {
         Log.d(
             onairTag,
