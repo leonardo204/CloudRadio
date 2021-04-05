@@ -268,7 +268,7 @@ object WeatherStatus {
                 }
                 "PTY" -> {
                     Log.d(weatherTag, "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
-                    OnAir.getInstance().setRainStatusImage(items.item[i].fcstValue.toInt())
+                    OnAir.setRainStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "R06" -> {
                     Log.d(
@@ -288,7 +288,7 @@ object WeatherStatus {
                 }
                 "SKY" -> {
                     Log.d(weatherTag, "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
-                    OnAir.getInstance().setSkyStatusImage(items.item[i].fcstValue.toInt())
+                    OnAir.setSkyStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "T3H" -> {
                     Log.d(weatherTag, "- 3시간 기온(℃): " + items.item[i].fcstValue)

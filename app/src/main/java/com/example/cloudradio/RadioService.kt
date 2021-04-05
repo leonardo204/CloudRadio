@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 
 var radioServiceTag = "CR_RadioService"
 
@@ -56,9 +57,8 @@ class RadioService : Service() {
                 videoId = intent?.getStringExtra("videoId")
                 Log.d(radioServiceTag, "onStartCommand: $videoId")
 
-                OnAir.youtubeView?.enableBackgroundPlayback(true)
-                YoutubeHandler.videoId = videoId
-                OnAir.youtubeView?.addYouTubePlayerListener(YoutubeHandler)
+                MainActivity.youtubeView?.enableBackgroundPlayback(true)
+                videoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
 
                 return START_NOT_STICKY
             }
@@ -99,7 +99,7 @@ class RadioService : Service() {
     }
 
     private fun sendCallback(filename: String, result: RESULT) {
-        OnAir.getInstance().notifyRadioServiceStatus(filename, result)
+        OnAir.notifyRadioServiceStatus(filename, result)
     }
 
     override fun onCreate() {
@@ -136,8 +136,9 @@ class RadioService : Service() {
         Log.d(radioServiceTag, "RadioService onDestroy")
         RadioPlayer.stop()
 
-        YoutubeHandler.isPlay = false
-        OnAir.youtubeView?.removeYouTubePlayerListener(YoutubeHandler)
+        // listener 가 너무 늦게 불러져서-_- 강제로 pause 이벤트 전달
+        OnAir.setYoutubeState(PlayerConstants.PlayerState.PAUSED)
+        OnAir.youtubePlayer?.pause()
 
         filename?.let { it1 -> sendCallback(it1, RESULT.DESTROYED) }
     }

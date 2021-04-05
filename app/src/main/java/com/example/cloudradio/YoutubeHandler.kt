@@ -8,10 +8,6 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.Abs
 var youtubeHandlerTag = "CR_YoutubeHandler"
 
 object YoutubeHandler: AbstractYouTubePlayerListener() {
-    var videoId: String? = null
-    var player: YouTubePlayer? = null
-    var isPlay: Boolean = false
-
     override fun onApiChange(youTubePlayer: YouTubePlayer) {
         super.onApiChange(youTubePlayer)
         Log.d(youtubeHandlerTag, "onApiChange")
@@ -45,26 +41,14 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
 
     override fun onReady(youTubePlayer: YouTubePlayer) {
         super.onReady(youTubePlayer)
-        player = youTubePlayer
-
-        Log.d(youtubeHandlerTag, "youtube onReady! vid: $videoId")
-        videoId?.let { youTubePlayer.cueVideo(it, 0f) }
-
-        // to auto play after cueVideo
-        youTubePlayer.play()
-        isPlay = true
+        Log.d(youtubeHandlerTag, "youtube onReady!")
+        OnAir.youtubePlayer = youTubePlayer
     }
 
     override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
         super.onStateChange(youTubePlayer, state)
         Log.d(youtubeHandlerTag, "onStateChange: "+state)
-        when(state) {
-            // for auto repeat play
-            PlayerConstants.PlayerState.ENDED -> {
-                videoId?.let { youTubePlayer.cueVideo(it, 0f) }
-                youTubePlayer.play()
-            }
-        }
+        OnAir.setYoutubeState( state )
     }
 
     override fun onVideoDuration(youTubePlayer: YouTubePlayer, duration: Float) {

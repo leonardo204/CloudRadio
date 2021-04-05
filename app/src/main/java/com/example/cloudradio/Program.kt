@@ -15,36 +15,20 @@ import java.util.HashMap
 
 var programTag = "CR_Program"
 
-class Program : Fragment() {
+@SuppressLint("StaticFieldLeak")
+object Program : Fragment() {
 
-    companion object {
+    lateinit var mContext: Context
+    var program_btnList = HashMap<String, Button>()
 
-        @SuppressLint("StaticFieldLeak")
-        lateinit var mContext: Context
-        var btnList = HashMap<String, Button>()
+    // program 버튼을 누른 순서대로 favList 에 filename 으로 저장
+    // 먼저 들어간 program 이 1순위가 된다.
+    var favList = ArrayList<String>()
 
-        // program 버튼을 누른 순서대로 favList 에 filename 으로 저장
-        // 먼저 들어간 program 이 1순위가 된다.
-        var favList = ArrayList<String>()
+    lateinit var btn_save_setting: Button
+    lateinit var btn_reset_setting: Button
 
-        @SuppressLint("StaticFieldLeak")
-        lateinit var btn_save_setting: Button
-        @SuppressLint("StaticFieldLeak")
-        lateinit var btn_reset_setting: Button
-
-        @SuppressLint("StaticFieldLeak")
-        lateinit var layout_programs: LinearLayout
-
-        @SuppressLint("StaticFieldLeak")
-        private var instance: Program? = null
-
-        fun getInstance(): Program =
-            instance ?: synchronized(this) {
-                instance ?: Program().also {
-                    instance = it
-                }
-            }
-    }
+    lateinit var layout_programs: LinearLayout
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -83,14 +67,14 @@ class Program : Fragment() {
             var filename = RadioChannelResources.channelList.get(i).filename
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
             button.setOnClickListener { onRadioButton(filename) }
-            btnList.put(filename, button)
+            program_btnList.put(filename, button)
 //            var layoutParams: GridLayout.LayoutParams =  GridLayout.LayoutParams()
 //            layoutParams.setGravity(Gravity.FILL_HORIZONTAL)
 //            layout_grid_programs.addView(button, layoutParams)
             layout_programs.addView(button)
         }
         resetAllButtonText()
-        Log.d(programTag, "initProgramButtons() btnList: "+ btnList.size)
+        Log.d(programTag, "initProgramButtons() btnList: "+ program_btnList.size)
     }
 
     // 라디오 버튼 누르면 모두 여기서 처리
@@ -117,18 +101,18 @@ class Program : Fragment() {
     }
 
     private fun saveAction() {
-        OnAir.getInstance().makePrograms(favList)
+        OnAir.makePrograms(favList)
     }
 
     private fun resetAction() {
         resetAllButtonText()
-        OnAir.getInstance().resetPrograms()
+        OnAir.resetPrograms()
         favList.clear()
     }
 
     fun resetAllButtonText() {
         Log.d(programTag, "resetButtons()")
-        var iter = btnList.iterator()
+        var iter = program_btnList.iterator()
         while( iter.hasNext() ) {
             var obj = iter.next()
             var message = getDefaultTextByFilename(obj.key)
@@ -151,7 +135,7 @@ class Program : Fragment() {
     fun updateButtonText(filename: String, text: String, enable: Boolean, bFavorite: Boolean) {
         Log.d(programTag, "updateButtonText $filename  $text  $enable")
 
-        var iter = btnList.iterator()
+        var iter = program_btnList.iterator()
         while( iter.hasNext() ) {
             var obj = iter.next()
             //Log.d(programTag, "updateButtonText: "+obj.key )

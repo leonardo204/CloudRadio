@@ -70,4 +70,11 @@ dependencies {
 
     // youtube
     implementation 'com.pierfrancescosoffritti.androidyoutubeplayer:core:10.0.5'
+
+    // json
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.+"
+
+    // kotlin serialization
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.20.0" // JVM dependency
 }

@@ -23,50 +23,12 @@ import androidx.core.content.FileProvider
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.internal.ContextUtils.getActivity
 import com.google.android.material.tabs.TabLayout
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import java.io.File
 
 var mainTag = "CR_Main"
 
-class LocListener: LocationListener {
 
-    //위치 정보 전달 목적으로 호출
-    @RequiresApi(Build.VERSION_CODES.O)
-    override fun onLocationChanged(location: Location?) {
-
-        if (location != null) {
-            Log.d(
-                mainTag,
-                "Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude
-            )
-
-            // call address information
-            val geoInfoTask = GeoInfoTask()
-            geoInfoTask.execute(location)
-
-            // call weather after get location
-            val weatherTask = WeatherTask()
-            weatherTask.execute(location)
-        }
-
-        // remove gps tracking
-        MainActivity.getInstance().removeGPSTracking()
-    }
-
-    //provider의 상태가 변경되때마다 호출
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(mainTag, "onStatusChanged. Not yet implemented")
-    }
-
-    //provider가 사용 가능한 상태가 되는 순간 호출
-    override fun onProviderEnabled(provider: String?) {
-        Log.d(mainTag, "onProviderEnabled. Not yet implemented")
-    }
-
-    //provider가 사용 불가능 상황이 되는 순간 호출
-    override fun onProviderDisabled(provider: String?) {
-        Log.d(mainTag, "onProviderDisabled. Not yet implemented")
-    }
-}
 
 class GeoInfoTask: AsyncTask<Location, Void, Void>() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -92,10 +54,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var viewPager: ViewPager
 
     companion object {
+        @SuppressLint("StaticFieldLeak")
         private var instance: MainActivity? = null
         var locationManager: LocationManager? = null
-        var locListener: LocListener? = null
+        @SuppressLint("StaticFieldLeak")
         var mContext: Context? = null
+        var youtubeView: YouTubePlayerView? = null
 
         fun getInstance(): MainActivity =
                 instance ?: synchronized(this) {
@@ -128,11 +92,16 @@ class MainActivity : AppCompatActivity() {
         viewPager.addOnPageChangeListener(TabLayout.TabLayoutOnPageChangeListener(tabLayout))
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
+                Log.d(mainTag, "onTabSelected: ${tab.position}")
                 viewPager.currentItem = tab.position
             }
 
-            override fun onTabUnselected(tab: TabLayout.Tab) {}
-            override fun onTabReselected(tab: TabLayout.Tab) {}
+            override fun onTabUnselected(tab: TabLayout.Tab) {
+                //Log.d(mainTag, "onTabUnselected: ${tab.position}")
+            }
+            override fun onTabReselected(tab: TabLayout.Tab) {
+                //Log.d(mainTag, "onTabReselected: ${tab.position}")
+            }
         })
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -196,6 +165,22 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
 
         RadioPlayer.init()
+
+        // youtube
+        youtubeView = YouTubePlayerView(this)
+        Log.d(mainTag, "youtubeView: $youtubeView")
+        // ui
+        var uiController = youtubeView?.getPlayerUiController()
+        uiController?.showCurrentTime(false)
+        uiController?.showFullscreenButton(false)
+//        uiController?.showPlayPauseButton(false)
+        uiController?.showSeekBar(false)
+        uiController?.showSeekBar(false)
+        uiController?.showVideoTitle(false)
+        uiController?.showDuration(false)
+//        uiController?.showUi(false)
+        uiController?.showYouTubeButton(false)
+        youtubeView?.addYouTubePlayerListener(YoutubeHandler)
     }
 
     private val locationPermissionCode = 204
@@ -263,27 +248,24 @@ class MainActivity : AppCompatActivity() {
     fun getGPSInfo() {
         Log.d(mainTag, "getGPSInfo()")
 
-        locListener = LocListener()
-
         locationManager?.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             10000,
             10f,
-            locListener
+            CRLocationListener
         )
         locationManager?.requestLocationUpdates(
             LocationManager.NETWORK_PROVIDER,
             10000,
             10f,
-            locListener
+                CRLocationListener
         )
         Log.d(mainTag, "getGPSInfo end")
     }
 
     fun removeGPSTracking() {
         Log.d(mainTag, "removeGPSTracking()")
-        locListener?.let { locationManager?.removeUpdates(it) }
-        locListener = null
+        locationManager?.removeUpdates(CRLocationListener)
     }
 
     @SuppressLint("RestrictedApi")

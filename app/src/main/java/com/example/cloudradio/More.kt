@@ -40,42 +40,29 @@ object : Handler() {
 
         when(command) {
             "success" -> {
-                More.getInstance().buttonUpdate("앱 다운로드 완료", false)
-                More.getInstance().reserveUpdate("앱 다운로드", true, 3000, "앱 다운로드 완료되었습니다.\n${value} 에서 앱을 설치해 주십시오.")
+                More.buttonUpdate("앱 다운로드 완료", false)
+                More.reserveUpdate("앱 다운로드", true, 3000, "앱 다운로드 완료되었습니다.\n${value} 에서 앱을 설치해 주십시오.")
             }
             "failed" -> {
-                More.getInstance().buttonUpdate("앱 다운로드 실패!!", false)
-                More.getInstance().reserveUpdate("앱 다운로드", true, 3000, "앱 다운로드 실패했습니다.\n잠시후 다시 시도하여 주십시오.")
+                More.buttonUpdate("앱 다운로드 실패!!", false)
+                More.reserveUpdate("앱 다운로드", true, 3000, "앱 다운로드 실패했습니다.\n잠시후 다시 시도하여 주십시오.")
             }
         }
     }
 }
 
+@SuppressLint("StaticFieldLeak")
+object More : Fragment(), AsyncCallback {
 
-//class MoreCallback: AsyncCallback {
-//
-//}
+    var bNeedReset: Boolean = false
 
-class More : Fragment(), AsyncCallback {
+    lateinit var btn_app_download: Button
+    lateinit var DEFAULT_FILE_PATH: String
+    lateinit var txt_version_buildtime : TextView
 
-    companion object {
-        private var instance: More? = null
-        var bNeedReset: Boolean = false
+    var mContext: Context? = null
+    var FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
 
-        fun getInstance(): More =
-            instance ?: synchronized(this) {
-                instance ?: More().also {
-                    instance = it
-                }
-            }
-
-        lateinit var btn_app_download: Button
-        lateinit var DEFAULT_FILE_PATH: String
-        lateinit var txt_version_buildtime : TextView
-
-        var mContext: Context? = null
-        var FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
-    }
 
     private val REQUEST_WRITE_PERMISSION = 786
 
@@ -121,8 +108,8 @@ class More : Fragment(), AsyncCallback {
 
     fun reserveUpdate(buttonText: String, enable: Boolean, time: Long, toastMessage: String) {
         sleep(time)
-        getInstance().buttonUpdate(buttonText, enable)
-        getInstance().makeToastMessage(toastMessage)
+        buttonUpdate(buttonText, enable)
+        makeToastMessage(toastMessage)
     }
 
     fun makeToastMessage(message: String) {
@@ -165,7 +152,7 @@ class More : Fragment(), AsyncCallback {
         when( command ) {
             "APP DOWNLOAD" -> {
                 buttonUpdate("앱 다운로드 중입니다.", false)
-                DownloadApplication(getInstance()).execute(FILE_URL, "cloudradio.apk")
+                DownloadApplication(this).execute(FILE_URL, "cloudradio.apk")
             }
         }
     }

@@ -16,13 +16,13 @@ internal class MyAdapter(
     override fun getItem(position: Int): Fragment {
         return when (position) {
             0 -> {
-                OnAir()
+                OnAir
             }
             1 -> {
-                Program()
+                Program
             }
             2 -> {
-                More()
+                More
             }
             else -> getItem(position)
         }

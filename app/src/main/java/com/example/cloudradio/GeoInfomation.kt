@@ -174,7 +174,7 @@ object GeoInfomation {
                 }
 
                 if (findit) {
-                    OnAir.getInstance().updateAddressView(true)
+                    OnAir.updateAddressView(true)
 
                     // air information
                     AirStatus.requestTMCoordination(umdName)
@@ -183,7 +183,7 @@ object GeoInfomation {
 
             override fun onFailure(call: Call<GEO_RESPONSE>, t: Throwable) {
                 Log.d(geoTag, "requestAddressInfo fail : " + t.message)
-                OnAir.getInstance().updateAddressView(false)
+                OnAir.updateAddressView(false)
             }
 
         })

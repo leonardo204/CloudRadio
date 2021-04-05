@@ -191,7 +191,7 @@ data class PMData (
 
 object AirStatus {
 
-    fun getGradeString(grade: String): String {
+    fun getGradeString(grade: String?): String {
         when(grade) {
             "1" -> return "좋음"
             "2" -> return "보통"
@@ -203,9 +203,9 @@ object AirStatus {
 
     private fun dumpAirStatus(data: PMData) {
         Log.d(airTag, "==   AirStatus  ==")
-        Log.d(airTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data.pm10Grade1h!!)+")")
-        Log.d(airTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data.pm25Grade1h!!)+")")
-        OnAir.getInstance().updateAirStatus(data)
+        Log.d(airTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data?.pm10Grade1h)+")")
+        Log.d(airTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data?.pm25Grade1h)+")")
+        data?.let { OnAir.updateAirStatus(it) }
     }
 
     fun requestTMCoordination(umdName: String) {
@@ -270,13 +270,19 @@ object AirStatus {
                     Log.d(airTag, "getAirPMData: "+response.body())
                     var pm10Value: String = response.body()!!.response.body.items[0].pm10Value
                     var pm10Grade1h: String = response.body()!!.response.body.items[0].pm10Grade1h
-                    var pm25Value: String? = response.body()!!.response.body.items[0].pm25Value
+                    var pm25Value: String = response.body()!!.response.body.items[0].pm25Value
                     var pm25Grade1h: String = response.body()!!.response.body.items[0].pm25Grade1h
-                    var data = PMData(pm25Grade1h, pm25Value, pm10Grade1h, pm10Value)
-                    if ( pm10Value!=null && pm10Grade1h!= null
-                        && pm25Value!=null && pm25Grade1h!= null ) {
-                            dumpAirStatus(data)
+                    Log.d(airTag, "pm10Value: ${pm10Value} pm10Grade1h: ${pm10Grade1h} pm25Value: ${pm25Value} pm25Grade1h: ${pm25Grade1h}")
+                    if ( pm25Value.equals("-") ) {
+                        pm25Value = "-1"
+                        pm25Grade1h = "알 수 없음"
                     }
+                    if ( pm10Value.equals("-") ) {
+                        pm10Value = "-1"
+                        pm10Grade1h = "알 수 없음"
+                    }
+                    val data = PMData(pm25Grade1h, pm25Value, pm10Grade1h, pm10Value)
+                    dumpAirStatus(data)
                 }
             }
 
