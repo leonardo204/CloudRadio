@@ -104,14 +104,14 @@ object OnAir : Fragment() {
     fun restoreButtons() {
         program_layout?.removeAllViews()
 
-        var iter = onair_btnList.iterator()
+        val iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
-            var obj = iter.next()
-            var filename = obj.key
-            var btn = obj.value
+            val obj = iter.next()
+            val filename = obj.key
+            val btn = obj.value
 
             Log.d(onairTag, "restoreButton: ${filename}")
-            var parent = btn.parent as ViewGroup
+            val parent = btn.parent as ViewGroup
             parent.removeView(btn)
             Log.d(onairTag, "parent: $parent - $program_layout")
             btn.setOnClickListener { onRadioButton(filename, CLICK_TYPE.CLICK) }
@@ -490,7 +490,13 @@ object OnAir : Fragment() {
 
             if ( mVideoId != null ) {
                 stopRadioForegroundService()
-                mCurrnetPlayFilename?.let { playStopYoutube(it, mVideoId, true) }
+                if ( mCurrnetPlayFilename != null ) {
+                    if ( mCurrnetPlayFilename!!.contains("youtube") ) {
+                        playStopYoutube(mCurrnetPlayFilename!!, mVideoId, true)
+                    } else {
+                        startRadioForegroundService("radio", mCurrnetPlayFilename!!, null)
+                    }
+                }
             }
         }
 
