@@ -571,8 +571,18 @@ object OnAir : Fragment() {
         mPMData = data
         var grade: String = "1"
         var gradeName: String
-        if ( data.pm10Grade1h!!.toInt() > grade.toInt() ) grade = data.pm10Grade1h
-        if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) grade = data.pm25Grade1h
+
+        if ( data.pm10Grade1h.equals("알 수 없음") ) {
+            grade = "99"
+        } else if ( data.pm10Grade1h!!.toInt() > grade.toInt() ) {
+            grade = data.pm10Grade1h
+        }
+
+        if ( data.pm25Grade1h.equals("알 수 없음") ) {
+            grade = "99"
+        } else if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) {
+            grade = data.pm25Grade1h
+        }
         Log.d(onairTag, "worst grade: " + AirStatus.getGradeString(grade))
         when(grade) {
             "1" -> {
@@ -587,7 +597,11 @@ object OnAir : Fragment() {
             "4" -> {
                 img_airStatus.setImageResource(R.drawable.red_circle); gradeName = "매우나쁨"
             }
-            else -> { Log.d(onairTag, "Can't know pm grade"); gradeName = "알수없음" }
+            else -> {
+                img_airStatus.setImageResource(R.drawable.red_circle)
+                Log.d(onairTag, "Can't know pm grade")
+                gradeName = "알수없음"
+            }
         }
         txt_pmGrade.setText(gradeName)
         txt_pmValue.setText("초미세먼지 (" + data.pm25Value + ") / 미세먼지 (" + data.pm10Value + ")")

@@ -77,4 +77,7 @@ dependencies {
     // kotlin serialization
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.20.0" // JVM dependency
+
+    // jsoup
+    implementation 'org.jsoup:jsoup:1.11.3'
 }

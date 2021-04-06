@@ -2,16 +2,14 @@ package com.example.cloudradio
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.os.AsyncTask
-import android.os.Environment
+import android.os.*
 import android.util.Log
+import kotlinx.serialization.UnstableDefault
 import kotlinx.serialization.json.Json
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
+import kotlinx.serialization.json.JsonElement
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.io.*
-import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLConnection
 import java.nio.charset.Charset
@@ -24,12 +22,12 @@ enum class RadioResource {
 }
 
 data class RadioCompletionMap(
-        val defaultButtonText: String,    // button 에 표시할 기본 텍스트
-        val title: String,                // pls 파일에서 읽어들인 title
-        val id: Int,                      // channel 별 관리 목적의 id (arrayList 의 index 이기도 함)
-        val filename: String,             // 실제 저장될 filename
-        val fileaddress: String,          // 원본 file 주소
-        val httpAddress: String?           // 스트리밍 file 주소 (MediaPlayer 에 이걸 던진다)
+    val defaultButtonText: String,    // button 에 표시할 기본 텍스트
+    val title: String,                // pls 파일에서 읽어들인 title
+    val id: Int,                      // channel 별 관리 목적의 id (arrayList 의 index 이기도 함)
+    val filename: String,             // 실제 저장될 filename
+    val fileaddress: String,          // 원본 file 주소
+    val httpAddress: String?           // 스트리밍 file 주소 (MediaPlayer 에 이걸 던진다)
 )
 
 /**
@@ -84,58 +82,23 @@ enum class RadioRawChannels {
         override fun getChannelAddress(): String = "http://serpent0.duckdns.org:8088/kbs1radio.pls"
         override fun getDefaultButtonText(): String = "KBS 1 라디오"
     };
-//    YOUTUBE_JAZZ_MORNING {
-//        override fun getChannelTitle(): String = "BOSSA NOVA MORNING CAFE"
-//        override fun getChannelFilename(): String = "youtube_r80MlI__3Qo"
-//        override fun getChannelAddress(): String = "https://youtu.be/r80MlI__3Qo"
-//        override fun getDefaultButtonText(): String = "BOSSA NOVA MORNING CAFE"
-//    },
-//    YOUTUBE_IU_LILAC{
-//        override fun getChannelTitle(): String = "아이유 라일락"
-//        override fun getChannelFilename(): String = "youtube_Qio1G8GwKA4"
-//        override fun getChannelAddress(): String = "https://youtu.be/Qio1G8GwKA4"
-//        override fun getDefaultButtonText(): String = "아이유 라일락"
-//    },
-//    YOUTUBE_BB_ROLLIN {
-//        override fun getChannelTitle(): String = "브레이브걸스 롤린"
-//        override fun getChannelFilename(): String = "youtube_ZL47HB4uSlE"
-//        override fun getChannelAddress(): String = "https://youtu.be/ZL47HB4uSlE"
-//        override fun getDefaultButtonText(): String = "브레이브걸스 롤린"
-//    },
-//    YOUTUBE_MELONE_HIPHOP_TOP{
-//        override fun getChannelTitle(): String = "멜론 역대 힙합 1위 모음집"
-//        override fun getChannelFilename(): String = "youtube_pOQynBTIsZ0"
-//        override fun getChannelAddress(): String = "https://youtu.be/pOQynBTIsZ0"
-//        override fun getDefaultButtonText(): String = "멜론 역대 힙합 1위 모음집"
-//    },
-//    YOUTUBE_MELONE_2000 {
-//        override fun getChannelTitle(): String = "그때 그시절 멜론"
-//        override fun getChannelFilename(): String = "youtube_7CV67qnNOxk"
-//        override fun getChannelAddress(): String = "https://youtu.be/7CV67qnNOxk"
-//        override fun getDefaultButtonText(): String = "그때 그시절 멜론"
-//    },
-//    YOUTUBE_POP_EMOTION {
-//        override fun getChannelTitle(): String = "감성 팝송 모음"
-//        override fun getChannelFilename(): String = "youtube_OFvZO7ul41A"
-//        override fun getChannelAddress(): String = "https://youtu.be/OFvZO7ul41A"
-//        override fun getDefaultButtonText(): String = "새벽에 들으면 감성 터지는 팝송 모음"
-//    },
-//    YOUTUBE_SMOOTH_BLUES {
-//        override fun getChannelTitle(): String = "블루스 모음"
-//        override fun getChannelFilename(): String = "youtube_zdBGqWnpDRk"
-//        override fun getChannelAddress(): String = "https://youtu.be/zdBGqWnpDRk"
-//        override fun getDefaultButtonText(): String = "부드러운 블루스 모음"
-//    },
-//    YOUTUBE_PIANO_SPRING {
-//        override fun getChannelTitle(): String = "봄에 듣는 피아노"
-//        override fun getChannelFilename(): String = "youtube_i0gRgqy_dx8"
-//        override fun getChannelAddress(): String = "https://youtu.be/i0gRgqy_dx8"
-//        override fun getDefaultButtonText(): String = "봄에 듣는 피아노 모음집"
-//    };
     abstract fun getChannelAddress(): String
     abstract fun getChannelFilename(): String
     abstract fun getChannelTitle(): String
     abstract fun getDefaultButtonText(): String
+}
+
+val res_handler: Handler = @SuppressLint("HandlerLeak")
+object : Handler() {
+    override fun handleMessage(msg: Message) {
+        Log.d(resourceTag, "handler handleMessage: " + msg)
+
+        val bundle = msg.data
+        val title = bundle.getString("title")
+        val url = bundle.getString("url")
+        RadioChannelResources.makeChannelList(title, url)
+        if ( Program.bInitilized ) Program.initProgramButtons()
+    }
 }
 
 @SuppressLint("StaticFieldLeak")
@@ -159,7 +122,10 @@ object RadioChannelResources: AsyncCallback {
     fun getDefaultButtonTextByFilename(filename: String): String {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
-                Log.d(resourceTag, "getDefaultButtonTextByFilename: ${channelList.get(i).defaultButtonText}")
+                Log.d(
+                    resourceTag,
+                    "getDefaultButtonTextByFilename: ${channelList.get(i).defaultButtonText}"
+                )
                 return channelList.get(i).defaultButtonText
             }
         }
@@ -198,37 +164,12 @@ object RadioChannelResources: AsyncCallback {
         DownloadFileFromURL(this).execute(httpAddress, filename)
     }
 
-    fun getFinalURL(url: URL): URL? {
-        Log.d(resourceTag, "getFinalURL: $url")
-        try {
-            Log.d(resourceTag, "1")
-            val con = url.openConnection()
-            Log.d(resourceTag, "2")
-            //con.setInstanceFollowRedirects(false)
-            Log.d(resourceTag, "3")
-            var url2 = URL(con.getHeaderField("Location"))
-            Log.d(resourceTag, "url2: $url2")
-            //con.connect()
-
-            // Header에서 Status Code를 뽑는다.
-//            val resCode: Int = con.getResponseCode()
-//            Log.d(resourceTag, "inUrl: $url resCode: $resCode")
-//            // http코드가 301(영구이동), 302(임시 이동), 303(기타 위치 보기) 이면 또다시 이 함수를 태운다. 재귀함수.
-//            if (resCode == HttpURLConnection.HTTP_SEE_OTHER || resCode == HttpURLConnection.HTTP_MOVED_PERM || resCode == HttpURLConnection.HTTP_MOVED_TEMP) {
-//                var Location: String = con.getHeaderField("Location")
-//                if (Location.startsWith("/")) {
-//                    Location = url.protocol + "://" + url.host + Location
-//                }
-//                return getFinalURL(URL(Location))
-//            }
-        } catch (e: Exception) {
-            Log.d(resourceTag, "Exception: " + e.message)
-        }
-        return url
-    }
-
+    @OptIn(UnstableDefault::class)
     private fun addFromDataFile() {
         Log.d(resourceTag, "addFromDataFile")
+        var element: JsonElement? = null
+
+        // system 내장
         val inputStream = mContext.assets.open("channels.json")
         val sb = StringBuilder()
         inputStream?.let {
@@ -240,27 +181,73 @@ object RadioChannelResources: AsyncCallback {
             it.close()
         }
         Log.d(resourceTag, "${sb}")
-        val element = Json.parseJson(sb.toString())
-        for( i in element.jsonArray.indices ) {
-            Log.d(resourceTag, "-    [$i]   -")
-            Log.d(resourceTag, "${element.jsonArray[i]}")
+        var ele1 = Json.parseJson(sb.toString())
+        val version1 = ele1.jsonObject["version"].toString().replace("\"", "")
 
-            if ( element.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean() ) {
-                var liveAddr = element.jsonArray[i].jsonObject["fileaddress"].toString().replace("\"", "")
-                var finalUrl = getFinalURL(URL(liveAddr))
-                Log.d(resourceTag, "live url check: $finalUrl")
-                continue
+        // downloaded file 있는지 체크
+        val file = File(DEFAULT_FILE_PATH + "/" + "channels.json")
+        var content: String? = null
+        val version2: String
+
+        if ( file.exists() && file.canRead() ) {
+            try {
+                var ins: InputStream = file.inputStream()
+                content = ins.readBytes().toString(Charset.defaultCharset())
+            } catch (e: Exception) {
+                Log.d(resourceTag, "checkVersion error: " + e.message)
             }
 
-            var map = RadioCompletionMap(
-                    element.jsonArray[i].jsonObject["defaultButtonText"].toString().replace("\"", ""),
-                    element.jsonArray[i].jsonObject["title"].toString().replace("\"", ""),
+            content?.let {
+                var ele2 = Json.parseJson(it)
+                version2 = ele2.jsonObject["version"].toString().replace("\"", "")
+
+                Log.d(resourceTag, "sys ch ver($version1)  down ch ver($version2)")
+
+                if ( version1.toInt() - version2.toInt() < 0) {
+                    Log.d(resourceTag, "use download channels.json")
+                    element = Json.parseJson(content)
+                } else {
+                    Log.d(resourceTag, "use internal channels.json")
+                    element = Json.parseJson(sb.toString())
+                }
+            }
+        } else {
+            Log.d(resourceTag, "use internal channels.json")
+            element = Json.parseJson(sb.toString())
+        }
+
+
+        // version check end
+        element?.let {
+            var data = Json.parseJson(element!!.jsonObject["data"].toString())
+            for (i in data?.jsonArray!!.indices) {
+                Log.d(resourceTag, "-    [$i]   -")
+                Log.d(resourceTag, "${data.jsonArray[i]}")
+
+                val live = data.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean()
+                val title = data.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
+                val address = data.jsonArray[i].jsonObject["fileaddress"].toString().replace("\"", "")
+
+                // live 인 경우엔 redirection url 을 얻어서 설정해야 함
+                if ( live ) {
+                    ParseUrl(this).execute(title, address)
+                    continue
+                }
+
+                // live 가 아닌 경우에만 아래 값들이 유효
+                val videoId = data.jsonArray[i].jsonObject["videoId"].toString().replace("\"", "")
+                val filename = "youtube_" + videoId
+
+                val map = RadioCompletionMap(
+                    title,
+                    title,
                     channelList.size,
-                    element.jsonArray[i].jsonObject["filename"].toString().replace("\"", ""),
-                    element.jsonArray[i].jsonObject["fileaddress"].toString().replace("\"", ""),
-                    element.jsonArray[i].jsonObject["httpAddress"].toString().replace("\"", "")
-            )
-            addChannelList(map)
+                    filename,
+                    address,
+                    address
+                )
+                addChannelList(map)
+            }
         }
     }
 
@@ -268,39 +255,39 @@ object RadioChannelResources: AsyncCallback {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
+        // for radio
         for(i in RadioRawChannels.values().indices) {
-            Log.d(resourceTag, "initResources( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
+            Log.d(
+                resourceTag,
+                "add radio channels ( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename()
+            )
 
-            if ( RadioRawChannels.values()[i].getChannelFilename().contains("youtube") ) {
-                Log.d(resourceTag, "for youtube")
-                setYoutubeChannels(RadioRawChannels.values()[i])
+            var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
+            if (fileobj.exists()) {
+                Log.d(resourceTag, "File exist")
+                readChannelFile(fileobj)
             } else {
-                Log.d(resourceTag, "for radio")
-                var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
-                if (fileobj.exists()) {
-                    Log.d(resourceTag, "File exist")
-                    readChannelFile(fileobj)
-                } else {
-                    Log.d(resourceTag, "File don't exist")
-                    // 파일이 없더라도 일단 빈 상태로 채널 맵을 채워둔다
-                    // 다운로드 완료 되어 파일 읽는데 성공하면, 이것 지우고 새것으로 대체됨
-                    var map =  RadioCompletionMap(
-                            RadioRawChannels.values()[i].getDefaultButtonText(),
-                            RadioRawChannels.values()[i].getChannelTitle(),
-                            channelList.size,
-                            RadioRawChannels.values()[i].getChannelFilename(),
-                            RadioRawChannels.values()[i].getChannelAddress(),
-                            null)
-                    addChannelList(map)
+                Log.d(resourceTag, "File don't exist")
+                // 파일이 없더라도 일단 빈 상태로 채널 맵을 채워둔다
+                // 다운로드 완료 되어 파일 읽는데 성공하면, 이것 지우고 새것으로 대체됨
+                var map =  RadioCompletionMap(
+                    RadioRawChannels.values()[i].getDefaultButtonText(),
+                    RadioRawChannels.values()[i].getChannelTitle(),
+                    channelList.size,
+                    RadioRawChannels.values()[i].getChannelFilename(),
+                    RadioRawChannels.values()[i].getChannelAddress(),
+                    null
+                )
+                addChannelList(map)
 
-                    DownloadFileFromURL(this).execute(
-                            RadioRawChannels.values()[i].getChannelAddress(),
-                            RadioRawChannels.values()[i].getChannelFilename()
-                    )
-                }
+                DownloadFileFromURL(this).execute(
+                    RadioRawChannels.values()[i].getChannelAddress(),
+                    RadioRawChannels.values()[i].getChannelFilename()
+                )
             }
         }
 
+        // for youtube
         addFromDataFile()
 
         Log.d(resourceTag, "initResources: " + channelList.size)
@@ -316,16 +303,15 @@ object RadioChannelResources: AsyncCallback {
         channelList.removeAt(idx)
     }
 
-    private fun setYoutubeChannels(channels: RadioRawChannels) {
-        var map = RadioCompletionMap(channels.getDefaultButtonText(), channels.getChannelTitle(), channelList.size,
-                channels.getChannelFilename(), channels.getChannelAddress(), channels.getChannelAddress())
-        addChannelList(map)
-        Log.d(resourceTag, "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size)
-    }
-
     private fun setChannelsFromPlsFile(content: String) {
-        var httpAddress = content.substring(content.indexOf("File1=") + 6, content.indexOf("Title1=") - 1)
-        var title = content.substring(content.indexOf("Title1=") + 7, content.indexOf("Length1=") - 1)
+        var httpAddress = content.substring(
+            content.indexOf("File1=") + 6,
+            content.indexOf("Title1=") - 1
+        )
+        var title = content.substring(
+            content.indexOf("Title1=") + 7,
+            content.indexOf("Length1=") - 1
+        )
         Log.d(resourceTag, "title($title) httpAddress($httpAddress)")
 
         // check and remove duplication from channelList
@@ -338,11 +324,16 @@ object RadioChannelResources: AsyncCallback {
 
         for(i in RadioRawChannels.values().indices) {
             if ( title.equals(RadioRawChannels.values()[i].getChannelTitle()) ) {
-                var map = RadioCompletionMap(RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,
-                        RadioRawChannels.values()[i].getChannelFilename(),
-                        RadioRawChannels.values()[i].getChannelAddress(), httpAddress)
+                var map = RadioCompletionMap(
+                    RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,
+                    RadioRawChannels.values()[i].getChannelFilename(),
+                    RadioRawChannels.values()[i].getChannelAddress(), httpAddress
+                )
                 addChannelList(map)
-                Log.d(resourceTag, "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size)
+                Log.d(
+                    resourceTag,
+                    "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size
+                )
                 break
             }
         }
@@ -354,16 +345,40 @@ object RadioChannelResources: AsyncCallback {
         }
     }
 
+    fun makeChannelList(title: String, url: String) {
+        Log.d(resourceTag, "makeChannelList ${title} : ${url}")
+        var videoId = url.substring( url.indexOf("watch?v=")+8)
+        var filename = "youtube_" + videoId
+        val map = RadioCompletionMap(title, title, channelList.size, filename, url, url)
+        addChannelList(map)
+    }
+
     override fun onTaskDone(vararg arg: String?) {
         Log.d(resourceTag, "callback Type: " + arg[0])
         when(arg[0])
         {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
             "fileopen" -> setChannelsFromPlsFile(arg[1]!!)
+            "ParseUrl" -> {
+                var msg = res_handler.obtainMessage()
+                var bundle = Bundle()
+                bundle.putString("title", arg[1])
+                bundle.putString("url", arg[2])
+
+                msg.data = bundle
+                res_handler.sendMessage(msg)
+            }
             "failed" -> {
                 when (arg[1]) {
                     "openFile" -> sendCallback(arg[1], arg[2])                // filename
-                    "downFile" -> sendCallback(arg[1], arg[2], arg[3])        // fileaddress , filename
+                    "downFile" -> sendCallback(
+                        arg[1],
+                        arg[2],
+                        arg[3]
+                    )        // fileaddress , filename
+                    "ParseUrl" -> {
+                        Log.d(resourceTag, "Failed to get Channel url: ${arg[2]}")
+                    }
                     else -> Log.d(resourceTag, "ignore failed action")
                 }
             }
@@ -431,9 +446,34 @@ object RadioChannelResources: AsyncCallback {
 
             return null
         }
-
     }
 
+    internal class ParseUrl(context: RadioChannelResources) : AsyncTask<String, String, String>() {
+        val callback: AsyncCallback = context
+        override fun doInBackground(vararg param: String?): String? {
+            var title = param[0]
+            var url = param[1]
+            var finalUrl: String? = null
+            try {
+                //Connect to the website
+                val document: Document = Jsoup.connect(url)
+                    .timeout(3000)
+                    .get()
+
+                //Get the logo source of the website
+                val link = document.select("link[rel=canonical]").first()
+                finalUrl = link.attr("abs:href")
+                Log.d(resourceTag, "ParseUrl.  title(${title}) url check: $finalUrl")
+            } catch (e: Exception) {
+                Log.d(resourceTag, "ParseUrl Exception: "+e.message)
+                callback.onTaskDone("failed", "ParseUrl", title)
+            }
+
+            callback.onTaskDone("ParseUrl", title, finalUrl)
+
+            return null
+        }
+    }
 
     /**
      * Background Async Task to download file

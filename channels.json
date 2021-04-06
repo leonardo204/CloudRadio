@@ -1,0 +1,17 @@
+{
+  "version": "20210406",
+  "data" : [
+    {
+      "live" : "true",
+      "title": "릴렉스 카페 (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/c/RelaxCafeMusic/live"
+    },
+    {
+        "live" : "true",
+        "title": "아침에 재즈 (live)",
+        "videoId": "",
+        "fileaddress" : "https://www.youtube.com/channel/UCqKLOX-B7H9djovoTzj-Wdg/live"
+    }
+  ]
+}

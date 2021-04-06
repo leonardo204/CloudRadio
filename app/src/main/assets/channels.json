@@ -1,83 +1,77 @@
-[
-  {
-    "live" : "false",
-    "defaultButtonText": "BOSSA NOVA MORNING CAFE",
-    "title": "BOSSA NOVA MORNING CAFE",
-    "id": "0",
-    "filename": "youtube_r80MlI__3Qo",
-    "fileaddress": "https://youtu.be/r80MlI__3Qo",
-    "httpAddress": "https://youtu.be/r80MlI__3Qo"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "아이유 라일락",
-    "title": "아이유 라일락",
-    "id": "0",
-    "filename": "youtube_Qio1G8GwKA4",
-    "fileaddress": "https://youtu.be/Qio1G8GwKA4",
-    "httpAddress": "https://youtu.be/Qio1G8GwKA4"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "브레이브걸스 롤린",
-    "title": "브레이브걸스 롤린",
-    "id": "0",
-    "filename": "youtube_PC2UEz2t08Q",
-    "fileaddress": "https://youtu.be/PC2UEz2t08Q",
-    "httpAddress": "https://youtu.be/PC2UEz2t08Q"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "멜론 역대 힙합 1위 모음집",
-    "title": "멜론 역대 힙합 1위 모음집",
-    "id": "0",
-    "filename": "youtube_pOQynBTIsZ0",
-    "fileaddress": "https://youtu.be/pOQynBTIsZ0",
-    "httpAddress": "https://youtu.be/pOQynBTIsZ0"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "그때 그시절 멜론",
-    "title": "그때 그시절 멜론",
-    "id": "0",
-    "filename": "youtube_7CV67qnNOxk",
-    "fileaddress": "https://youtu.be/7CV67qnNOxk",
-    "httpAddress": "https://youtu.be/7CV67qnNOxk"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "감성 팝송 모음",
-    "title": "감성 팝송 모음",
-    "id": "0",
-    "filename": "youtube_OFvZO7ul41A",
-    "fileaddress": "https://youtu.be/OFvZO7ul41A",
-    "httpAddress": "https://youtu.be/OFvZO7ul41A"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "블루스 모음",
-    "title": "블루스 모음",
-    "id": "0",
-    "filename": "youtube_zdBGqWnpDRk",
-    "fileaddress": "https://youtu.be/zdBGqWnpDRk",
-    "httpAddress": "https://youtu.be/zdBGqWnpDRk"
-  },
-  {
-    "live" : "false",
-    "defaultButtonText": "봄에 듣는 피아노",
-    "title": "봄에 듣는 피아노",
-    "id": "0",
-    "filename": "youtube_i0gRgqy_dx8",
-    "fileaddress": "https://youtu.be/i0gRgqy_dx8",
-    "httpAddress": "https://youtu.be/i0gRgqy_dx8"
-  },
-  {
-    "live" : "true",
-    "defaultButtonText": "아침에 재즈(Live) 테스트",
-    "title": "아침에 재즈(Live) 테스트",
-    "id": "0",
-    "filename": "",
-    "fileaddress": "https://www.youtube.com/channel/UCqKLOX-B7H9djovoTzj-Wdg/live?&ab_channel=Jazz%26BossaCollection",
-    "httpAddress": ""
-  }
-]
+{
+  "version": "20210406",
+  "data" : [
+    {
+      "live" : "true",
+      "title": "릴렉스 카페 (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/c/RelaxCafeMusic/live"
+    },
+    {
+      "live" : "true",
+      "title": "아침에 재즈 (live)",
+      "videoId": "",
+      "fileaddress" : "https://www.youtube.com/channel/UCqKLOX-B7H9djovoTzj-Wdg/live"
+    },
+    {
+      "live" : "true",
+      "title" : "한강 노동요 (live)",
+      "videoId": "",
+      "fileaddress" : "https://www.youtube.com/channel/UCQKQTgZJo3PlxA-9V1Z51XA/live"
+    },
+    {
+      "live" : "true",
+      "title" : "Hits Radio (live)",
+      "videoId": "",
+      "fileaddress" : "https://www.youtube.com/channel/UC0f4WJAjYdwl4XYHz-6FhyQ/live"
+    },
+    {
+      "live" : "true",
+      "title" : "GoodLife Radio (live)",
+      "videoId": "",
+      "fileaddress" : "https://www.youtube.com/channel/UChs0pSaEoNLV4mevBFGaoKA/live"
+    },
+    {
+      "live" : "false",
+      "title": "아이유 라일락",
+      "videoId": "Qio1G8GwKA4",
+      "fileaddress": "https://youtu.be/Qio1G8GwKA4"
+    },
+    {
+      "live" : "false",
+      "title": "브레이브걸스 롤린",
+      "videoId": "PC2UEz2t08Q",
+      "fileaddress": "https://youtu.be/PC2UEz2t08Q"
+    },
+    {
+      "live" : "false",
+      "title": "멜론 역대 힙합 1위 모음집",
+      "videoId": "pOQynBTIsZ0",
+      "fileaddress": "https://youtu.be/pOQynBTIsZ0"
+    },
+    {
+      "live" : "false",
+      "title": "그때 그시절 멜론",
+      "videoId": "7CV67qnNOxk",
+      "fileaddress": "https://youtu.be/7CV67qnNOxk"
+    },
+    {
+      "live" : "false",
+      "title": "감성 팝송 모음",
+      "videoId": "OFvZO7ul41A",
+      "fileaddress": "https://youtu.be/OFvZO7ul41A"
+    },
+    {
+      "live" : "false",
+      "title": "블루스 모음",
+      "videoId": "zdBGqWnpDRk",
+      "fileaddress": "https://youtu.be/zdBGqWnpDRk"
+    },
+    {
+      "live" : "false",
+      "title": "봄에 듣는 피아노",
+      "videoId": "i0gRgqy_dx8",
+      "fileaddress": "https://youtu.be/i0gRgqy_dx8"
+    }
+  ]
+}

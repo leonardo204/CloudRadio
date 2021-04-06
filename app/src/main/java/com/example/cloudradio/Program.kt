@@ -18,6 +18,7 @@ var programTag = "CR_Program"
 @SuppressLint("StaticFieldLeak")
 object Program : Fragment() {
 
+    var bInitilized = false
     lateinit var mContext: Context
     var program_btnList = HashMap<String, Button>()
 
@@ -48,6 +49,8 @@ object Program : Fragment() {
         btn_save_setting.setOnClickListener { onRadioButton("SAVE") }
         btn_reset_setting.setOnClickListener { onRadioButton("RESET") }
 
+        bInitilized = true
+
         initProgramButtons()
 
         // Inflate the layout for this fragment
@@ -60,11 +63,13 @@ object Program : Fragment() {
 
     }
 
-    private fun initProgramButtons() {
-        Log.d(programTag, "channels: ${RadioChannelResources.channelList.size}")
+    fun initProgramButtons() {
+        layout_programs.removeAllViews()
+
+        Log.d(programTag, "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
-            var button = Button(mContext)
-            var filename = RadioChannelResources.channelList.get(i).filename
+            val button = Button(mContext)
+            val filename = RadioChannelResources.channelList.get(i).filename
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
             button.setOnClickListener { onRadioButton(filename) }
             program_btnList.put(filename, button)
@@ -74,6 +79,12 @@ object Program : Fragment() {
             layout_programs.addView(button)
         }
         resetAllButtonText()
+
+        if ( favList.size > 0 ) {
+            for(i in favList.indices) {
+                updateButtonText(favList.get(i), getDefaultTextByFilename(favList.get(i)), true, true)
+            }
+        }
         Log.d(programTag, "initProgramButtons() btnList: "+ program_btnList.size)
     }
 
@@ -104,7 +115,7 @@ object Program : Fragment() {
         OnAir.makePrograms(favList)
     }
 
-    private fun resetAction() {
+    fun resetAction() {
         resetAllButtonText()
         OnAir.resetPrograms()
         favList.clear()
