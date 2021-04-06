@@ -373,6 +373,12 @@ object RadioChannelResources: AsyncCallback {
 
     private fun sendCallback(vararg arg: String?) {
         Log.d(resourceTag, "doFailedAction: " + arg[0])
+
+        if ( !OnAir.bInitialized ) {
+            Log.d(resourceTag, "Ignore callback. reason: Not initialized OnAir fragment")
+            return
+        }
+
         when( arg[0] ) {
             "openFile" -> {
                 Log.d(resourceTag, "open failed filename: " + arg[1])
