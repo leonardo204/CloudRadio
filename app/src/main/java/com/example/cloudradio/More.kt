@@ -137,6 +137,9 @@ object More : Fragment(), AsyncCallback {
     // channel update
     lateinit var btn_channel_update: Button
 
+    // dpi
+    lateinit var txt_dpi: TextView
+
 
     var mContext: Context? = null
     var APP_VERSION_URL = "http://zerolive7.iptime.org:9093/api/public/dl/3I4X2Lnj/01_project/cloudradio/app_version.json"
@@ -209,10 +212,10 @@ object More : Fragment(), AsyncCallback {
         val str1 = ver1.substring(1)
         val str2 = ver2.substring(1)
         if (str1.substring(0, 3).toFloat() > str2.substring(0, 3).toFloat()) {
-            Log.d(moreTag,"1) " + str1.substring(0, 3) + " > " + str2.substring(0, 3))
+            Log.d(moreTag, "1) " + str1.substring(0, 3) + " > " + str2.substring(0, 3))
             return ver1
         } else if (str2.substring(0, 3).toFloat() > str1.substring(0, 3).toFloat()) {
-            Log.d(moreTag,"2) " + str2.substring(0, 3) + " > " + str1.substring(0, 3))
+            Log.d(moreTag, "2) " + str2.substring(0, 3) + " > " + str1.substring(0, 3))
             return ver2
         } else if (str1.substring(2).toFloat() > str2.substring(2).toFloat()) {
             Log.d(moreTag, "3) " + str1.substring(2) + " > " + str2.substring(2))
@@ -240,7 +243,10 @@ object More : Fragment(), AsyncCallback {
             val nAppVer = element.jsonObject["version_cloudradio"].toString().replace("\"", "")
             val nChVer = element.jsonObject["version_channel"].toString().replace("\"", "")
 
-            Log.d(moreTag, "get version ( $mAppVersion vs $nAppVer  -  $mChannelVersion vs $nChVer )")
+            Log.d(
+                moreTag,
+                "get version ( $mAppVersion vs $nAppVer  -  $mChannelVersion vs $nChVer )"
+            )
 
             var needAppUpdate: Boolean = false
             var needChannelUpdate: Boolean = false
@@ -291,7 +297,7 @@ object More : Fragment(), AsyncCallback {
         val version2: String
 
         // 다운 버전
-        val file = File(DEFAULT_FILE_PATH+"/"+"channels.json")
+        val file = File(DEFAULT_FILE_PATH + "/" + "channels.json")
         var content: String? = null
 
         if ( file.exists() && file.canRead() ) {
@@ -368,7 +374,44 @@ object More : Fragment(), AsyncCallback {
         btn_channel_update.setOnClickListener { onButtonClick("CHANNEL UPDATE") }
         btn_channel_update.isEnabled = false
 
+        /*
+            0.75 - ldpi
+            1.0 - mdpi
+            1.5 - hdpi
+            2.0 - xhdpi
+            3.0 - xxhdpi
+            4.0 - xxxhdpi
+         */
+        txt_dpi = view.findViewById(R.id.txt_dpi)
+        val metrics = mContext?.resources?.displayMetrics
+        Log.d(moreTag, "device dpi => " + metrics?.density)
+        txt_dpi.setText("해상도 DPI: ${metrics?.density?.let { getDPIText(it) }}")
+
         return view
+    }
+
+    private fun getDPIText(density: Float): String {
+        when {
+            density <= 0.75f -> {
+                return "ldpi"
+            }
+            density <= 1.0f -> {
+                return "mdpi"
+            }
+            density <= 1.5f -> {
+                return "hdpi"
+            }
+            density <= 2.0f -> {
+                return "xhdpi"
+            }
+            density <= 3.0f -> {
+                return "xxhdpi"
+            }
+            density <= 4.0f -> {
+                return "xxxhdpi"
+            }
+            else -> return "unknown"
+        }
     }
 
 
