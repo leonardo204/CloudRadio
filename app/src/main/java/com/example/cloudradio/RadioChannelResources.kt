@@ -107,6 +107,7 @@ object RadioChannelResources: AsyncCallback {
     private lateinit var mContext: Context
     lateinit var DEFAULT_FILE_PATH: String
     var bInitCompleted: Boolean = false
+    var channelSize = 0
 
     var channelList = ArrayList<RadioCompletionMap>()
 
@@ -207,12 +208,12 @@ object RadioChannelResources: AsyncCallback {
                     Log.d(resourceTag, "use download channels.json")
                     element = Json.parseJson(content)
                 } else {
-                    Log.d(resourceTag, "use internal channels.json")
+                    Log.d(resourceTag, "use internal channels.json 1")
                     element = Json.parseJson(sb.toString())
                 }
             }
         } else {
-            Log.d(resourceTag, "use internal channels.json")
+            Log.d(resourceTag, "use internal channels.json 2")
             element = Json.parseJson(sb.toString())
         }
 
@@ -220,6 +221,7 @@ object RadioChannelResources: AsyncCallback {
         // version check end
         element?.let {
             var data = Json.parseJson(element!!.jsonObject["data"].toString())
+            channelSize += data.jsonArray!!.size
             for (i in data?.jsonArray!!.indices) {
                 Log.d(resourceTag, "-    [$i]   -")
                 Log.d(resourceTag, "${data.jsonArray[i]}")
@@ -254,6 +256,8 @@ object RadioChannelResources: AsyncCallback {
     fun initResources(context: Context) {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+
+        channelSize += RadioRawChannels.values().size
 
         // for radio
         for(i in RadioRawChannels.values().indices) {
@@ -290,16 +294,22 @@ object RadioChannelResources: AsyncCallback {
         // for youtube
         addFromDataFile()
 
-        Log.d(resourceTag, "initResources: " + channelList.size)
+        Log.d(resourceTag, "initResources(cur/total): ${channelList.size} / ${channelSize}" )
     }
 
     private fun addChannelList(map: RadioCompletionMap) {
-        Log.d(resourceTag, "addChannelList filename ${map.filename}")
         channelList.add(map)
+        Log.d(resourceTag, "addChannelList filename ${map.filename} size: ${channelList.size}")
+
+        if ( channelList.size == channelSize ) {
+            Log.d(resourceTag, "Resource init completed")
+            bInitCompleted = true
+            OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
+        }
     }
 
     private fun removeChannelList(idx: Int) {
-        Log.d(resourceTag, "removeChannelList filename ${channelList.get(idx).filename}")
+        Log.d(resourceTag, "removeChannelList filename ${channelList.get(idx).filename} size: ${channelList.size}")
         channelList.removeAt(idx)
     }
 
@@ -330,19 +340,12 @@ object RadioChannelResources: AsyncCallback {
                     RadioRawChannels.values()[i].getChannelAddress(), httpAddress
                 )
                 addChannelList(map)
-                Log.d(
-                    resourceTag,
-                    "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size
-                )
+                Log.d(resourceTag,"channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size )
                 break
             }
         }
 
-        if ( channelList.size == RadioRawChannels.values().size ) {
-            Log.d(resourceTag, "setChannelsFromFile completed")
-            bInitCompleted = true
-            OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
-        }
+        Log.d(resourceTag, "setChannelsFromPlsFile  cur/size: ${channelList.size} / ${channelSize}")
     }
 
     fun makeChannelList(title: String, url: String) {
