@@ -68,6 +68,7 @@ object Program : Fragment() {
 
         Log.d(programTag, "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
+            Log.d(programTag, "make program buttons for ${RadioChannelResources.channelList.get(i).filename}")
             val button = Button(mContext)
             val filename = RadioChannelResources.channelList.get(i).filename
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )

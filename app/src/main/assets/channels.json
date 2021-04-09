@@ -1,6 +1,12 @@
 {
-  "version": "20210406",
+  "version": "20210407",
   "data" : [
+    {
+      "live" : "true",
+      "title": "BGM 채널 (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/c/bgmchannelbgmnew/live"
+    },
     {
       "live" : "true",
       "title": "릴렉스 카페 (live)",

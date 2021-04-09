@@ -15,7 +15,6 @@ import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -65,7 +64,7 @@ object OnAir : Fragment() {
     val num_of_rows = 10
     val page_no = 1
     val data_type = "JSON"
-    lateinit var mContext: Context
+    var mContext: Context? = null
 
     lateinit var txt_timeView: TextView
     lateinit var txt_addrView: TextView
@@ -241,7 +240,6 @@ object OnAir : Fragment() {
         }
     }
 
-    // TODO
     // - YoutubeView 는 fragment 시작 시 동적 생성해서 가지고 있도록 (static)
     // - YoutubeView 에서 YoutubeHandler 를 addlistener 붙이고 onReady 를 받으면 player 를 얻을 수 있다
     // - player 를 얻어서 RadioService 에서 videoId 에 따라서 cueVideo 를 불러서 넣어주고 play 해주면 된다
@@ -488,16 +486,16 @@ object OnAir : Fragment() {
             Log.d(onairTag, "mCurrnetPlayFilename: " + mCurrnetPlayFilename)
             mCurrnetPlayFilename?.let { updateButtonText( it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true ) }
 
-            if ( mVideoId != null ) {
-                stopRadioForegroundService()
-                if ( mCurrnetPlayFilename != null ) {
-                    if ( mCurrnetPlayFilename!!.contains("youtube") ) {
-                        playStopYoutube(mCurrnetPlayFilename!!, mVideoId, true)
-                    } else {
-                        startRadioForegroundService("radio", mCurrnetPlayFilename!!, null)
-                    }
-                }
-            }
+//            if ( mVideoId != null ) {
+//                stopRadioForegroundService()
+//                if ( mCurrnetPlayFilename != null ) {
+//                    if ( mCurrnetPlayFilename!!.contains("youtube") ) {
+//                        playStopYoutube(mCurrnetPlayFilename!!, mVideoId, true)
+//                    } else {
+//                        startRadioForegroundService("radio", mCurrnetPlayFilename!!, null)
+//                    }
+//                }
+//            }
         }
 
         return view
@@ -516,6 +514,29 @@ object OnAir : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         Log.d(onairTag, "onDestroyView")
+    }
+
+    fun resetAll() {
+        Log.d(onairTag, "resetAll")
+        bInitialized = false
+        mCurrnetPlayFilename = null
+        mContext = null
+
+        program_layout = null
+        youtubePlayer = null
+        youtubeState = PlayerConstants.PlayerState.UNKNOWN
+        mVideoId = null
+
+        mAddressText = "N/A"
+
+        mRainType = 0
+        mSkyType = 0
+        mTemperatureText = "N/A"
+        mWindText = "N/A"
+        mRainText = "N/A"
+        mFcstTimeText = "N/A"
+        mTimeText = "N/A"
+        mPMData = null
     }
 
 
@@ -636,20 +657,22 @@ object OnAir : Fragment() {
                 intent.putExtra("name", filename)
                 intent.putExtra("address", address)
                 intent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION)
-                startForegroundService(mContext, intent)
+                mContext?.let { startForegroundService(it, intent) }
             }
             else {
                 var intent = Intent(mContext, RadioService::class.java)
                 intent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION)
-                mContext.startService(intent)
+                mContext?.let { it.startService(intent) }
             }
         }
     }
 
     fun stopRadioForegroundService() {
-        var intent = Intent(mContext, RadioService::class.java)
-        intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
-        mContext.stopService(intent)
+        mContext?.let {
+            var intent = Intent(mContext, RadioService::class.java)
+            intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
+            mContext?.let { it.stopService(intent) }
+        }
     }
 
     // callback

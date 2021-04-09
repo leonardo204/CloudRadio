@@ -81,6 +81,18 @@ enum class RadioRawChannels {
         override fun getChannelFilename(): String = "kbs_1_radio.pls"
         override fun getChannelAddress(): String = "http://serpent0.duckdns.org:8088/kbs1radio.pls"
         override fun getDefaultButtonText(): String = "KBS 1 라디오"
+    },
+    AFN_THE_EAGLE {
+        override fun getChannelTitle(): String = "AFNP_DGU_SC"
+        override fun getChannelFilename(): String = "AFNP_DGU.pls"
+        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFNP_DGU.pls"
+        override fun getDefaultButtonText(): String = "AFN The Eagle (음악위주)"
+    },
+    AFN_THE_VOICE {
+        override fun getChannelTitle(): String = "AFN_VCE_SC"
+        override fun getChannelFilename(): String = "AFN_VCE.pls"
+        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFN_VCE.pls"
+        override fun getDefaultButtonText(): String = "AFN The Voice (뉴스위주)"
     };
     abstract fun getChannelAddress(): String
     abstract fun getChannelFilename(): String
@@ -253,6 +265,12 @@ object RadioChannelResources: AsyncCallback {
         }
     }
 
+    fun clearResources() {
+        Log.d(resourceTag, "clearResources")
+        channelSize = 0
+        channelList.clear()
+    }
+
     fun initResources(context: Context) {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
@@ -314,26 +332,47 @@ object RadioChannelResources: AsyncCallback {
     }
 
     private fun setChannelsFromPlsFile(content: String) {
-        var httpAddress = content.substring(
-            content.indexOf("File1=") + 6,
-            content.indexOf("Title1=") - 1
-        )
-        var title = content.substring(
-            content.indexOf("Title1=") + 7,
-            content.indexOf("Length1=") - 1
-        )
+        var httpAddress: String
+        var title: String
+
+        if ( content.contains("File2" ) ) {
+            httpAddress = content.substring(
+                content.indexOf("File1=") + 6,
+                content.indexOf("File2=") - 1
+            )
+        } else {
+            httpAddress = content.substring(
+                content.indexOf("File1=") + 6,
+                content.indexOf("Title1=") - 1
+            )
+        }
+        if ( content.contains("Title2") ) {
+            title = content.substring(
+                content.indexOf("Title1=") + 7,
+                content.indexOf("Title2=") - 1
+            )
+        } else {
+            title = content.substring(
+                content.indexOf("Title1=") + 7,
+                content.indexOf("Length1=") - 1
+            )
+        }
+        // 혹시 모를 앞 공백 제거
+        title = title.trimMargin()
+        httpAddress = httpAddress.trimMargin()
         Log.d(resourceTag, "title($title) httpAddress($httpAddress)")
 
         // check and remove duplication from channelList
         for(i in channelList.indices) {
-            if ( title.equals(channelList.get(i).title) ) {
+            if (title == channelList.get(i).title) {
                 removeChannelList(i)
                 break
             }
         }
 
         for(i in RadioRawChannels.values().indices) {
-            if ( title.equals(RadioRawChannels.values()[i].getChannelTitle()) ) {
+            //Log.d(resourceTag, "add resource compare for ($title)(len:${title.length}) - (${RadioRawChannels.values()[i].getChannelTitle()})(len:${RadioRawChannels.values()[i].getChannelTitle().length}): ${title.compareTo(RadioRawChannels.values()[i].getChannelTitle())} ")
+            if (title.compareTo(RadioRawChannels.values()[i].getChannelTitle()) == 0) {
                 var map = RadioCompletionMap(
                     RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,
                     RadioRawChannels.values()[i].getChannelFilename(),

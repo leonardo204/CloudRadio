@@ -87,6 +87,10 @@ class MainActivity : AppCompatActivity() {
         tabLayout.tabGravity = TabLayout.GRAVITY_FILL
 
         val adapter = MyAdapter(this, supportFragmentManager, tabLayout.tabCount)
+        // viewPager 는 미리 다음 화면을 생성한다.
+        // 이전 화면은 지우게 되는데, 몇 개를 만들어둘지를 아래 옵션으로 설정할 수 있음
+        // 3개를 미리 만들어두면 온에어/프로그램/모어 모두 한 번에 만들어두고 계속 쓰게 됨
+        viewPager.offscreenPageLimit = 3
         viewPager.adapter = adapter
 
         viewPager.addOnPageChangeListener(TabLayout.TabLayoutOnPageChangeListener(tabLayout))
@@ -126,6 +130,8 @@ class MainActivity : AppCompatActivity() {
             intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
             stopService(intent)
         }
+
+        youtubeView?.release()
     }
 
     fun systemRestart() {
@@ -136,7 +142,6 @@ class MainActivity : AppCompatActivity() {
         System.exit(0)
     }
 
-    // network 연결이 되어 있는 경우 여기서 init 을 불러준다.
     @RequiresApi(Build.VERSION_CODES.M)
     fun checkNetworkStatus(): Boolean {
         if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
@@ -158,6 +163,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun init() {
         Log.d(mainTag, "MainActivity init")
+
+        // 초기화
+        RadioChannelResources.clearResources()
+        Program.resetAction()
+        OnAir.resetAll()
+
+        // 리소스 로딩
         RadioChannelResources.initResources(this)
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
