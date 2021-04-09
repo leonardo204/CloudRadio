@@ -4,9 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.*
 import android.util.Log
-import kotlinx.serialization.UnstableDefault
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.*
@@ -109,9 +110,10 @@ object : Handler() {
         val title = bundle.getString("title")
         val url = bundle.getString("url")
         RadioChannelResources.makeChannelList(title, url)
-        if ( Program.bInitilized ) Program.initProgramButtons()
+        if ( Program.bInitilized ) Program.updateProgramButtons()
     }
 }
+
 
 @SuppressLint("StaticFieldLeak")
 object RadioChannelResources: AsyncCallback {
@@ -177,7 +179,6 @@ object RadioChannelResources: AsyncCallback {
         DownloadFileFromURL(this).execute(httpAddress, filename)
     }
 
-    @OptIn(UnstableDefault::class)
     private fun addFromDataFile() {
         Log.d(resourceTag, "addFromDataFile")
         var element: JsonElement? = null
@@ -194,7 +195,7 @@ object RadioChannelResources: AsyncCallback {
             it.close()
         }
         Log.d(resourceTag, "${sb}")
-        var ele1 = Json.parseJson(sb.toString())
+        var ele1 = Json.parseToJsonElement(sb.toString())
         val version1 = ele1.jsonObject["version"].toString().replace("\"", "")
 
         // downloaded file 있는지 체크
@@ -211,28 +212,28 @@ object RadioChannelResources: AsyncCallback {
             }
 
             content?.let {
-                var ele2 = Json.parseJson(it)
+                var ele2 = Json.parseToJsonElement(it)
                 version2 = ele2.jsonObject["version"].toString().replace("\"", "")
 
                 Log.d(resourceTag, "sys ch ver($version1)  down ch ver($version2)")
 
                 if ( version1.toInt() - version2.toInt() < 0) {
                     Log.d(resourceTag, "use download channels.json")
-                    element = Json.parseJson(content)
+                    element = Json.parseToJsonElement(content)
                 } else {
                     Log.d(resourceTag, "use internal channels.json 1")
-                    element = Json.parseJson(sb.toString())
+                    element = Json.parseToJsonElement(sb.toString())
                 }
             }
         } else {
             Log.d(resourceTag, "use internal channels.json 2")
-            element = Json.parseJson(sb.toString())
+            element = Json.parseToJsonElement(sb.toString())
         }
 
 
         // version check end
         element?.let {
-            var data = Json.parseJson(element!!.jsonObject["data"].toString())
+            var data = Json.parseToJsonElement(element!!.jsonObject["data"].toString())
             channelSize += data.jsonArray!!.size
             for (i in data?.jsonArray!!.indices) {
                 Log.d(resourceTag, "-    [$i]   -")
@@ -275,6 +276,11 @@ object RadioChannelResources: AsyncCallback {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
+
+        // for youtube
+        addFromDataFile()
+
+
         channelSize += RadioRawChannels.values().size
 
         // for radio
@@ -308,9 +314,6 @@ object RadioChannelResources: AsyncCallback {
                 )
             }
         }
-
-        // for youtube
-        addFromDataFile()
 
         Log.d(resourceTag, "initResources(cur/total): ${channelList.size} / ${channelSize}" )
     }

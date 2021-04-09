@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.io.*
 import java.lang.Thread.sleep
 import java.net.URL
@@ -24,6 +25,7 @@ import java.nio.charset.Charset
 
 
 var moreTag = "CR_more"
+
 
 val more_handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
@@ -119,6 +121,7 @@ object : Handler() {
         }
     }
 }
+
 
 @SuppressLint("StaticFieldLeak")
 object More : Fragment(), AsyncCallback {
@@ -239,7 +242,7 @@ object More : Fragment(), AsyncCallback {
         }
 
         content?.let {
-            val element = Json.parseJson(it)
+            val element = Json.parseToJsonElement(it)
             val nAppVer = element.jsonObject["version_cloudradio"].toString().replace("\"", "")
             val nChVer = element.jsonObject["version_channel"].toString().replace("\"", "")
 
@@ -292,7 +295,7 @@ object More : Fragment(), AsyncCallback {
             it.close()
         }
         Log.d(moreTag, "getChannelVersion internal: ${sb}")
-        val element = Json.parseJson(sb.toString())
+        val element = Json.parseToJsonElement(sb.toString())
         val version1 = element.jsonObject["version"].toString().replace("\"", "")
         val version2: String
 
@@ -311,7 +314,7 @@ object More : Fragment(), AsyncCallback {
 
         Log.d(moreTag, "getChannelVersion download: ${content}")
         content?.let {
-            val element = Json.parseJson(it)
+            val element = Json.parseToJsonElement(it)
             version2 = element.jsonObject["version"].toString().replace("\"", "")
 
             Log.d(moreTag, "sys ch ver($version1)  down ch ver($version2)")

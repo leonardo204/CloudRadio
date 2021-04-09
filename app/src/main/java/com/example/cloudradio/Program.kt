@@ -3,7 +3,9 @@ package com.example.cloudradio
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
+import android.os.AsyncTask
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -11,9 +13,16 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import java.io.*
+import java.nio.charset.Charset
 import java.util.HashMap
 
 var programTag = "CR_Program"
+
+data class FavoriteItem(val filename: String)
+
 
 @SuppressLint("StaticFieldLeak")
 object Program : Fragment() {
@@ -31,6 +40,9 @@ object Program : Fragment() {
 
     lateinit var layout_programs: LinearLayout
 
+    var DEFAULT_FILE_PATH: String? = null
+    var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -40,6 +52,7 @@ object Program : Fragment() {
         if ( container != null ) {
             mContext = container.context
         }
+        DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
         var view: ViewGroup = inflater.inflate(R.layout.fragment_program, container, false) as ViewGroup
 
@@ -63,14 +76,36 @@ object Program : Fragment() {
 
     }
 
-    fun initProgramButtons() {
+    fun updateProgramButtons() {
+        var idx = program_btnList.size
+        for(i in idx..(RadioChannelResources.channelList.size-1)) {
+            val filename = RadioChannelResources.channelList.get(i).filename
+            Log.d(programTag, "make program buttons for ${filename}")
+            val button = Button(mContext)
+            button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
+            button.setOnClickListener { onRadioButton(filename) }
+            program_btnList.put(filename, button)
+            layout_programs.addView(button)
+
+            var message = getDefaultTextByFilename(filename)
+            updateButtonText(filename, message, true, false)
+        }
+        if ( favList.size > 0 ) {
+            for(i in favList.indices) {
+                updateButtonText(favList.get(i), getDefaultTextByFilename(favList.get(i)), true, true)
+            }
+        }
+        Log.d(programTag, "updateProgramButtons() btnList: "+ program_btnList.size)
+    }
+
+    private fun initProgramButtons() {
         layout_programs.removeAllViews()
 
         Log.d(programTag, "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
-            Log.d(programTag, "make program buttons for ${RadioChannelResources.channelList.get(i).filename}")
-            val button = Button(mContext)
             val filename = RadioChannelResources.channelList.get(i).filename
+            Log.d(programTag, "make program buttons for ${filename}")
+            val button = Button(mContext)
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
             button.setOnClickListener { onRadioButton(filename) }
             program_btnList.put(filename, button)
@@ -78,8 +113,10 @@ object Program : Fragment() {
 //            layoutParams.setGravity(Gravity.FILL_HORIZONTAL)
 //            layout_grid_programs.addView(button, layoutParams)
             layout_programs.addView(button)
+
+            var message = getDefaultTextByFilename(filename)
+            updateButtonText(filename, message, true, false)
         }
-        resetAllButtonText()
 
         if ( favList.size > 0 ) {
             for(i in favList.indices) {
@@ -113,7 +150,10 @@ object Program : Fragment() {
     }
 
     private fun saveAction() {
-        OnAir.makePrograms(favList)
+        if ( favList.size > 0 ) {
+            OnAir.makePrograms(favList)
+            saveFavList()
+        }
     }
 
     fun resetAction() {
@@ -163,6 +203,86 @@ object Program : Fragment() {
                 button.setText(text)
                 break
             }
+        }
+    }
+
+    private fun saveFavList() {
+        var iter = favList.iterator()
+        var itemList: List<FavoriteItem> = listOf()
+        while( iter.hasNext() ) {
+            var filename = iter.next()
+            var item = FavoriteItem(filename)
+            itemList += item
+
+        }
+        Log.d(programTag, "itemList: ${itemList}")
+
+        var gson = GsonBuilder().create()
+        var listType: TypeToken<List<FavoriteItem>> = object: TypeToken<List<FavoriteItem>>() {}
+
+        var arr = gson.toJson(itemList, listType.type)
+        Log.d(programTag, "arr: ${arr}")
+
+        WriteFile().execute(DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON, arr.toString())
+    }
+
+    fun updatePrograms(list: ArrayList<String>) {
+        Log.d(programTag, "updatePrograms size: ${list.size}")
+        var iter = list.iterator()
+        while( iter.hasNext() ) {
+            var filename = iter.next()
+            Log.d(programTag, "updatePrograms ${filename}")
+            favList.add(filename)
+            updateButtonText(filename, "즐겨찾기 추가, "+getDefaultTextByFilename(filename), true, true)
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    internal class WriteFile() : AsyncTask<String?, String?, String?>() {
+
+        override fun onPreExecute() {
+            super.onPreExecute()
+        }
+
+        override fun doInBackground(vararg param: String?): String? {
+            Log.d(programTag, "WriteFile.doInBackground")
+            var filename = param[0]
+            var data = param[1]
+
+            try {
+                var fileObj = File(filename)
+                if ( fileObj.exists() ) {
+                    Log.d(programTag, "remove previous savedChannel.json")
+                    fileObj.delete()
+                }
+
+                if (data != null) {
+                    Log.d(programTag, "write savedChannel.json")
+                    fileObj.writeText(data, Charset.defaultCharset())
+                }
+            } catch (e: IOException) {
+                Log.e(programTag,"WriteFile Error: "+ e.message)
+            } catch (e: Exception) {
+                Log.e(programTag,"WriteFile Error: "+ e.message)
+            } finally {
+
+            }
+            Log.d(programTag, "WriteFile.doInBackground end")
+
+            return null
+        }
+
+        /**
+         * Updating progress bar
+         */
+        override fun onProgressUpdate(vararg values: String?) {
+        }
+
+        /**
+         * After completing background task Dismiss the progress dialog
+         */
+        override fun onPostExecute(file_url: String?) {
+            Log.d(programTag, "WriteFile finished: " + file_url)
         }
     }
 }

@@ -9,7 +9,7 @@
     android:orientation="vertical" >
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/layout_const"
+        android:id="@+id/layout_weather_const"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp" >
@@ -221,30 +221,41 @@
         android:layout_gravity="start"
         android:layout_marginTop="16dp" >
 
+        <RelativeLayout
+            android:id="@+id/layout_loading"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toTopOf="parent"
+            >
+            <TextView
+                android:id="@+id/txt_loading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  로딩 중입니다."
+                android:drawableLeft="@drawable/ic_radio_antenna"
+                android:gravity="center"
+                android:textAlignment="center"
+                android:textStyle="bold"
+                android:textSize="20sp"
+                android:layout_centerInParent="true"
+                />
+        </RelativeLayout>
+
         <ScrollView
             android:id="@+id/layout_scroll_radio"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@+id/layout_loading">
 
             <LinearLayout
                 android:id="@+id/layout_radio_linear"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical">
 
             </LinearLayout>
 
         </ScrollView>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintTop_toBottomOf="@+id/layout_scroll_radio"
-            tools:ignore="MissingConstraints">
-
-        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

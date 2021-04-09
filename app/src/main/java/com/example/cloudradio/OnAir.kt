@@ -15,6 +15,11 @@ import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import java.io.File
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -29,8 +34,18 @@ val handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
     override fun handleMessage(msg: Message) {
         Log.d(onairTag, "handler handleMessage: " + msg)
-        OnAir.resetAllButtonText(true)
+
         OnAir.stopRadioForegroundService()
+        OnAir.resetAllButtonText(true)
+
+        val bundle = msg.data
+        val command = bundle.getString("command")
+
+        when(command) {
+            "RadioResource.SUCCESS" -> {
+                OnAir.updateFavoriteList()
+            }
+        }
     }
 }
 
@@ -99,6 +114,11 @@ object OnAir : Fragment() {
     var mTimeText:String = "N/A"
     var mPMData: PMData? = null
 
+    var DEFAULT_FILE_PATH: String? = null
+    var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
+
+    lateinit var txt_loading: TextView
+
     // fragment 가 다시 시작될 때 button list hashmap 에서 button 들 복구해준다.
     fun restoreButtons() {
         program_layout?.removeAllViews()
@@ -117,6 +137,42 @@ object OnAir : Fragment() {
             program_layout?.addView(btn)
             updateButtonText( filename, Program.getDefaultTextByFilename(filename),true )
         }
+    }
+
+    // read favorite list from file
+    fun updateFavoriteList() {
+        Log.d(onairTag, "updateFavoriteList")
+
+        var parent = txt_loading.parent as ViewGroup
+        parent.removeView(txt_loading)
+
+        var fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
+        if ( !fileObj.exists() && !fileObj.canRead() ) {
+            Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
+            Toast.makeText(mContext, "로딩이 완료되었습니다.\n즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        var ins = fileObj.inputStream()
+        var content = ins.readBytes().toString(Charset.defaultCharset())
+        var list = ArrayList<String>()
+
+        var ele = Json.parseToJsonElement(content)
+        Log.d(onairTag, "updateFavoriteList size: ${ele.jsonArray.size}")
+
+        for(i in 0..ele.jsonArray.size-1) {
+            var filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
+            Log.d(onairTag, "updateFavoriteList: $filename")
+            list.add(filename)
+        }
+
+        makePrograms(list)
+        Program.updatePrograms(list)
+        Toast.makeText(mContext, "로딩이 완료되었습니다.\n즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
+    }
+
+    private fun loadFavoriteList() {
+        makePrograms(Program.favList)
     }
 
     // filename 들을 담은 array list 가 전달됨
@@ -428,6 +484,8 @@ object OnAir : Fragment() {
             mContext = container.context
         }
 
+        DEFAULT_FILE_PATH = mContext?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+
         var view: ViewGroup = inflater.inflate(R.layout.fragment_onair, container, false) as ViewGroup
 
         txt_timeView = view.findViewById(R.id.text_time)
@@ -449,54 +507,23 @@ object OnAir : Fragment() {
 
         program_layout = view.findViewById(R.id.layout_radio_linear)
 
-        if ( !bInitialized ) {
-            Log.d(onairTag, "init data")
-            bInitialized = true
+        txt_loading = view.findViewById(R.id.txt_loading)
 
-            // 시간은 최초 1회만 ... 혹은 refresh 인 경우
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                setCurrentTimeView()
-            } else {
-                val sdf = SimpleDateFormat("dd/M/yyyy hh:mm:ss")
-                val currentDate = sdf.format(Date())
-                txt_timeView.setText(currentDate)
-            }
+        Log.d(onairTag, "init data")
+        bInitialized = true
 
-            makePrograms(Program.favList)
-            resetAllButtonText(true)
-
+        // 시간은 최초 1회만 ... 혹은 refresh 인 경우
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            setCurrentTimeView()
         } else {
-            Log.d(onairTag, "restore data")
-
-            txt_addrView.setText(mAddressText)
-            txt_rainView.setText(mRainText)
-            txt_windView.setText(mWindText)
-            txt_skyView.setText(mTemperatureText)
-            txt_fcstView.setText(mFcstTimeText)
-            txt_timeView.setText(mTimeText)
-
-            setSkyStatusImage(mSkyType)
-            setRainStatusImage(mRainType)
-            mPMData?.let { updateAirStatus(it) }
-
-            if ( onair_btnList.size > 0) {
-                restoreButtons()
-            }
-
-            Log.d(onairTag, "mCurrnetPlayFilename: " + mCurrnetPlayFilename)
-            mCurrnetPlayFilename?.let { updateButtonText( it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true ) }
-
-//            if ( mVideoId != null ) {
-//                stopRadioForegroundService()
-//                if ( mCurrnetPlayFilename != null ) {
-//                    if ( mCurrnetPlayFilename!!.contains("youtube") ) {
-//                        playStopYoutube(mCurrnetPlayFilename!!, mVideoId, true)
-//                    } else {
-//                        startRadioForegroundService("radio", mCurrnetPlayFilename!!, null)
-//                    }
-//                }
-//            }
+            val sdf = SimpleDateFormat("dd/M/yyyy hh:mm:ss")
+            val currentDate = sdf.format(Date())
+            txt_timeView.setText(currentDate)
         }
+
+        loadFavoriteList()
+
+        resetAllButtonText(true)
 
         return view
     }
@@ -740,6 +767,9 @@ object OnAir : Fragment() {
             RadioResource.SUCCESS -> {
                 var msg = handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
+                    var bundle = Bundle()
+                    bundle.putString("command", "RadioResource.SUCCESS")
+                    msg.data = bundle
                     handler.sendMessage(msg)
                     cancel()
                 }
@@ -753,6 +783,9 @@ object OnAir : Fragment() {
                 Log.d(onairTag, "timer ~")
                 var msg = handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
+                    var bundle = Bundle()
+                    bundle.putString("command", "RadioResource.FAILED")
+                    msg.data = bundle
                     handler.sendMessage(msg)
                     cancel()
                 }
