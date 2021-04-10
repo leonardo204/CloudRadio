@@ -1,6 +1,12 @@
 {
-  "version": "20210407",
+  "version": "20210409",
   "data" : [
+    {
+      "live" : "true",
+      "title": "NASA (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/c/NASA/live"
+    },
     {
       "live" : "true",
       "title": "BGM 채널 (live)",

@@ -319,6 +319,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun makeToast(message: String) {
-        Toast.makeText(mContext, message, Toast.LENGTH_LONG)
+        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
     }
 }

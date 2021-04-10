@@ -76,26 +76,48 @@ object Program : Fragment() {
 
     }
 
-    fun updateProgramButtons() {
-        var idx = program_btnList.size
-        for(i in idx..(RadioChannelResources.channelList.size-1)) {
-            val filename = RadioChannelResources.channelList.get(i).filename
-            Log.d(programTag, "make program buttons for ${filename}")
-            val button = Button(mContext)
-            button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
-            button.setOnClickListener { onRadioButton(filename) }
-            program_btnList.put(filename, button)
-            layout_programs.addView(button)
+    fun resetProgramButtons() {
+        Log.d(programTag, "resetProgramButtons")
+//        var iter = program_btnList.iterator()
+//        while( iter.hasNext() ) {
+//            var filename = iter.next()
+//            Log.d(programTag, "remove: ${filename}")
+//            var button = program_btnList.get(filename)
+//            var parent = button?.parent as ViewGroup?
+//            button?.let { parent?.removeView(it) }
+//            program_btnList.remove(filename)
+//        }
+        layout_programs.removeAllViews()
 
-            var message = getDefaultTextByFilename(filename)
-            updateButtonText(filename, message, true, false)
+        program_btnList.clear()
+    }
+
+    fun updateProgramButtons() {
+        Log.d(programTag, "1 updateProgramButtons() btnList: ${program_btnList.size}/${RadioChannelResources.channelList.size}")
+
+        if ( program_btnList.size < RadioChannelResources.channelList.size ) {
+            var idx = program_btnList.size
+            var max = RadioChannelResources.channelList.size-1
+            while ( idx <= max ) {
+                val filename = RadioChannelResources.channelList.get(idx).filename
+                Log.d(programTag, "make program buttons for [${idx}] ${filename}")
+                val button = Button(mContext)
+                button.setText(RadioChannelResources.channelList.get(idx).defaultButtonText)
+                button.setOnClickListener { onRadioButton(filename) }
+                program_btnList.put(filename, button)
+                layout_programs.addView(button)
+
+                var message = getDefaultTextByFilename(filename)
+                updateButtonText(filename, message, true, false)
+                idx++
+            }
         }
         if ( favList.size > 0 ) {
             for(i in favList.indices) {
                 updateButtonText(favList.get(i), getDefaultTextByFilename(favList.get(i)), true, true)
             }
         }
-        Log.d(programTag, "updateProgramButtons() btnList: "+ program_btnList.size)
+        Log.d(programTag, "2 updateProgramButtons() btnList: "+ program_btnList.size)
     }
 
     private fun initProgramButtons() {
@@ -104,7 +126,7 @@ object Program : Fragment() {
         Log.d(programTag, "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
             val filename = RadioChannelResources.channelList.get(i).filename
-            Log.d(programTag, "make program buttons for ${filename}")
+            Log.d(programTag, "make program buttons for [${i}] ${filename}")
             val button = Button(mContext)
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
             button.setOnClickListener { onRadioButton(filename) }
@@ -153,6 +175,8 @@ object Program : Fragment() {
         if ( favList.size > 0 ) {
             OnAir.makePrograms(favList)
             saveFavList()
+        } else {
+            removeFavList()
         }
     }
 
@@ -203,6 +227,15 @@ object Program : Fragment() {
                 button.setText(text)
                 break
             }
+        }
+    }
+
+    private fun removeFavList() {
+        Log.d(programTag, "removeFavList()")
+        var fileObj = File(DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON)
+        if ( fileObj.exists() ) {
+            fileObj.delete()
+            Log.d(programTag, "removeFavList() success")
         }
     }
 

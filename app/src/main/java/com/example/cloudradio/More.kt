@@ -22,6 +22,8 @@ import java.lang.Thread.sleep
 import java.net.URL
 import java.net.URLConnection
 import java.nio.charset.Charset
+import java.util.*
+import kotlin.concurrent.timer
 
 
 var moreTag = "CR_more"
@@ -76,10 +78,12 @@ object : Handler() {
                     )
                     More.txt_version.setText(More.mAppVersion + " (" + More.getChannelVersion() + ")")
                     More.mContext?.let {
+                        Program.resetProgramButtons()
                         RadioChannelResources.channelList.clear()
+                        RadioChannelResources.channelSize = 0
                         RadioChannelResources.initResources(it)
                     }
-                    Program.resetAction()
+                    //Program.resetAction()
                 }
                 "failed" -> {
                     More.buttonUpdate(More.btn_channel_update, "채널 업데이트 실패!!", false)

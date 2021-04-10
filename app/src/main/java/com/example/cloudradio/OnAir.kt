@@ -143,13 +143,13 @@ object OnAir : Fragment() {
     fun updateFavoriteList() {
         Log.d(onairTag, "updateFavoriteList")
 
-        var parent = txt_loading.parent as ViewGroup
-        parent.removeView(txt_loading)
+        var parent = txt_loading.parent as ViewGroup?
+        parent?.removeView(txt_loading)
 
         var fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
         if ( !fileObj.exists() && !fileObj.canRead() ) {
             Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
-            Toast.makeText(mContext, "로딩이 완료되었습니다.\n즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
+            Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -168,7 +168,7 @@ object OnAir : Fragment() {
 
         makePrograms(list)
         Program.updatePrograms(list)
-        Toast.makeText(mContext, "로딩이 완료되었습니다.\n즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
+        Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
     }
 
     private fun loadFavoriteList() {

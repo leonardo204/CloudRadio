@@ -217,9 +217,16 @@ object AirStatus {
             override fun onResponse(call: Call<GETTMXY>, response: Response<GETTMXY>) {
                 if ( response.isSuccessful ) {
                     Log.d(airTag, "TMXY: "+response.body())
-                    var tmx:String = response.body()!!.response.body.items[0].tmX
-                    var tmy:String = response.body()!!.response.body.items[0].tmY
-                    requestViewLocation(tmx, tmy)
+                    if ( response.body()!!.response.body.items.size > 0) {
+                        var tmx: String = response.body()!!.response.body.items[0].tmX
+                        var tmy: String = response.body()!!.response.body.items[0].tmY
+                        requestViewLocation(tmx, tmy)
+                    } else {
+                        Log.d(airTag, "There is no TM data")
+                        MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
+                        var data = PMData("알 수 없음", "-", "알 수 없음", "-")
+                        dumpAirStatus(data)
+                    }
                 }
             }
 
