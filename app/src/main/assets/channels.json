@@ -1,6 +1,18 @@
 {
-  "version": "20210409",
+  "version": "20210414",
   "data" : [
+    {
+      "live" : "true",
+      "title": "옛송TV (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/channel/UCxp5f_uqnsHMHgCjZZYFO6A/live"
+    },
+    {
+      "live" : "true",
+      "title": "힙스터들의 성지 (live)",
+      "videoId" : "",
+      "fileaddress": "https://www.youtube.com/c/KozyPop/live"
+    },
     {
       "live" : "true",
       "title": "NASA (live)",

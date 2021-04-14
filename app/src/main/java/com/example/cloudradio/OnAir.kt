@@ -143,25 +143,25 @@ object OnAir : Fragment() {
     fun updateFavoriteList() {
         Log.d(onairTag, "updateFavoriteList")
 
-        var parent = txt_loading.parent as ViewGroup?
+        val parent = txt_loading.parent as ViewGroup?
         parent?.removeView(txt_loading)
 
-        var fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
+        val fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
         if ( !fileObj.exists() && !fileObj.canRead() ) {
             Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
             Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
             return
         }
 
-        var ins = fileObj.inputStream()
-        var content = ins.readBytes().toString(Charset.defaultCharset())
-        var list = ArrayList<String>()
+        val ins = fileObj.inputStream()
+        val content = ins.readBytes().toString(Charset.defaultCharset())
+        val list = ArrayList<String>()
 
-        var ele = Json.parseToJsonElement(content)
+        val ele = Json.parseToJsonElement(content)
         Log.d(onairTag, "updateFavoriteList size: ${ele.jsonArray.size}")
 
         for(i in 0..ele.jsonArray.size-1) {
-            var filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
+            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
             Log.d(onairTag, "updateFavoriteList: $filename")
             list.add(filename)
         }

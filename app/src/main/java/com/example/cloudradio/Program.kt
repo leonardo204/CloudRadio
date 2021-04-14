@@ -21,7 +21,10 @@ import java.util.HashMap
 
 var programTag = "CR_Program"
 
-data class FavoriteItem(val filename: String)
+data class FavoriteItem(
+    val filename: String,
+    val title: String
+)
 
 
 @SuppressLint("StaticFieldLeak")
@@ -240,30 +243,31 @@ object Program : Fragment() {
     }
 
     private fun saveFavList() {
-        var iter = favList.iterator()
+        val iter = favList.iterator()
         var itemList: List<FavoriteItem> = listOf()
         while( iter.hasNext() ) {
-            var filename = iter.next()
-            var item = FavoriteItem(filename)
+            val filename = iter.next()
+            val title = RadioChannelResources.getTitleByFilename(filename)
+            val item = FavoriteItem(filename, title)
             itemList += item
 
         }
-        Log.d(programTag, "itemList: ${itemList}")
+        Log.d(programTag, "saveFavList itemList: ${itemList}")
 
-        var gson = GsonBuilder().create()
-        var listType: TypeToken<List<FavoriteItem>> = object: TypeToken<List<FavoriteItem>>() {}
+        val gson = GsonBuilder().create()
+        val listType: TypeToken<List<FavoriteItem>> = object: TypeToken<List<FavoriteItem>>() {}
 
-        var arr = gson.toJson(itemList, listType.type)
-        Log.d(programTag, "arr: ${arr}")
+        val arr = gson.toJson(itemList, listType.type)
+        Log.d(programTag, "saveFavList json: ${arr}")
 
         WriteFile().execute(DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON, arr.toString())
     }
 
     fun updatePrograms(list: ArrayList<String>) {
         Log.d(programTag, "updatePrograms size: ${list.size}")
-        var iter = list.iterator()
+        val iter = list.iterator()
         while( iter.hasNext() ) {
-            var filename = iter.next()
+            val filename = iter.next()
             Log.d(programTag, "updatePrograms ${filename}")
             favList.add(filename)
             updateButtonText(filename, "즐겨찾기 추가, "+getDefaultTextByFilename(filename), true, true)

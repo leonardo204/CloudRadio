@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.*
 import android.util.Log
+import android.widget.Toast
+import com.google.gson.GsonBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
@@ -132,6 +134,19 @@ object RadioChannelResources: AsyncCallback {
             }
         }
         return null
+    }
+
+    fun getTitleByFilename(filename: String): String {
+        for(i in channelList.indices) {
+            if ( channelList.get(i).filename.equals(filename) ) {
+                Log.d(
+                    resourceTag,
+                    "getTitleByFilename: ${filename} -> ${channelList.get(i).title}"
+                )
+                return channelList.get(i).title
+            }
+        }
+        return ""
     }
 
     fun getDefaultButtonTextByFilename(filename: String): String {
@@ -396,6 +411,47 @@ object RadioChannelResources: AsyncCallback {
         var filename = "youtube_" + videoId
         val map = RadioCompletionMap(title, title, channelList.size, filename, url, url)
         addChannelList(map)
+        // 즐겨 찾기에 대해 live channel url 업데이트가 있을 수 있으니 확인 후
+        // 업데이트가 있어서 filename 이 서로 다를 경우, 여기서 favorite list 를 저장해준다.
+        checkFavListUpdate(filename, title);
+    }
+
+    private fun checkFavListUpdate(newFilename: String, newTitle: String) {
+        val fileObj = File(OnAir.DEFAULT_FILE_PATH + OnAir.FAVORITE_CHANNEL_JSON)
+
+        if ( !fileObj.exists() && !fileObj.canRead() ) {
+            Log.d(resourceTag, "checkFavListUpdate: Can't load ${OnAir.DEFAULT_FILE_PATH + OnAir.FAVORITE_CHANNEL_JSON}")
+            return
+        }
+
+        val ins = fileObj.inputStream()
+        val content = ins.readBytes().toString(Charset.defaultCharset())
+        val list = java.util.ArrayList<String>()
+
+        val ele = Json.parseToJsonElement(content)
+        Log.d(resourceTag, "checkFavListUpdate size: ${ele.jsonArray.size}")
+
+        for(i in 0..ele.jsonArray.size-1) {
+            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
+            val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"","")
+
+            if (newTitle.equals(title)) {
+                Log.d(resourceTag, "OLD> title: ${title}  -  filename: ${filename}")
+                Log.d(resourceTag, "NEW> title: ${newTitle}  -  filename: ${newFilename}")
+
+                if ( !newFilename.equals(filename) ) {
+                    // update 해줘야 함
+                    val gson = GsonBuilder().create()
+                    val newContent = content.replace(filename, newFilename);
+                    val arr = gson.toJson(newContent)
+                    Log.d(resourceTag, "old json: ${content}")
+                    Log.d(resourceTag, "new json: ${newContent}")
+                    Log.d(resourceTag, "saved json: ${arr}")
+                    Program.WriteFile().execute(Program.DEFAULT_FILE_PATH + Program.FAVORITE_CHANNEL_JSON, newContent)
+                    break
+                }
+            }
+        }
     }
 
     override fun onTaskDone(vararg arg: String?) {
