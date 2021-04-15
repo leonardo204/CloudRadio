@@ -16,9 +16,11 @@ import androidx.fragment.app.Fragment
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
+import java.lang.Thread.sleep
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -35,7 +37,7 @@ object : Handler() {
     override fun handleMessage(msg: Message) {
         Log.d(onairTag, "handler handleMessage: " + msg)
 
-        OnAir.stopRadioForegroundService()
+        //OnAir.stopRadioForegroundService()
         OnAir.resetAllButtonText(true)
 
         val bundle = msg.data
@@ -59,6 +61,9 @@ enum class RADIO_BUTTON {
     },
     STOPPED_MESSAGE {
         override fun getMessage(): String = "정지 ( 터치하여 재생 시작 )"
+    },
+    PAUSED_MESSAGE {
+        override fun getMessage(): String = "일시정지 ( 터치하여 재생 시작 )"
     },
     PLAYING_MESSAGE {
         override fun getMessage(): String = "재생중 ( 터치하여 정지 )"
@@ -117,6 +122,8 @@ object OnAir : Fragment() {
     var DEFAULT_FILE_PATH: String? = null
     var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
 
+    var waitForResourceUpdate = false
+
     lateinit var txt_loading: TextView
 
     // fragment 가 다시 시작될 때 button list hashmap 에서 button 들 복구해준다.
@@ -139,10 +146,35 @@ object OnAir : Fragment() {
         }
     }
 
-    // read favorite list from file
-    fun updateFavoriteList() {
-        Log.d(onairTag, "updateFavoriteList")
+    // 중간 중간 live 채널 주소 업데이트를 위해 불러줌
+    fun checkUpdateFavoriteList() {
+        Log.d(onairTag, "checkUpdateFavoriteList")
 
+        var element: JsonElement? = RadioChannelResources.getResourceElement()
+
+        element?.let {
+            var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
+            for (i in data.jsonArray.indices) {
+                Log.d(resourceTag, "-    [$i]   -")
+                Log.d(resourceTag, "${data.jsonArray[i]}")
+
+                val live =
+                    data.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean()
+                val title = data.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
+                val address =
+                    data.jsonArray[i].jsonObject["fileaddress"].toString().replace("\"", "")
+
+                // live 인 경우엔 redirection url 을 얻어서 설정해야 함
+                if (live) {
+                    RadioChannelResources.ParseUrl(RadioChannelResources).execute(title, address)
+                    continue
+                }
+            }
+        }
+    }
+
+    // init resource 시점에만 단독으로 부름
+    fun updateFavoriteList() {
         val parent = txt_loading.parent as ViewGroup?
         parent?.removeView(txt_loading)
 
@@ -171,6 +203,39 @@ object OnAir : Fragment() {
         Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
     }
 
+
+    // read favorite list from file
+//    fun updateFavoriteList() {
+//        Log.d(onairTag, "updateFavoriteList")
+//
+//        val parent = txt_loading.parent as ViewGroup?
+//        parent?.removeView(txt_loading)
+//
+//        val fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
+//        if ( !fileObj.exists() && !fileObj.canRead() ) {
+//            Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
+//            Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
+//            return
+//        }
+//
+//        val ins = fileObj.inputStream()
+//        val content = ins.readBytes().toString(Charset.defaultCharset())
+//        val list = ArrayList<String>()
+//
+//        val ele = Json.parseToJsonElement(content)
+//        Log.d(onairTag, "updateFavoriteList size: ${ele.jsonArray.size}")
+//
+//        for(i in 0..ele.jsonArray.size-1) {
+//            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
+//            Log.d(onairTag, "updateFavoriteList: $filename")
+//            list.add(filename)
+//        }
+//
+//        makePrograms(list)
+//        Program.updatePrograms(list)
+//        Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
+//    }
+
     private fun loadFavoriteList() {
         makePrograms(Program.favList)
     }
@@ -198,7 +263,7 @@ object OnAir : Fragment() {
 
     fun resetPrograms() {
         onair_btnList.clear()
-        stopRadioForegroundService()
+        //stopRadioForegroundService()
         program_layout?.removeAllViews()
     }
 
@@ -237,6 +302,10 @@ object OnAir : Fragment() {
                         button.setBackgroundColor(Color.RED)
                         button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
                     }
+                    RADIO_BUTTON.PAUSED_MESSAGE.getMessage() -> {
+                        button.setBackgroundColor(Color.MAGENTA)
+                        button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
+                    }
                     else -> {
                         button.setBackgroundColor(Color.WHITE)
                         button.setText(text)
@@ -254,15 +323,43 @@ object OnAir : Fragment() {
         var iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
             var obj = iter.next()
-            Log.d(onairTag, "filename: " + obj.key)
+            //Log.d(onairTag, "filename: " + obj.key)
             var message = Program.getDefaultTextByFilename(obj.key)
             updateButtonText(obj.key, message, enable)
         }
     }
 
+    // youtube view 에서 직접 controll 하는 경우에 notification bar 업데이트 해줌
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
         Log.d(onairTag, "setYoutubeState $state")
+        //youtubeState = state
+        when(state) {
+            PlayerConstants.PlayerState.PLAYING -> {
+                Log.d(onairTag, "state PLAYING")
+                RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
+                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+            }
+            PlayerConstants.PlayerState.PAUSED -> {
+                Log.d(onairTag, "state PAUSED")
+                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
+                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
+            }
+            PlayerConstants.PlayerState.ENDED -> {
+                Log.d(onairTag, "state ENDED")
+
+                if ( mVideoId != null ) {
+                    Log.d(onairTag, "Auto re-play")
+                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+                }
+            }
+            else -> { Log.d(onairTag, "state ignore")}
+        }
+    }
+
+    @JvmName("setYoutubeStateManual")
+    fun setYoutubeStateManual(state: PlayerConstants.PlayerState) {
+        Log.d(onairTag, "setYoutubeStateManual $state")
         youtubeState = state
         when(state) {
             PlayerConstants.PlayerState.UNKNOWN -> {
@@ -285,6 +382,7 @@ object OnAir : Fragment() {
             }
             PlayerConstants.PlayerState.PAUSED -> {
                 Log.d(onairTag, "state PAUSED")
+                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
             }
             PlayerConstants.PlayerState.UNSTARTED -> {
                 Log.d(onairTag, "state UNSTARTED")
@@ -305,7 +403,7 @@ object OnAir : Fragment() {
         Log.d( onairTag,"createYoutubeView prev(${mCurrnetPlayFilename}) - cur($filename)  $videoId" )
 
         resetAllButtonText(true)
-        stopRadioForegroundService()
+        //stopRadioForegroundService()
 
         mCurrnetPlayFilename = filename
 
@@ -342,7 +440,7 @@ object OnAir : Fragment() {
 
     // false 인 경우 vid 는 null 로 들어옴
     fun playStopYoutube(filename: String, videoId: String?, play: Boolean) {
-        Log.d(onairTag, "youtubeView: ${MainActivity.youtubeView}")
+        Log.d(onairTag, "playStopYoutube: filename=${filename} - videoId=${videoId} - play=${play}")
 
         if ( play ) {
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
@@ -410,12 +508,17 @@ object OnAir : Fragment() {
         }
         // youtube 실행 중인 경우 youtube 중지
         // onDestroy callback 불려짐
-        else if ( youtubeState == PlayerConstants.PlayerState.PLAYING ) {
+        else if (youtubeState == PlayerConstants.PlayerState.PLAYING) {
             playStopYoutube(filename, null, false)
 
             // 요청한 채널 저장
             Log.d(onairTag, "mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
+        } else if ( youtubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(mCurrnetPlayFilename) ) {
+            Log.d(onairTag, "play resume: ${mCurrnetPlayFilename}")
+            youtubePlayer?.play()
+            updateButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+            RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
         } else {
             // youtube play
             if ( filename.contains("youtube") ) {
@@ -626,7 +729,7 @@ object OnAir : Fragment() {
             grade = data.pm10Grade1h
         }
 
-        if ( data.pm25Grade1h.equals("알 수 없음") ) {
+        if ( grade != "99" && data.pm25Grade1h.equals("알 수 없음") ) {
             grade = "99"
         } else if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) {
             grade = data.pm25Grade1h
@@ -671,6 +774,7 @@ object OnAir : Fragment() {
      * Service
      */
     private fun startRadioForegroundService(serviceName: String, filename: String, videoId: String?) {
+        Log.d(onairTag, "startRadioForegroundService ${serviceName} ${filename} ${videoId}")
         var address:String? = null
         if ( serviceName.equals("radio") ) {
             address = getRadioChannelHttpAddress(filename)
@@ -695,10 +799,24 @@ object OnAir : Fragment() {
     }
 
     fun stopRadioForegroundService() {
+        Log.d(onairTag, "stopRadioForegroundService ${mContext}")
+//        mContext?.let {
+//            var intent = Intent(it, RadioService::class.java)
+//            intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
+//            it.stopService(intent)
+//        }
         mContext?.let {
-            var intent = Intent(mContext, RadioService::class.java)
-            intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
-            mContext?.let { it.stopService(intent) }
+            Intent(it, RadioService::class.java).run {
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+                    var intent = Intent(it, RadioService::class.java)
+                    intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
+                    startForegroundService(it, intent)
+                } else {
+                    var intent = Intent(it, RadioService::class.java)
+                    intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
+                    it.startService(intent)
+                }
+            }
         }
     }
 
@@ -753,8 +871,18 @@ object OnAir : Fragment() {
                 }
                 // 서로 filename 이 다르면 요청된 filename 서비스 시작
                 else if (mCurrnetPlayFilename != null) {
-                    Log.d(onairTag, "call for mCurrentPlayFilename: ${mCurrnetPlayFilename}")
-                    mCurrnetPlayFilename?.let { onRadioButton(it, CLICK_TYPE.CALLBACK) }
+                    Log.d(onairTag, "start to service for ${mCurrnetPlayFilename}")
+                    mCurrnetPlayFilename?.let {
+                        if ( it.contains("youtube") ) {
+                            var videoId = it.substring(it.indexOf("youtube_") + 8)
+                            Log.d(onairTag, "videoId: " + videoId)
+                            createYoutubeView(it, videoId)
+                        }
+                        // radio play
+                        else {
+                            startRadioForegroundService("radio", it, null)
+                        }
+                    }
                 }
             }
         }

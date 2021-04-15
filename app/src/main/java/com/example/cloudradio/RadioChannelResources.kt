@@ -194,8 +194,7 @@ object RadioChannelResources: AsyncCallback {
         DownloadFileFromURL(this).execute(httpAddress, filename)
     }
 
-    private fun addFromDataFile() {
-        Log.d(resourceTag, "addFromDataFile")
+    fun getResourceElement(): JsonElement? {
         var element: JsonElement? = null
 
         // system 내장
@@ -244,13 +243,18 @@ object RadioChannelResources: AsyncCallback {
             Log.d(resourceTag, "use internal channels.json 2")
             element = Json.parseToJsonElement(sb.toString())
         }
+        return element
+    }
 
+    private fun addFromDataFile() {
+        Log.d(resourceTag, "addFromDataFile")
+        var element: JsonElement? = getResourceElement()
 
         // version check end
         element?.let {
-            var data = Json.parseToJsonElement(element!!.jsonObject["data"].toString())
-            channelSize += data.jsonArray!!.size
-            for (i in data?.jsonArray!!.indices) {
+            var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
+            channelSize += data.jsonArray.size
+            for (i in data.jsonArray.indices) {
                 Log.d(resourceTag, "-    [$i]   -")
                 Log.d(resourceTag, "${data.jsonArray[i]}")
 
@@ -405,15 +409,29 @@ object RadioChannelResources: AsyncCallback {
         Log.d(resourceTag, "setChannelsFromPlsFile  cur/size: ${channelList.size} / ${channelSize}")
     }
 
+    private fun removeDuplication(title: String) {
+        for(i in channelList.indices) {
+            if ( channelList.get(i).title.equals(title) ) {
+                Log.d(resourceTag, "removeDuplication: ${title}")
+                channelList.removeAt(i)
+                break
+            }
+        }
+    }
+
     fun makeChannelList(title: String, url: String) {
         Log.d(resourceTag, "makeChannelList ${title} : ${url}")
         var videoId = url.substring( url.indexOf("watch?v=")+8)
         var filename = "youtube_" + videoId
+
+        // title 이 겹치는 channel 이 있는 경우 조사하여 중복 제거
+        removeDuplication(title)
+
         val map = RadioCompletionMap(title, title, channelList.size, filename, url, url)
         addChannelList(map)
         // 즐겨 찾기에 대해 live channel url 업데이트가 있을 수 있으니 확인 후
         // 업데이트가 있어서 filename 이 서로 다를 경우, 여기서 favorite list 를 저장해준다.
-        checkFavListUpdate(filename, title);
+        checkFavListUpdate(filename, title)
     }
 
     private fun checkFavListUpdate(newFilename: String, newTitle: String) {
@@ -426,7 +444,6 @@ object RadioChannelResources: AsyncCallback {
 
         val ins = fileObj.inputStream()
         val content = ins.readBytes().toString(Charset.defaultCharset())
-        val list = java.util.ArrayList<String>()
 
         val ele = Json.parseToJsonElement(content)
         Log.d(resourceTag, "checkFavListUpdate size: ${ele.jsonArray.size}")
@@ -441,12 +458,9 @@ object RadioChannelResources: AsyncCallback {
 
                 if ( !newFilename.equals(filename) ) {
                     // update 해줘야 함
-                    val gson = GsonBuilder().create()
                     val newContent = content.replace(filename, newFilename);
-                    val arr = gson.toJson(newContent)
                     Log.d(resourceTag, "old json: ${content}")
                     Log.d(resourceTag, "new json: ${newContent}")
-                    Log.d(resourceTag, "saved json: ${arr}")
                     Program.WriteFile().execute(Program.DEFAULT_FILE_PATH + Program.FAVORITE_CHANNEL_JSON, newContent)
                     break
                 }
@@ -461,13 +475,21 @@ object RadioChannelResources: AsyncCallback {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
             "fileopen" -> setChannelsFromPlsFile(arg[1]!!)
             "ParseUrl" -> {
-                var msg = res_handler.obtainMessage()
-                var bundle = Bundle()
-                bundle.putString("title", arg[1])
-                bundle.putString("url", arg[2])
+                val msg = res_handler.obtainMessage()
+                val bundle = Bundle()
+                val title = arg[1]
+                val url = arg[2]
 
-                msg.data = bundle
-                res_handler.sendMessage(msg)
+                if ( title != null && url != null ) {
+
+                    bundle.putString("title", title)
+                    bundle.putString("url", url)
+
+                    msg.data = bundle
+                    res_handler.sendMessage(msg)
+                } else {
+                    Log.d(resourceTag, "ParseUrl failed: title=${title} url=${url}")
+                }
             }
             "failed" -> {
                 when (arg[1]) {
