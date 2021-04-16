@@ -1,12 +1,9 @@
 package com.example.cloudradio
 
-import android.annotation.SuppressLint
 import android.app.*
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import androidx.annotation.RequiresApi
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 
@@ -24,15 +21,6 @@ class RadioService : Service() {
 
     companion object {
         var mFilename: String? = null
-
-        private var instance: RadioService? = null
-
-        fun getInstance(): RadioService =
-            instance ?: synchronized(this) {
-                instance ?: RadioService().also {
-                    instance = it
-                }
-            }
     }
 
     var mVideoId: String? = null
@@ -58,13 +46,14 @@ class RadioService : Service() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
-        Log.d(radioServiceTag, "RadioService onStartCommand action: ${intent?.action}")
+        mFilename = intent?.getStringExtra("name")
+        CRLog.d( "RadioService: ${intent?.action} for ${mFilename} / Onair(${OnAir.mCurrnetPlayFilename})")
 
         RadioNotification.init(this)
 
         when(intent?.action) {
             Constants.ACTION.STARTFOREGROUND_ACTION -> {
-                Log.d(radioServiceTag, "start foreground services")
+                CRLog.d( "start foreground services")
                 startForegroundService(intent?.getStringExtra("name"))
                 var serviceName = intent?.getStringExtra("serviceName")
                 when(serviceName) {
@@ -74,21 +63,21 @@ class RadioService : Service() {
                 return controllService(intent)
             }
             Constants.ACTION.STOPFOREGROUND_ACTION -> {
-                Log.d(radioServiceTag, "stop foreground services")
+                CRLog.d( "stop foreground services")
                 stopForegroundService()
                 OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.UNSTARTED)
             }
             Constants.ACTION.PLAY_ACTION -> {
-                Log.d(radioServiceTag, "play action file(${mFilename})")
-                mFilename?.let {
-                    playStopMedia(true)
+                CRLog.d( "play action file(${OnAir.mCurrnetPlayFilename})")
+                OnAir.mCurrnetPlayFilename?.let {
+                    playStopMedia(it,true)
                     RadioNotification.updateNotification(it, true)
                 }
             }
             Constants.ACTION.PAUSE_ACTION -> {
-                Log.d(radioServiceTag, "pause action file(${mFilename})")
-                mFilename?.let {
-                    playStopMedia(false)
+                CRLog.d( "pause action file(${OnAir.mCurrnetPlayFilename})")
+                OnAir.mCurrnetPlayFilename?.let {
+                    playStopMedia(it,false)
                     RadioNotification.updateNotification(it, false)
                 }
             }
@@ -106,9 +95,9 @@ class RadioService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun playStopMedia(action: Boolean) {
+    private fun playStopMedia(filename: String, action: Boolean) {
 
-        Log.d(radioServiceTag, "playStopMedia type: ${mPlayType}  action: ${action}")
+        CRLog.d( "playStopMedia type: ${mPlayType}  file: ${filename}  action: ${action}")
 
         if ( mPlayType == null ) return
 
@@ -116,23 +105,25 @@ class RadioService : Service() {
             SERVICE_TYPE.YOUTUBE -> {
                 if ( action ) {
                     if ( OnAir.youtubeState == PlayerConstants.PlayerState.PLAYING ) {
-                        Log.d(radioServiceTag, "Alreay playing")
+                        CRLog.d( "Alreay playing")
                         return
                     }
 
                     if ( OnAir.youtubeState == PlayerConstants.PlayerState.PAUSED ) {
-                        Log.d(radioServiceTag, "playing success")
+                        CRLog.d( "playing success")
                         OnAir.youtubePlayer?.play()
-                        mFilename?.let { it1 -> OnAir.updateButtonText(it1, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+                        OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
                     } else {
                         mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
                     }
+                    OnAir.mRadioStatus = RADIO_STATUS.PLAYING
                     OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.PLAYING)
 
                 } else {
-                    Log.d(radioServiceTag, "pause success")
+                    CRLog.d( "pause success")
                     OnAir.youtubePlayer?.pause()
-                    mFilename?.let { it1 -> OnAir.updateButtonText(it1, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
+                    OnAir.mRadioStatus = RADIO_STATUS.PAUSED
+                    OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true)
                     OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.PAUSED)
                 }
             }
@@ -141,33 +132,35 @@ class RadioService : Service() {
                     if (action) {
                         // play 요청
                         if (RadioPlayer.isPlaying()) {
-                            Log.d(radioServiceTag, "Alreay playing")
+                            CRLog.d( "Alreay playing")
                             return
                         } else {
                             try {
                                 if ( !RadioPlayer.play(it) ) {
                                     // play 했지만 실패
                                     RadioPlayer.stop()
-                                    mFilename?.let { it1 -> OnAir.updateButtonText(it1, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true) }
-                                    mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
+                                    OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
+                                    sendCallback(filename, RESULT.PLAY_FAILED)
                                     return
                                 } else {
-                                    Log.d(radioServiceTag, "playing success")
+                                    CRLog.d( "playing success")
                                 }
                             } catch (e: Exception) {
-                                Log.d(radioServiceTag, "error: "+e.message)
+                                CRLog.d( "error: "+e.message)
                             }
                             // play 성공
-                            mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
-                            mFilename?.let { it1 -> OnAir.updateButtonText(it1, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+                            OnAir.mRadioStatus = RADIO_STATUS.PLAYING
+                            sendCallback(filename, RESULT.PLAY_SUCCESS)
+                            OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
                         }
                     } else {
                         // stop 요청
                         if (RadioPlayer.isPlaying()) {
-                            Log.d(radioServiceTag, "stop success")
+                            CRLog.d( "stop success")
+                            OnAir.mRadioStatus = RADIO_STATUS.STOPPED
                             RadioPlayer.stop()
                         }
-                        mFilename?.let { it1 -> OnAir.updateButtonText(it1, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true) }
+                        OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
                     }
                 }
             }
@@ -181,12 +174,13 @@ class RadioService : Service() {
         when(mPlayType) {
             SERVICE_TYPE.YOUTUBE -> {
                 mVideoId = intent?.getStringExtra("videoId")
-                Log.d(radioServiceTag, "onStartCommand: $mVideoId")
+                CRLog.d( "onStartCommand: $mVideoId")
 
                 MainActivity.youtubeView?.enableBackgroundPlayback(true)
                 mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
                 mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
                 OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.PLAYING)
+                OnAir.mRadioStatus = RADIO_STATUS.PLAYING
 
                 return START_NOT_STICKY
             }
@@ -200,8 +194,8 @@ class RadioService : Service() {
                     return START_STICKY
                 }
 
-                Log.d(radioServiceTag, "start service filename: "+mFilename)
-                Log.d(radioServiceTag, "start service httpAddress: "+mAddress)
+                CRLog.d( "start service filename: "+mFilename)
+                CRLog.d( "start service httpAddress: "+mAddress)
 
                 // address 가 valid 하지만 재생 실패되는 경우
                 // 이 경우도 실패에 대한 callback 을 전달한다.
@@ -214,9 +208,9 @@ class RadioService : Service() {
                         }
                     }
                 } catch ( e: Exception ) {
-                    Log.d(radioServiceTag, "error: "+e.message)
+                    CRLog.d( "error: "+e.message)
                 }
-
+                OnAir.mRadioStatus = RADIO_STATUS.PLAYING
                 // success callback
                 mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
             }
@@ -231,18 +225,19 @@ class RadioService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(radioServiceTag, "RadioService onCreate")
+        CRLog.d( "RadioService onCreate")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         mFilename?.let {
-            Log.d(radioServiceTag, "RadioService onDestroy")
-//            RadioPlayer.stop()
+            CRLog.d( "RadioService onDestroy")
+            OnAir.mRadioStatus = RADIO_STATUS.STOPPED
+            RadioPlayer.stop()
 
             // listener 가 너무 늦게 불러져서-_- 강제로 pause 이벤트 전달
             OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.UNSTARTED)
-//            OnAir.youtubePlayer?.pause()
+            OnAir.youtubePlayer?.pause()
 
             sendCallback(it, RESULT.DESTROYED)
         }

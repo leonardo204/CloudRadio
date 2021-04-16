@@ -31,7 +31,7 @@ data class AIR_HEADER(
 private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
     val interceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
         override fun log(message: String) {
-            Log.e(airTag, message + "")
+            CRLog.d( message + "")
         }
     })
     return interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -202,27 +202,27 @@ object AirStatus {
     }
 
     private fun dumpAirStatus(data: PMData) {
-        Log.d(airTag, "==   AirStatus  ==")
-        Log.d(airTag, "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data?.pm10Grade1h)+")")
-        Log.d(airTag, "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data?.pm25Grade1h)+")")
+        CRLog.d( "==   AirStatus  ==")
+        CRLog.d( "1. 미세먼지(PM10): "+data.pm10Value +" ("+getGradeString(data?.pm10Grade1h)+")")
+        CRLog.d( "1. 초미세먼지(PM2.5): "+data.pm25Value +" ("+getGradeString(data?.pm25Grade1h)+")")
         data?.let { OnAir.updateAirStatus(it) }
     }
 
     fun requestTMCoordination(umdName: String) {
-        Log.d(airTag, "umdName:("+umdName+")")
+        CRLog.d( "umdName:("+umdName+")")
 
         val call = AirTMXYObject.retrofitService.GetTMCoordination("json", 1, 1, umdName )
-        Log.d(airTag, "requestTMCoordination: " + call.request().url().toString())
+        CRLog.d( "requestTMCoordination: " + call.request().url().toString())
         call.enqueue(object : retrofit2.Callback<GETTMXY> {
             override fun onResponse(call: Call<GETTMXY>, response: Response<GETTMXY>) {
                 if ( response.isSuccessful ) {
-                    Log.d(airTag, "TMXY: "+response.body())
+                    CRLog.d( "TMXY: "+response.body())
                     if ( response.body()!!.response.body.items.size > 0) {
                         var tmx: String = response.body()!!.response.body.items[0].tmX
                         var tmy: String = response.body()!!.response.body.items[0].tmY
                         requestViewLocation(tmx, tmy)
                     } else {
-                        Log.d(airTag, "There is no TM data")
+                        CRLog.d( "There is no TM data")
                         MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
                         var data = PMData("알 수 없음", "-", "알 수 없음", "-")
                         dumpAirStatus(data)
@@ -231,18 +231,18 @@ object AirStatus {
             }
 
             override fun onFailure(call: Call<GETTMXY>, t: Throwable) {
-                Log.d(airTag, "failed to get TMXY: "+t.message)
+                CRLog.d( "failed to get TMXY: "+t.message)
             }
         })
     }
 
     fun requestViewLocation(tmx: String, tmy: String) {
-        Log.d(airTag, "requestViewLocation(tmx:"+tmx+", tmy:"+tmy+")")
+        CRLog.d( "requestViewLocation(tmx:"+tmx+", tmy:"+tmy+")")
         val call = AirViewLocationObject.retrofitService.GetViewLocation("json", tmx, tmy)//, 1.0 )
         call.enqueue(object : retrofit2.Callback<GETVIEWLOCATION> {
             override fun onResponse(call: Call<GETVIEWLOCATION>, response: Response<GETVIEWLOCATION>) {
                 if ( response.isSuccessful ) {
-                    Log.d(airTag, "requestViewLocation: "+response.body())
+                    CRLog.d( "requestViewLocation: "+response.body())
                     var leastIndex: Float = 0.0f
                     var stationName: String = "N/A"
                     for(i in response.body()!!.response.body.items.indices) {
@@ -256,30 +256,30 @@ object AirStatus {
                             }
                         }
                     }
-                    Log.d(airTag, "least stationName: "+stationName)
+                    CRLog.d( "least stationName: "+stationName)
                     getAirPMData( stationName )
                 }
             }
 
             override fun onFailure(call: Call<GETVIEWLOCATION>, t: Throwable) {
-                Log.d(airTag, "failed to requestViewLocation: "+t.message)
+                CRLog.d( "failed to requestViewLocation: "+t.message)
             }
         })
     }
 
     fun getAirPMData(stationName: String) {
-        Log.d(airTag, "getAirPMData("+stationName+")")
+        CRLog.d( "getAirPMData("+stationName+")")
 
         val call = AirPMDataObject.retrofitService.GetPMData("json","DAILY", "1", "1", stationName , "1.3")
         call.enqueue(object : retrofit2.Callback<GETPMDATA> {
             override fun onResponse(call: Call<GETPMDATA>, response: Response<GETPMDATA>) {
                 if ( response.isSuccessful ) {
-                    Log.d(airTag, "getAirPMData: "+response.body())
+                    CRLog.d( "getAirPMData: "+response.body())
                     var pm10Value: String = response.body()!!.response.body.items[0].pm10Value
                     var pm10Grade1h: String = response.body()!!.response.body.items[0].pm10Grade1h
                     var pm25Value: String = response.body()!!.response.body.items[0].pm25Value
                     var pm25Grade1h: String = response.body()!!.response.body.items[0].pm25Grade1h
-                    Log.d(airTag, "pm10Value: ${pm10Value} pm10Grade1h: ${pm10Grade1h} pm25Value: ${pm25Value} pm25Grade1h: ${pm25Grade1h}")
+                    CRLog.d( "pm10Value: ${pm10Value} pm10Grade1h: ${pm10Grade1h} pm25Value: ${pm25Value} pm25Grade1h: ${pm25Grade1h}")
                     if ( pm25Value.equals("-") ) {
                         pm25Value = "-1"
                         pm25Grade1h = "알 수 없음"
@@ -294,7 +294,7 @@ object AirStatus {
             }
 
             override fun onFailure(call: Call<GETPMDATA>, t: Throwable) {
-                Log.d(airTag, "failed to getAirPMData: "+t.message)
+                CRLog.d( "failed to getAirPMData: "+t.message)
             }
         })
     }

@@ -26,7 +26,7 @@ object NetworkStatus {
             actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> TYPE_MOBILE
             else -> TYPE_NOT_CONNECTED
         }
-        Log.d(netStatusTag, "network: " + getNetworkTypeString(result.toInt()) )
+        CRLog.d( "network: " + getNetworkTypeString(result.toInt()) )
         return result
     }
 

@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,7 +33,7 @@ object Program : Fragment() {
     lateinit var mContext: Context
     var program_btnList = HashMap<String, Button>()
 
-    // program 버튼을 누른 순서대로 favList 에 filename 으로 저장
+    // program 버튼을 누른 순서대로 favList 에 title 으로 저장
     // 먼저 들어간 program 이 1순위가 된다.
     var favList = ArrayList<String>()
 
@@ -50,7 +49,7 @@ object Program : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(programTag, "Program onCreateView")
+        CRLog.d( "Program onCreateView")
 
         if ( container != null ) {
             mContext = container.context
@@ -75,16 +74,16 @@ object Program : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(programTag, "Program onViewCreated")
+        CRLog.d( "Program onViewCreated")
 
     }
 
     fun resetProgramButtons() {
-        Log.d(programTag, "resetProgramButtons")
+        CRLog.d( "resetProgramButtons")
 //        var iter = program_btnList.iterator()
 //        while( iter.hasNext() ) {
 //            var filename = iter.next()
-//            Log.d(programTag, "remove: ${filename}")
+//            CRLog.d( "remove: ${filename}")
 //            var button = program_btnList.get(filename)
 //            var parent = button?.parent as ViewGroup?
 //            button?.let { parent?.removeView(it) }
@@ -96,59 +95,61 @@ object Program : Fragment() {
     }
 
     fun updateProgramButtons() {
-        Log.d(programTag, "1 updateProgramButtons() btnList: ${program_btnList.size}/${RadioChannelResources.channelList.size}")
+        CRLog.d( "1 updateProgramButtons() btnList: ${program_btnList.size}/${RadioChannelResources.channelList.size}")
 
         if ( program_btnList.size < RadioChannelResources.channelList.size ) {
             var idx = program_btnList.size
             var max = RadioChannelResources.channelList.size-1
             while ( idx <= max ) {
                 val filename = RadioChannelResources.channelList.get(idx).filename
-                Log.d(programTag, "make program buttons for [${idx}] ${filename}")
+                val title = RadioChannelResources.channelList.get(idx).title
+                CRLog.d( "make program buttons for [${idx}] ${title} ${filename}")
                 val button = Button(mContext)
                 button.setText(RadioChannelResources.channelList.get(idx).defaultButtonText)
-                button.setOnClickListener { onRadioButton(filename) }
-                program_btnList.put(filename, button)
+                button.setOnClickListener { onRadioButton(title) }
+                program_btnList.put(title, button)
                 layout_programs.addView(button)
 
-                var message = getDefaultTextByFilename(filename)
-                updateButtonText(filename, message, true, false)
+                var message = RadioChannelResources.getDefaultTextByFilename(filename)
+                updateProgramButtonText(filename, message, true, false)
                 idx++
             }
         }
         if ( favList.size > 0 ) {
             for(i in favList.indices) {
-                updateButtonText(favList.get(i), getDefaultTextByFilename(favList.get(i)), true, true)
+                updateProgramButtonText(RadioChannelResources.getFilenameByTitle(favList.get(i)), RadioChannelResources.getDefaultTextByTitle(favList.get(i)), true, true)
             }
         }
-        Log.d(programTag, "2 updateProgramButtons() btnList: "+ program_btnList.size)
+        CRLog.d( "2 updateProgramButtons() btnList: "+ program_btnList.size)
     }
 
     private fun initProgramButtons() {
         layout_programs.removeAllViews()
 
-        Log.d(programTag, "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
+        CRLog.d( "initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
-            val filename = RadioChannelResources.channelList.get(i).filename
-            Log.d(programTag, "make program buttons for [${i}] ${filename}")
+            val title = RadioChannelResources.channelList.get(i).title
+            CRLog.d( "make program buttons for [${i}] ${title}")
             val button = Button(mContext)
             button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
-            button.setOnClickListener { onRadioButton(filename) }
-            program_btnList.put(filename, button)
+            button.setOnClickListener { onRadioButton(title) }
+            program_btnList.put(title, button)
 //            var layoutParams: GridLayout.LayoutParams =  GridLayout.LayoutParams()
 //            layoutParams.setGravity(Gravity.FILL_HORIZONTAL)
 //            layout_grid_programs.addView(button, layoutParams)
             layout_programs.addView(button)
 
-            var message = getDefaultTextByFilename(filename)
-            updateButtonText(filename, message, true, false)
+            val filename = RadioChannelResources.getFilenameByTitle(title)
+            var message = RadioChannelResources.getDefaultTextByTitle(title)
+            updateProgramButtonText(filename, message, true, false)
         }
 
         if ( favList.size > 0 ) {
             for(i in favList.indices) {
-                updateButtonText(favList.get(i), getDefaultTextByFilename(favList.get(i)), true, true)
+                updateProgramButtonText(RadioChannelResources.getFilenameByTitle(favList.get(i)), RadioChannelResources.getDefaultTextByFilename(favList.get(i)), true, true)
             }
         }
-        Log.d(programTag, "initProgramButtons() btnList: "+ program_btnList.size)
+        CRLog.d( "initProgramButtons() btnList: "+ program_btnList.size)
     }
 
     // 라디오 버튼 누르면 모두 여기서 처리
@@ -158,17 +159,19 @@ object Program : Fragment() {
     // 선호채널 상태가 아니라면
     //   - 선호채널 리스트 등록
     //   - 선호채널 색상 표시
-    fun onRadioButton(filename: String) {
-        when(filename) {
+    fun onRadioButton(title: String) {
+        when(title) {
             "SAVE" -> saveAction()
             "RESET" -> resetAction()
             else -> {
-                if ( favList.contains(filename) ) {
-                    favList.remove(filename)
-                    updateButtonText(filename, getDefaultTextByFilename(filename), true, false)
+                if ( favList.contains(title) ) {
+                    CRLog.d("remove favList: ${title}")
+                    favList.remove(title)
+                    updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), RadioChannelResources.getDefaultTextByTitle(title), true, false)
                 } else {
-                    favList.add(filename)
-                    updateButtonText(filename, "즐겨찾기 추가, "+getDefaultTextByFilename(filename), true, true)
+                    CRLog.d("add favList: ${title}")
+                    favList.add(title)
+                    updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
                 }
             }
         }
@@ -190,36 +193,28 @@ object Program : Fragment() {
     }
 
     fun resetAllButtonText() {
-        Log.d(programTag, "resetButtons()")
-        var iter = program_btnList.iterator()
+        CRLog.d( "resetButtons()")
+        val iter = program_btnList.iterator()
         while( iter.hasNext() ) {
-            var obj = iter.next()
-            var message = getDefaultTextByFilename(obj.key)
-            updateButtonText(obj.key, message, true, false)
+            val obj = iter.next()
+            val title = obj.key
+            val message = RadioChannelResources.getDefaultTextByTitle(title)
+            val filename = RadioChannelResources.getFilenameByTitle(title)
+            updateProgramButtonText(filename, message, true, false)
         }
-    }
-
-    fun getDefaultTextByFilename(filename: String): String {
-
-        for(i in RadioChannelResources.channelList.indices) {
-//            Log.d(programTag, " RadioChannelResources.channelList.get(i).filename: ${RadioChannelResources.channelList.get(i).filename} - $filename")
-            if ( RadioChannelResources.channelList.get(i).filename.equals(filename) ) {
-                return RadioChannelResources.channelList.get(i).defaultButtonText
-            }
-        }
-        return "Unknown Channel"
     }
 
     @SuppressLint("SetTextI18n")
-    fun updateButtonText(filename: String, text: String, enable: Boolean, bFavorite: Boolean) {
-        Log.d(programTag, "updateButtonText $filename  $text  $enable")
+    fun updateProgramButtonText(filename: String, text: String, enable: Boolean, bFavorite: Boolean) {
+        //CRLog.d( "updateProgramButtonText $filename  $text  $enable")
 
-        var iter = program_btnList.iterator()
+        val iter = program_btnList.iterator()
         while( iter.hasNext() ) {
-            var obj = iter.next()
-            //Log.d(programTag, "updateButtonText: "+obj.key )
-            if ( obj.key.equals(filename) ) {
-                var button = obj.value
+            val obj = iter.next()
+            val title = obj.key
+            //CRLog.d( "updateButtonText: "+obj.key )
+            if ( RadioChannelResources.getFilenameByTitle(title).equals(filename) ) {
+                val button = obj.value
                 if (bFavorite) {
                     button.setBackgroundColor(Color.CYAN)
                 } else {
@@ -234,11 +229,11 @@ object Program : Fragment() {
     }
 
     private fun removeFavList() {
-        Log.d(programTag, "removeFavList()")
+        CRLog.d( "removeFavList()")
         var fileObj = File(DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON)
         if ( fileObj.exists() ) {
             fileObj.delete()
-            Log.d(programTag, "removeFavList() success")
+            CRLog.d( "removeFavList() success")
         }
     }
 
@@ -246,31 +241,31 @@ object Program : Fragment() {
         val iter = favList.iterator()
         var itemList: List<FavoriteItem> = listOf()
         while( iter.hasNext() ) {
-            val filename = iter.next()
-            val title = RadioChannelResources.getTitleByFilename(filename)
+            val title = iter.next()
+            val filename = RadioChannelResources.getFilenameByTitle(title)
             val item = FavoriteItem(filename, title)
             itemList += item
 
         }
-        Log.d(programTag, "saveFavList itemList: ${itemList}")
+        CRLog.d( "saveFavList itemList: ${itemList}")
 
         val gson = GsonBuilder().create()
         val listType: TypeToken<List<FavoriteItem>> = object: TypeToken<List<FavoriteItem>>() {}
 
         val arr = gson.toJson(itemList, listType.type)
-        Log.d(programTag, "saveFavList json: ${arr}")
+        CRLog.d( "saveFavList json: ${arr}")
 
         WriteFile().execute(DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON, arr.toString())
     }
 
     fun updatePrograms(list: ArrayList<String>) {
-        Log.d(programTag, "updatePrograms size: ${list.size}")
+        CRLog.d( "updatePrograms size: ${list.size}")
         val iter = list.iterator()
         while( iter.hasNext() ) {
-            val filename = iter.next()
-            Log.d(programTag, "updatePrograms ${filename}")
-            favList.add(filename)
-            updateButtonText(filename, "즐겨찾기 추가, "+getDefaultTextByFilename(filename), true, true)
+            val title = iter.next()
+            CRLog.d( "updatePrograms ${title}")
+            favList.add(title)
+            updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
         }
     }
 
@@ -282,29 +277,29 @@ object Program : Fragment() {
         }
 
         override fun doInBackground(vararg param: String?): String? {
-            Log.d(programTag, "WriteFile.doInBackground")
+            CRLog.d( "WriteFile.doInBackground")
             var filename = param[0]
             var data = param[1]
 
             try {
                 var fileObj = File(filename)
                 if ( fileObj.exists() ) {
-                    Log.d(programTag, "remove previous savedChannel.json")
+                    CRLog.d( "remove previous savedChannel.json")
                     fileObj.delete()
                 }
 
                 if (data != null) {
-                    Log.d(programTag, "write savedChannel.json")
+                    CRLog.d( "write savedChannel.json")
                     fileObj.writeText(data, Charset.defaultCharset())
                 }
             } catch (e: IOException) {
-                Log.e(programTag,"WriteFile Error: "+ e.message)
+                CRLog.d("WriteFile Error: "+ e.message)
             } catch (e: Exception) {
-                Log.e(programTag,"WriteFile Error: "+ e.message)
+                CRLog.d("WriteFile Error: "+ e.message)
             } finally {
 
             }
-            Log.d(programTag, "WriteFile.doInBackground end")
+            CRLog.d( "WriteFile.doInBackground end")
 
             return null
         }
@@ -319,7 +314,7 @@ object Program : Fragment() {
          * After completing background task Dismiss the progress dialog
          */
         override fun onPostExecute(file_url: String?) {
-            Log.d(programTag, "WriteFile finished: " + file_url)
+            CRLog.d( "WriteFile finished: " + file_url)
         }
     }
 }

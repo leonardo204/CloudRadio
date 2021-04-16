@@ -189,7 +189,7 @@ object More : Fragment(), AsyncCallback {
     }
 
     fun buttonUpdate(button: Button, text: String, enable: Boolean) {
-        Log.d(moreTag, "buttonUpdate: $text ($enable)")
+        CRLog.d( "buttonUpdate: $text ($enable)")
 
         button.setText(text)
         button.isEnabled = enable
@@ -210,25 +210,25 @@ object More : Fragment(), AsyncCallback {
     }
 
     fun makeToastMessage(message: String) {
-        Log.d(moreTag, "message: $message")
+        CRLog.d( "message: $message")
         Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
     }
 
     private fun getAppBigger(ver1: String, ver2: String): String? {
-        Log.d(moreTag, "getAppBigger: $ver1 $ver2")
+        CRLog.d( "getAppBigger: $ver1 $ver2")
         val str1 = ver1.substring(1)
         val str2 = ver2.substring(1)
         if (str1.substring(0, 3).toFloat() > str2.substring(0, 3).toFloat()) {
-            Log.d(moreTag, "1) " + str1.substring(0, 3) + " > " + str2.substring(0, 3))
+            CRLog.d( "1) " + str1.substring(0, 3) + " > " + str2.substring(0, 3))
             return ver1
         } else if (str2.substring(0, 3).toFloat() > str1.substring(0, 3).toFloat()) {
-            Log.d(moreTag, "2) " + str2.substring(0, 3) + " > " + str1.substring(0, 3))
+            CRLog.d( "2) " + str2.substring(0, 3) + " > " + str1.substring(0, 3))
             return ver2
         } else if (str1.substring(2).toFloat() > str2.substring(2).toFloat()) {
-            Log.d(moreTag, "3) " + str1.substring(2) + " > " + str2.substring(2))
+            CRLog.d( "3) " + str1.substring(2) + " > " + str2.substring(2))
             return ver1
         }
-        Log.d(moreTag, "$str1 < $str2")
+        CRLog.d( "$str1 < $str2")
         return ver2
     }
 
@@ -241,7 +241,7 @@ object More : Fragment(), AsyncCallback {
                 var ins: InputStream = fileobj.inputStream()
                 content = ins.readBytes().toString(Charset.defaultCharset())
             } catch (e: Exception) {
-                Log.d(moreTag, "checkVersion error: " + e.message)
+                CRLog.d( "checkVersion error: " + e.message)
             }
         }
 
@@ -250,8 +250,8 @@ object More : Fragment(), AsyncCallback {
             val nAppVer = element.jsonObject["version_cloudradio"].toString().replace("\"", "")
             val nChVer = element.jsonObject["version_channel"].toString().replace("\"", "")
 
-            Log.d(
-                moreTag,
+            CRLog.d(
+                
                 "get version ( $mAppVersion vs $nAppVer  -  $mChannelVersion vs $nChVer )"
             )
 
@@ -298,7 +298,7 @@ object More : Fragment(), AsyncCallback {
             }
             it.close()
         }
-        Log.d(moreTag, "getChannelVersion internal: ${sb}")
+        CRLog.d( "getChannelVersion internal: ${sb}")
         val element = Json.parseToJsonElement(sb.toString())
         val version1 = element.jsonObject["version"].toString().replace("\"", "")
         val version2: String
@@ -312,16 +312,16 @@ object More : Fragment(), AsyncCallback {
                 var ins: InputStream = file.inputStream()
                 content = ins.readBytes().toString(Charset.defaultCharset())
             } catch (e: Exception) {
-                Log.d(moreTag, "checkVersion error: " + e.message)
+                CRLog.d( "checkVersion error: " + e.message)
             }
         }
 
-        Log.d(moreTag, "getChannelVersion download: ${content}")
+        CRLog.d( "getChannelVersion download: ${content}")
         content?.let {
             val element = Json.parseToJsonElement(it)
             version2 = element.jsonObject["version"].toString().replace("\"", "")
 
-            Log.d(moreTag, "sys ch ver($version1)  down ch ver($version2)")
+            CRLog.d( "sys ch ver($version1)  down ch ver($version2)")
 
             if ( version1.toInt() - version2.toInt() < 0) {
                 mChannelVersion = version2
@@ -334,7 +334,7 @@ object More : Fragment(), AsyncCallback {
             mChannelVersion = version1
         }
 
-        Log.d(moreTag, "getChannelVersion mChannelVersion:${mChannelVersion}")
+        CRLog.d( "getChannelVersion mChannelVersion:${mChannelVersion}")
 
         return mChannelVersion
     }
@@ -391,7 +391,7 @@ object More : Fragment(), AsyncCallback {
          */
         txt_dpi = view.findViewById(R.id.txt_dpi)
         val metrics = mContext?.resources?.displayMetrics
-        Log.d(moreTag, "device dpi => " + metrics?.density)
+        CRLog.d( "device dpi => " + metrics?.density)
         txt_dpi.setText("해상도 DPI: ${metrics?.density?.let { getDPIText(it) }}")
 
         return view
@@ -423,7 +423,7 @@ object More : Fragment(), AsyncCallback {
 
 
     private fun onButtonClick(command: String) {
-        Log.d(moreTag, "onButtonClick: $command")
+        CRLog.d( "onButtonClick: $command")
         txt_version_result.setText("")
 
         when( command ) {
@@ -449,7 +449,7 @@ object More : Fragment(), AsyncCallback {
     // command - success or failed
     // value - filename (success  시에는 path 가 됨)
     override fun onTaskDone(vararg string: String?) {
-        Log.d(moreTag, "download result: ${string[0]}")
+        CRLog.d( "download result: ${string[0]}")
 
         var msg = more_handler.obtainMessage()
         var bundle = Bundle()
@@ -483,11 +483,11 @@ object More : Fragment(), AsyncCallback {
          * Downloading file in background thread
          */
         override fun doInBackground(vararg f_url: String?): String? {
-            Log.d(moreTag, "DownloadApplication.doInBackground")
+            CRLog.d( "DownloadApplication.doInBackground")
             var count: Int
             try {
                 val url = URL(f_url[0])
-                Log.d(moreTag, "down from: " + url)
+                CRLog.d( "down from: " + url)
                 val connection: URLConnection = url.openConnection()
                 connection.connect()
 
@@ -502,12 +502,12 @@ object More : Fragment(), AsyncCallback {
 
                 // Output stream
                 filename = filename + f_url[1]
-                Log.d(moreTag, "filename:" + filename)
+                CRLog.d( "filename:" + filename)
 
                 // file remove if it exist
                 var fileobj = File(filename)
                 if ( fileobj.exists() ) {
-                    Log.d(moreTag, "remove previous version")
+                    CRLog.d( "remove previous version")
                     fileobj.delete()
                 }
 
@@ -532,19 +532,19 @@ object More : Fragment(), AsyncCallback {
                 input.close()
                 bCompleted = true
             } catch (e: IOException) {
-                Log.e(moreTag, "Download Error: " + e.message)
+                CRLog.d( "Download Error: " + e.message)
             } catch (e: Exception) {
-                Log.e(moreTag, "Download Error: " + e.message)
+                CRLog.d( "Download Error: " + e.message)
             } finally {
 
             }
-            Log.d(moreTag, "DownloadFileFromURL.doInBackground end")
+            CRLog.d( "DownloadFileFromURL.doInBackground end")
 
             if (bCompleted) {
                 callback.onTaskDone("success", filename)
             }
             else {
-                Log.d(moreTag, "Download failed")
+                CRLog.d( "Download failed")
                 callback.onTaskDone("failed", f_url[0])
             }
 

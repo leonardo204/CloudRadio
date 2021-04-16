@@ -17,7 +17,7 @@ object RadioPlayer {
     lateinit var mMediaPlayer: MediaPlayer
 
     fun init() {
-        Log.d(radioPlayerTag, "RadioPlayer init")
+        CRLog.d( "RadioPlayer init")
         if ( !initialized ) {
             mMediaPlayer = MediaPlayer()
         }
@@ -32,13 +32,13 @@ object RadioPlayer {
             mMediaPlayer.start()
             ret = true
         } catch (e: IOException) {
-            Log.d(radioPlayerTag, "IOException: "+e)
+            CRLog.d( "IOException: "+e)
             ret = false
         } catch (e:  IllegalStateException) {
-            Log.d(radioPlayerTag, "IllegalStateException: "+e)
+            CRLog.d( "IllegalStateException: "+e)
             ret = false
         } catch (e: Exception) {
-            Log.d(radioPlayerTag, "exception: "+e)
+            CRLog.d( "exception: "+e)
             ret = false
         } finally {
             return ret
@@ -47,7 +47,7 @@ object RadioPlayer {
 
     fun stop() {
         if ( mMediaPlayer.isPlaying ) {
-            Log.d(radioPlayerTag, "RadioPlayer stopped")
+            CRLog.d( "RadioPlayer stopped")
             mMediaPlayer.stop()
             mMediaPlayer.release()
             mMediaPlayer = MediaPlayer()
@@ -60,7 +60,7 @@ object RadioPlayer {
 
 //    fun resume() {
 //        if ( !mMediaPlayer.isPlaying ) {
-//            Log.d(radioPlayerTag, "RadioPlayer resume")
+//            CRLog.d( "RadioPlayer resume")
 //            mMediaPlayer.seekTo(mPosition)
 //            mMediaPlayer.start()
 //        }
@@ -68,7 +68,7 @@ object RadioPlayer {
 //
 //    fun pause() {
 //        if ( mMediaPlayer.isPlaying ) {
-//            Log.d(radioPlayerTag, "RadioPlayer paused")
+//            CRLog.d( "RadioPlayer paused")
 //            mMediaPlayer.pause()
 //            mPosition = mMediaPlayer.currentPosition
 //        }

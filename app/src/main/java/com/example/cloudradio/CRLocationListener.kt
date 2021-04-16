@@ -14,7 +14,7 @@ object CRLocationListener: LocationListener {
     override fun onLocationChanged(location: Location?) {
 
         if (location != null) {
-            Log.d( mainTag,"Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude  )
+            CRLog.d( "Get GPS. Latitude: " + location.latitude + " , Longitude: " + location.longitude  )
 
             // call address information
             val geoInfoTask = GeoInfoTask()
@@ -31,16 +31,16 @@ object CRLocationListener: LocationListener {
 
     //provider의 상태가 변경되때마다 호출
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-        Log.d(mainTag, "onStatusChanged. Not yet implemented")
+        CRLog.d( "onStatusChanged. Not yet implemented")
     }
 
     //provider가 사용 가능한 상태가 되는 순간 호출
     override fun onProviderEnabled(provider: String?) {
-        Log.d(mainTag, "onProviderEnabled. Not yet implemented")
+        CRLog.d( "onProviderEnabled. Not yet implemented")
     }
 
     //provider가 사용 불가능 상황이 되는 순간 호출
     override fun onProviderDisabled(provider: String?) {
-        Log.d(mainTag, "onProviderDisabled. Not yet implemented")
+        CRLog.d( "onProviderDisabled. Not yet implemented")
     }
 }

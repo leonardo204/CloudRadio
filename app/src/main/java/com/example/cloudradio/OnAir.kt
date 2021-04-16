@@ -20,7 +20,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
-import java.lang.Thread.sleep
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -69,6 +68,10 @@ enum class RADIO_BUTTON {
         override fun getMessage(): String = "재생중 ( 터치하여 정지 )"
     };
     abstract fun getMessage(): String
+}
+
+enum class RADIO_STATUS {
+    PLAYING, STOPPED, PAUSED, UNSTARTED
 }
 
 @SuppressLint("StaticFieldLeak")
@@ -122,41 +125,21 @@ object OnAir : Fragment() {
     var DEFAULT_FILE_PATH: String? = null
     var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
 
-    var waitForResourceUpdate = false
+    var mRadioStatus: RADIO_STATUS = RADIO_STATUS.UNSTARTED
 
     lateinit var txt_loading: TextView
 
-    // fragment 가 다시 시작될 때 button list hashmap 에서 button 들 복구해준다.
-    fun restoreButtons() {
-        program_layout?.removeAllViews()
-
-        val iter = onair_btnList.iterator()
-        while( iter.hasNext() ) {
-            val obj = iter.next()
-            val filename = obj.key
-            val btn = obj.value
-
-            Log.d(onairTag, "restoreButton: ${filename}")
-            val parent = btn.parent as ViewGroup
-            parent.removeView(btn)
-            Log.d(onairTag, "parent: $parent - $program_layout")
-            btn.setOnClickListener { onRadioButton(filename, CLICK_TYPE.CLICK) }
-            program_layout?.addView(btn)
-            updateButtonText( filename, Program.getDefaultTextByFilename(filename),true )
-        }
-    }
-
     // 중간 중간 live 채널 주소 업데이트를 위해 불러줌
     fun checkUpdateFavoriteList() {
-        Log.d(onairTag, "checkUpdateFavoriteList")
+        CRLog.d( "checkUpdateFavoriteList")
 
         var element: JsonElement? = RadioChannelResources.getResourceElement()
 
         element?.let {
             var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
             for (i in data.jsonArray.indices) {
-                Log.d(resourceTag, "-    [$i]   -")
-                Log.d(resourceTag, "${data.jsonArray[i]}")
+                CRLog.d( "-    [$i]   -")
+                CRLog.d( "${data.jsonArray[i]}")
 
                 val live =
                     data.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean()
@@ -180,7 +163,7 @@ object OnAir : Fragment() {
 
         val fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
         if ( !fileObj.exists() && !fileObj.canRead() ) {
-            Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
+            CRLog.d( "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
             Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
             return
         }
@@ -190,12 +173,12 @@ object OnAir : Fragment() {
         val list = ArrayList<String>()
 
         val ele = Json.parseToJsonElement(content)
-        Log.d(onairTag, "updateFavoriteList size: ${ele.jsonArray.size}")
+        CRLog.d( "updateFavoriteList size: ${ele.jsonArray.size}")
 
         for(i in 0..ele.jsonArray.size-1) {
-            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
-            Log.d(onairTag, "updateFavoriteList: $filename")
-            list.add(filename)
+            val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"","")
+            CRLog.d( "updateFavoriteList: $title")
+            list.add(title)
         }
 
         makePrograms(list)
@@ -203,17 +186,16 @@ object OnAir : Fragment() {
         Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
     }
 
-
     // read favorite list from file
 //    fun updateFavoriteList() {
-//        Log.d(onairTag, "updateFavoriteList")
+//        CRLog.d( "updateFavoriteList")
 //
 //        val parent = txt_loading.parent as ViewGroup?
 //        parent?.removeView(txt_loading)
 //
 //        val fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
 //        if ( !fileObj.exists() && !fileObj.canRead() ) {
-//            Log.d(onairTag, "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
+//            CRLog.d( "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
 //            Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
 //            return
 //        }
@@ -223,11 +205,11 @@ object OnAir : Fragment() {
 //        val list = ArrayList<String>()
 //
 //        val ele = Json.parseToJsonElement(content)
-//        Log.d(onairTag, "updateFavoriteList size: ${ele.jsonArray.size}")
+//        CRLog.d( "updateFavoriteList size: ${ele.jsonArray.size}")
 //
 //        for(i in 0..ele.jsonArray.size-1) {
 //            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
-//            Log.d(onairTag, "updateFavoriteList: $filename")
+//            CRLog.d( "updateFavoriteList: $filename")
 //            list.add(filename)
 //        }
 //
@@ -240,22 +222,22 @@ object OnAir : Fragment() {
         makePrograms(Program.favList)
     }
 
-    // filename 들을 담은 array list 가 전달됨
-    // array list 로부터 filename 에 해당하는 버튼을 동적 생성
+    // title 들을 담은 array list 가 전달됨
+    // array list 로부터 title 에 해당하는 버튼을 동적 생성
     fun makePrograms(favList: ArrayList<String>) {
         resetPrograms()
 
         var iter = favList.iterator()
         while( iter.hasNext() ) {
-            var filename = iter.next()
-            Log.d(onairTag, "makePrograms:" + filename)
+            var title = iter.next()
+            CRLog.d( "makePrograms:" + title)
             var btn = Button(mContext)
-            onair_btnList.put(filename, btn)
-            btn.setOnClickListener { onRadioButton(filename, CLICK_TYPE.CLICK) }
+            onair_btnList.put(title, btn)
+            btn.setOnClickListener { onRadioButton(title, CLICK_TYPE.CLICK) }
             program_layout?.addView(btn)
-            updateButtonText(
-                filename,
-                Program.getDefaultTextByFilename(filename),
+            updateOnAirButtonText(
+                RadioChannelResources.getFilenameByTitle(title),
+                RadioChannelResources.getDefaultTextByTitle(title),
                 true
             )
         }
@@ -263,12 +245,14 @@ object OnAir : Fragment() {
 
     fun resetPrograms() {
         onair_btnList.clear()
-        //stopRadioForegroundService()
+        if ( mRadioStatus == RADIO_STATUS.PLAYING || mRadioStatus == RADIO_STATUS.PAUSED ) {
+            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
+        }
         program_layout?.removeAllViews()
     }
 
     private fun onRefreshClick() {
-        Log.d(onairTag, "information refresh")
+        CRLog.d( "information refresh")
         setCurrentTimeView()
         txt_fcstView.setText("")
         MainActivity.getInstance().getGPSInfo()
@@ -278,16 +262,17 @@ object OnAir : Fragment() {
     }
 
     @SuppressLint("SetTextI18n")
-    fun updateButtonText(filename: String, text: String, enable: Boolean) {
-        Log.d(onairTag, "updateButtonText $filename  $text  $enable")
+    fun updateOnAirButtonText(filename: String, text: String, enable: Boolean) {
+        //CRLog.d( "updateOnAirButtonText $filename  $text  $enable")
 
-        var iter = onair_btnList.iterator()
+        val iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
-            var obj = iter.next()
-            //Log.d(onairTag, "updateButtonText key(${obj.key}) - filename(${filename})" )
-            if ( obj.key.equals(filename) ) {
-                //Log.d(onairTag, "updateButtonText ok")
-                var button = obj.value
+            val obj = iter.next()
+            val title = obj.key
+            //CRLog.d( "updateButtonText key(${obj.key}) - filename(${filename})" )
+            if ( RadioChannelResources.getFilenameByTitle(title).equals(filename) ) {
+                //CRLog.d( "updateButtonText ok")
+                val button = obj.value
 
                 when(text) {
                     RADIO_BUTTON.PLAYING_MESSAGE.getMessage() -> {
@@ -319,78 +304,79 @@ object OnAir : Fragment() {
     }
 
     fun resetAllButtonText(enable: Boolean) {
-        Log.d(onairTag, "resetAllButtonText()")
-        var iter = onair_btnList.iterator()
+        CRLog.d( "resetAllButtonText()")
+        val iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
-            var obj = iter.next()
-            //Log.d(onairTag, "filename: " + obj.key)
-            var message = Program.getDefaultTextByFilename(obj.key)
-            updateButtonText(obj.key, message, enable)
+            val obj = iter.next()
+            val title = obj.key
+            val filename = RadioChannelResources.getFilenameByTitle(title)
+            //CRLog.d( "filename: " + obj.key)
+            val message = RadioChannelResources.getDefaultTextByTitle(title)
+            updateOnAirButtonText(filename, message, enable)
         }
     }
 
     // youtube view 에서 직접 controll 하는 경우에 notification bar 업데이트 해줌
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
-        Log.d(onairTag, "setYoutubeState $state")
+        //CRLog.d( "setYoutubeState $state")
         //youtubeState = state
         when(state) {
-            PlayerConstants.PlayerState.PLAYING -> {
-                Log.d(onairTag, "state PLAYING")
-                RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
-                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
-            }
-            PlayerConstants.PlayerState.PAUSED -> {
-                Log.d(onairTag, "state PAUSED")
-                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
-                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
-            }
+//            PlayerConstants.PlayerState.PLAYING -> {
+//                CRLog.d( "state PLAYING")
+//                RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
+//                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+//            }
+//            PlayerConstants.PlayerState.PAUSED -> {
+//                CRLog.d( "state PAUSED")
+//                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
+//                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
+//            }
             PlayerConstants.PlayerState.ENDED -> {
-                Log.d(onairTag, "state ENDED")
+                CRLog.d( "state ENDED")
 
                 if ( mVideoId != null ) {
-                    Log.d(onairTag, "Auto re-play")
+                    CRLog.d( "Auto re-play")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 }
             }
-            else -> { Log.d(onairTag, "state ignore")}
         }
     }
 
     @JvmName("setYoutubeStateManual")
     fun setYoutubeStateManual(state: PlayerConstants.PlayerState) {
-        Log.d(onairTag, "setYoutubeStateManual $state")
+        CRLog.d( "setYoutubeStateManual $state")
         youtubeState = state
         when(state) {
             PlayerConstants.PlayerState.UNKNOWN -> {
-                Log.d(onairTag, "state UNKNOWN")
+                CRLog.d( "state UNKNOWN")
             }
             PlayerConstants.PlayerState.ENDED -> {
-                Log.d(onairTag, "state ENDED")
+                CRLog.d( "state ENDED")
 
                 if ( mVideoId != null ) {
-                    Log.d(onairTag, "Auto re-play")
+                    CRLog.d( "Auto re-play")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 }
             }
             PlayerConstants.PlayerState.PLAYING -> {
-                Log.d(onairTag, "state PLAYING")
-                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+                CRLog.d( "state PLAYING")
+                mCurrnetPlayFilename?.let { updateOnAirButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
             }
             PlayerConstants.PlayerState.BUFFERING -> {
-                Log.d(onairTag, "state BUFFERING")
+                CRLog.d( "state BUFFERING")
             }
             PlayerConstants.PlayerState.PAUSED -> {
-                Log.d(onairTag, "state PAUSED")
-                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
+                CRLog.d( "state PAUSED")
+                mCurrnetPlayFilename?.let { updateOnAirButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
             }
             PlayerConstants.PlayerState.UNSTARTED -> {
-                Log.d(onairTag, "state UNSTARTED")
+                CRLog.d( "state UNSTARTED")
             }
             PlayerConstants.PlayerState.VIDEO_CUED -> {
-                Log.d(onairTag, "state VIDEO_CUED")
+                CRLog.d( "state VIDEO_CUED")
             }
-            else -> { Log.d(onairTag, "state unknown")}
+            else -> { CRLog.d( "state unknown")}
         }
     }
 
@@ -400,7 +386,7 @@ object OnAir : Fragment() {
     // - view 의 UI 중에 재생 컨트롤은 풀어서 일시정지 가능하도록..
     // - 나중에 view 를 floating 으로 띄우는 방법도 생각해보자.
     private fun createYoutubeView(filename: String, videoId: String) {
-        Log.d( onairTag,"createYoutubeView prev(${mCurrnetPlayFilename}) - cur($filename)  $videoId" )
+        CRLog.d( "createYoutubeView prev(${mCurrnetPlayFilename}) - cur($filename)  $videoId" )
 
         resetAllButtonText(true)
         //stopRadioForegroundService()
@@ -409,38 +395,38 @@ object OnAir : Fragment() {
 
         // 이전 유튜브가 재생 중인 경우 우선 유튜브 재생을 중지
         if ( mCurrnetPlayFilename != null && !filename.equals(mCurrnetPlayFilename) ) {
-            Log.d(onairTag, "createYoutubeView  ----------------  prev stop!!!!!!!!!!")
+            CRLog.d( "createYoutubeView  ----------------  prev stop!!!!!!!!!!")
 
             playStopYoutube("", null, false)
             return
         }
 
         if ( youtubeState == PlayerConstants.PlayerState.PLAYING ) {
-            Log.d(onairTag, "createYoutubeView  ----------------  stop!!!!!!!!!!")
+            CRLog.d( "createYoutubeView  ----------------  stop!!!!!!!!!!")
 
             playStopYoutube(filename, videoId, false)
 
             mVideoId = null
 
-            updateButtonText(
+            updateOnAirButtonText(
                     filename,
-                    Program.getDefaultTextByFilename(filename),
+                    RadioChannelResources.getDefaultTextByFilename(filename),
                     true
             )
         } else {
-            Log.d(onairTag, "createYoutubeView  ----------------- play!!!!!!!!!!")
+            CRLog.d( "createYoutubeView  ----------------- play!!!!!!!!!!")
 
             playStopYoutube(filename, videoId, true)
 
             mVideoId = videoId
 
-            updateButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+            updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
         }
     }
 
     // false 인 경우 vid 는 null 로 들어옴
     fun playStopYoutube(filename: String, videoId: String?, play: Boolean) {
-        Log.d(onairTag, "playStopYoutube: filename=${filename} - videoId=${videoId} - play=${play}")
+        CRLog.d( "playStopYoutube: filename=${filename} - videoId=${videoId} - play=${play}")
 
         if ( play ) {
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
@@ -451,9 +437,9 @@ object OnAir : Fragment() {
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
             parent?.removeView(MainActivity.youtubeView)
             program_layout?.removeView(MainActivity.youtubeView)
-            stopRadioForegroundService()
+            stopRadioForegroundService(filename)
         }
-        Log.d(onairTag, "playStopYoutube: $play")
+        CRLog.d( "playStopYoutube: $play")
     }
 
     private var mLastClickTime: Long = 0
@@ -474,20 +460,21 @@ object OnAir : Fragment() {
     //   - 동일 채널이 아닌 경우엔, 해당 채널 스탑 후 내 채널 재생 시작
     // 재생 중이 아니라면
     //   - 내 채널 재생 시작
-    fun onRadioButton(filename: String, clicktype: CLICK_TYPE) {
-        Log.d(onairTag, "onRadioButton!  $filename")
+    fun onRadioButton(title: String, clicktype: CLICK_TYPE) {
+        CRLog.d( "onRadioButton!  $title")
+        val filename = RadioChannelResources.getFilenameByTitle(title)
 
         if (checkClickInvalid(clicktype)) {
-            Log.d(onairTag, "ignore click event")
+            CRLog.d( "ignore click event")
             return
         }
 
-        updateButtonText(filename, "잠시만 기다려주십시오", false)
+        updateOnAirButtonText(filename, "잠시만 기다려주십시오", false)
 
         // 현재 요청한 채널이 이전 채널과 다르면 우선 버튼 텍스트 초기화
         if (!filename.equals(mCurrnetPlayFilename)) {
             resetAllButtonText(true)
-            updateButtonText(filename, "잠시만 기다려주십시오", false)
+            updateOnAirButtonText(filename, "잠시만 기다려주십시오", false)
         }
 
         // 재생 중인 경우 callback 을 받아서 처리한다.
@@ -499,31 +486,33 @@ object OnAir : Fragment() {
         //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
         if (RadioPlayer.isPlaying()) {
             // 중지 후 처리 시작
-            Log.d(onairTag, "stop previous service")
-            stopRadioForegroundService()
+            CRLog.d( "stop previous service")
+            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
 
             // 요청한 채널 저장
-            Log.d(onairTag, "mCurrnetPlayFilename: " + filename)
+            CRLog.d( "mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
         }
         // youtube 실행 중인 경우 youtube 중지
         // onDestroy callback 불려짐
         else if (youtubeState == PlayerConstants.PlayerState.PLAYING) {
-            playStopYoutube(filename, null, false)
+
+            // stop 시 이전 채널로 요청해야 함
+            playStopYoutube(mCurrnetPlayFilename!!, null, false)
 
             // 요청한 채널 저장
-            Log.d(onairTag, "mCurrnetPlayFilename: " + filename)
+            CRLog.d( "mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
         } else if ( youtubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(mCurrnetPlayFilename) ) {
-            Log.d(onairTag, "play resume: ${mCurrnetPlayFilename}")
+            CRLog.d( "play resume: ${mCurrnetPlayFilename}")
             youtubePlayer?.play()
-            updateButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+            updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
             RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
         } else {
             // youtube play
             if ( filename.contains("youtube") ) {
                 var videoId = filename.substring(filename.indexOf("youtube_") + 8)
-                Log.d(onairTag, "videoId: " + videoId)
+                CRLog.d( "videoId: " + videoId)
                 createYoutubeView(filename, videoId)
                 return
             }
@@ -553,7 +542,7 @@ object OnAir : Fragment() {
         result += "  "
         formatter = DateTimeFormatter.ofPattern("a")
         str = current.format(formatter)
-        Log.d(onairTag, "오전/오후: " + str)
+        CRLog.d( "오전/오후: " + str)
         result += str
 
         formatter = DateTimeFormatter.ofPattern("hh")
@@ -567,12 +556,12 @@ object OnAir : Fragment() {
         txt_timeView.setText(result)
         mTimeText = result
 
-        Log.d(onairTag, "setCurrentTimeView(): " + result)
+        CRLog.d( "setCurrentTimeView(): " + result)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(onairTag, "onCreate")
+        CRLog.d( "onCreate")
     }
 
     //
@@ -581,7 +570,7 @@ object OnAir : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(onairTag, "OnAir onCreateView")
+        CRLog.d( "OnAir onCreateView")
 
         if ( container != null ) {
             mContext = container.context
@@ -612,7 +601,7 @@ object OnAir : Fragment() {
 
         txt_loading = view.findViewById(R.id.txt_loading)
 
-        Log.d(onairTag, "init data")
+        CRLog.d( "init data")
         bInitialized = true
 
         // 시간은 최초 1회만 ... 혹은 refresh 인 경우
@@ -633,21 +622,21 @@ object OnAir : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        Log.d(onairTag, "onStart")
+        CRLog.d( "onStart")
     }
 
     override fun onStop() {
         super.onStop()
-        Log.d(onairTag, "onStop")
+        CRLog.d( "onStop")
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        Log.d(onairTag, "onDestroyView")
+        CRLog.d( "onDestroyView")
     }
 
     fun resetAll() {
-        Log.d(onairTag, "resetAll")
+        CRLog.d( "resetAll")
         bInitialized = false
         mCurrnetPlayFilename = null
         mContext = null
@@ -677,13 +666,13 @@ object OnAir : Fragment() {
      */
     fun setSkyStatusImage(skyType: Int) {
         mSkyType = skyType
-        Log.d(onairTag, "mSkyType code: " + skyType)
+        CRLog.d( "mSkyType code: " + skyType)
 
         when (skyType) {
             1 -> img_skyView.setImageResource(R.drawable.ic_sunny)
             3 -> img_skyView.setImageResource(R.drawable.ic_cloudy)
             4 -> img_skyView.setImageResource(R.drawable.ic_clouds)
-            else -> Log.d(onairTag, "skyType code is invalid: " + skyType)
+            else -> CRLog.d( "skyType code is invalid: " + skyType)
         }
     }
 
@@ -692,7 +681,7 @@ object OnAir : Fragment() {
      */
     fun setRainStatusImage(rainType: Int){
         mRainType = rainType
-        Log.d(onairTag, "rainType code: " + rainType)
+        CRLog.d( "rainType code: " + rainType)
 
         when(rainType) {
             0 -> img_rainView.setImageResource(R.drawable.ic_humidity)
@@ -703,16 +692,16 @@ object OnAir : Fragment() {
             5 -> img_rainView.setImageResource(R.drawable.ic_rain5)
             6 -> img_rainView.setImageResource(R.drawable.ic_rain6)
             7 -> img_rainView.setImageResource(R.drawable.ic_rain7)
-            else -> Log.d(onairTag, "rainType code is invalid: " + rainType)
+            else -> CRLog.d( "rainType code is invalid: " + rainType)
         }
     }
 
     fun updateAddressView(status: Boolean) {
         if ( status ) {
-            Log.d(onairTag, "current_address : " + mAddressText)
+            CRLog.d( "current_address : " + mAddressText)
             txt_addrView.setText(mAddressText)
         } else {
-            Log.d(onairTag, "Address info receiving is failed")
+            CRLog.d( "Address info receiving is failed")
             txt_addrView.setText("알 수 없음")
         }
     }
@@ -734,7 +723,7 @@ object OnAir : Fragment() {
         } else if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) {
             grade = data.pm25Grade1h
         }
-        Log.d(onairTag, "worst grade: " + AirStatus.getGradeString(grade))
+        CRLog.d( "worst grade: " + AirStatus.getGradeString(grade))
         when(grade) {
             "1" -> {
                 img_airStatus.setImageResource(R.drawable.skyblue_circle); gradeName = "좋음"
@@ -750,7 +739,7 @@ object OnAir : Fragment() {
             }
             else -> {
                 img_airStatus.setImageResource(R.drawable.red_circle)
-                Log.d(onairTag, "Can't know pm grade")
+                CRLog.d( "Can't know pm grade")
                 gradeName = "알수없음"
             }
         }
@@ -774,7 +763,7 @@ object OnAir : Fragment() {
      * Service
      */
     private fun startRadioForegroundService(serviceName: String, filename: String, videoId: String?) {
-        Log.d(onairTag, "startRadioForegroundService ${serviceName} ${filename} ${videoId}")
+        CRLog.d( "startRadioForegroundService ${serviceName} ${filename} ${videoId}")
         var address:String? = null
         if ( serviceName.equals("radio") ) {
             address = getRadioChannelHttpAddress(filename)
@@ -792,27 +781,29 @@ object OnAir : Fragment() {
             }
             else {
                 var intent = Intent(mContext, RadioService::class.java)
+                intent.putExtra("serviceName", serviceName)
+                intent.putExtra("videoId", videoId)
+                intent.putExtra("name", filename)
+                intent.putExtra("address", address)
                 intent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION)
                 mContext?.let { it.startService(intent) }
             }
         }
     }
 
-    fun stopRadioForegroundService() {
-        Log.d(onairTag, "stopRadioForegroundService ${mContext}")
-//        mContext?.let {
-//            var intent = Intent(it, RadioService::class.java)
-//            intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
-//            it.stopService(intent)
-//        }
+    fun stopRadioForegroundService(filename: String) {
+        CRLog.d( "stopRadioForegroundService ${mContext} ${filename}")
+
         mContext?.let {
             Intent(it, RadioService::class.java).run {
                 if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
                     var intent = Intent(it, RadioService::class.java)
+                    intent.putExtra("name", filename)
                     intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
                     startForegroundService(it, intent)
                 } else {
                     var intent = Intent(it, RadioService::class.java)
+                    intent.putExtra("name", filename)
                     intent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION)
                     it.startService(intent)
                 }
@@ -825,16 +816,16 @@ object OnAir : Fragment() {
     //     - 같으면 => 그냥 있음
     //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
     fun notifyRadioServiceStatus(filename: String, result: RESULT) {
-        Log.d(
-            onairTag,
+        CRLog.d(
+            
             "notifyRadioServiceStatus: " + result + ", filename: " + filename + " - mCurrnetPlayFilename: $mCurrnetPlayFilename"
         )
 
         when(result) {
             RESULT.PLAY_SUCCESS -> {
                 resetAllButtonText(true)
-                updateButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
-                Log.d(onairTag, "mCurrnetPlayFilename: $filename")
+                updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+                CRLog.d( "mCurrnetPlayFilename: $filename")
                 mCurrnetPlayFilename = filename
             }
             RESULT.PLAY_FAILED -> {
@@ -842,7 +833,7 @@ object OnAir : Fragment() {
                 if (!filename.contains("youtube")) {
                     RadioChannelResources.requestUpdateResource(filename)
                 } else {
-                    Log.d(onairTag, "timer ~")
+                    CRLog.d( "timer ~")
                     var msg = handler.obtainMessage()
                     timer(initialDelay = 3000, period = 10000) {
                         handler.sendMessage(msg)
@@ -851,8 +842,8 @@ object OnAir : Fragment() {
                 }
                 // 우선 이전 채널에 대해서 초기화 (없으면 null 체크하여 실행 x)
                 mCurrnetPlayFilename?.let {
-                    updateButtonText(
-                        it, Program.getDefaultTextByFilename(
+                    updateOnAirButtonText(
+                        it, RadioChannelResources.getDefaultTextByFilename(
                             mCurrnetPlayFilename!!
                         ), true
                     )
@@ -860,22 +851,22 @@ object OnAir : Fragment() {
 
                 // 요청된 채널은 실패, disable 처리 -> updateResource callback 으로 초기화됨
                 resetAllButtonText(false)
-                updateButtonText(filename, RADIO_BUTTON.FAILED_MESSAGE.getMessage(), false)
+                updateOnAirButtonText(filename, RADIO_BUTTON.FAILED_MESSAGE.getMessage(), false)
                 mCurrnetPlayFilename = filename
             }
             RESULT.DESTROYED -> {
                 // 중지된 filename 과 요청된 filename 이 같으면 button text 만 update
                 if (filename.equals(mCurrnetPlayFilename)) {
                     resetAllButtonText(true)
-                    updateButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
+                    updateOnAirButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
                 }
                 // 서로 filename 이 다르면 요청된 filename 서비스 시작
                 else if (mCurrnetPlayFilename != null) {
-                    Log.d(onairTag, "start to service for ${mCurrnetPlayFilename}")
+                    CRLog.d( "start to service for ${mCurrnetPlayFilename}")
                     mCurrnetPlayFilename?.let {
                         if ( it.contains("youtube") ) {
                             var videoId = it.substring(it.indexOf("youtube_") + 8)
-                            Log.d(onairTag, "videoId: " + videoId)
+                            CRLog.d( "videoId: " + videoId)
                             createYoutubeView(it, videoId)
                         }
                         // radio play
@@ -890,7 +881,7 @@ object OnAir : Fragment() {
 
     // success 는 모두 성공 시에만 callback 이 불림
     fun notifyRadioResourceUpdate(filename: String?, result: RadioResource) {
-        Log.d(onairTag, "resource update result: " + result + ", filename: " + filename)
+        CRLog.d( "resource update result: " + result + ", filename: " + filename)
         when(result) {
             RadioResource.SUCCESS -> {
                 var msg = handler.obtainMessage()
@@ -904,11 +895,11 @@ object OnAir : Fragment() {
             }
             RadioResource.OPEN_FAILED, RadioResource.DOWN_FAILED -> {
                 if (!bInitialized) {
-                    Log.d(onairTag, "Ignore failed (not initialized)")
+                    CRLog.d( "Ignore failed (not initialized)")
                     return
                 }
 
-                Log.d(onairTag, "timer ~")
+                CRLog.d( "timer ~")
                 var msg = handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
                     var bundle = Bundle()

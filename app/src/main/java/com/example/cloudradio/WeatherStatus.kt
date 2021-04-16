@@ -176,8 +176,8 @@ object WeatherStatus {
     }
 
     private fun updateRainProperty(humidity: String, rainPercent: String) {
-        Log.d(
-            weatherTag,
+        CRLog.d(
+            
             "updateRainProperty  humidity: " + humidity + ", rain percent: " + rainPercent
         )
         var text: String = "습도  "+humidity +" %\n"
@@ -187,7 +187,7 @@ object WeatherStatus {
     }
 
     private fun updateWindProperty(windSpeed: Double, windDirection: String) {
-        Log.d(weatherTag, "updateWindProperty  direction: " + windDirection + ", speed: " + windSpeed)
+        CRLog.d( "updateWindProperty  direction: " + windDirection + ", speed: " + windSpeed)
         var text:String = "풍향  "+windDirection +"\n"
         text += "풍속  "+ windSpeed + " m/s"
         OnAir.txt_windView.setText(text)
@@ -195,7 +195,7 @@ object WeatherStatus {
     }
 
     private fun updateTemperature(cur: String, high: String, low: String) {
-        Log.d(weatherTag, "updateTemperature cur: " + cur + ", high: " + high + ", low: " + low)
+        CRLog.d( "updateTemperature cur: " + cur + ", high: " + high + ", low: " + low)
         var text:String = "현재  "+cur +"℃\n"
         if ( high.equals("N/A") == false) text += "낮 최고 " + high +"℃\n"
         if ( low.equals("N/A") == false) text += "낮 최저 " + low +"℃\n"
@@ -208,7 +208,7 @@ object WeatherStatus {
         val new_fcstTime = fcstTime.substring(0, 2) + ":" + fcstTime.subSequence(2, fcstTime.length)
         val updateText = "유효 ( " + new_basetime + " ~ " + new_fcstTime+ " )"
 
-        Log.d(weatherTag, "updateFcstTimeView: " + updateText)
+        CRLog.d( "updateFcstTimeView: " + updateText)
         OnAir.txt_fcstView.setText(updateText)
         OnAir.mFcstTimeText = updateText
     }
@@ -229,10 +229,10 @@ object WeatherStatus {
      * VEC  풍향      deg 10bit
      */
     private fun parseItems(items: WEATHER_ITEMS) {
-        Log.d(weatherTag, items.item.toString())
-        Log.d(weatherTag, "- 날짜: " + items.item[0].baseDate)
-        Log.d(weatherTag, "- 발표시간: " + items.item[0].baseTime)
-        Log.d(weatherTag, "- 예보시간: " + items.item[0].fcstTime)
+        CRLog.d( items.item.toString())
+        CRLog.d( "- 날짜: " + items.item[0].baseDate)
+        CRLog.d( "- 발표시간: " + items.item[0].baseTime)
+        CRLog.d( "- 예보시간: " + items.item[0].fcstTime)
 
         var basetime: String
         var fcsttime: String
@@ -258,76 +258,76 @@ object WeatherStatus {
         var fcstTime = items.item[0].fcstTime
 
         for (i in items.item.indices) {
-            Log.d(weatherTag, "category: " + items.item[i].category)
+            CRLog.d( "category: " + items.item[i].category)
             when( items.item[i].category ) {
                 "POP" -> {
                     if (fcstTime.equals(items.item[i].fcstTime)) {
-                        Log.d(weatherTag, "- 강수확률(%): " + items.item[i].fcstValue)
+                        CRLog.d( "- 강수확률(%): " + items.item[i].fcstValue)
                         rainPercent = items.item[i].fcstValue
                     }
                 }
                 "PTY" -> {
-                    Log.d(weatherTag, "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
+                    CRLog.d( "- 강수형태(code): " + getRainType(items.item[i].fcstValue.toInt()))
                     OnAir.setRainStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "R06" -> {
-                    Log.d(
-                        weatherTag,
+                    CRLog.d(
+                        
                         "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble())
                     )
                 }
                 "REH" -> {
-                    Log.d(weatherTag, "- 습도(%): " + items.item[i].fcstValue)
+                    CRLog.d( "- 습도(%): " + items.item[i].fcstValue)
                     humidity = items.item[i].fcstValue
                 }
                 "S06" -> {
-                    Log.d(
-                        weatherTag,
+                    CRLog.d(
+                        
                         "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble())
                     )
                 }
                 "SKY" -> {
-                    Log.d(weatherTag, "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
+                    CRLog.d( "- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
                     OnAir.setSkyStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "T3H" -> {
-                    Log.d(weatherTag, "- 3시간 기온(℃): " + items.item[i].fcstValue)
+                    CRLog.d( "- 3시간 기온(℃): " + items.item[i].fcstValue)
                     currentTemperature = items.item[i].fcstValue;
                 }
                 "TMN" -> {
-                    Log.d(weatherTag, "- 아침 최저 기온(℃): " + items.item[i].fcstValue)
+                    CRLog.d( "- 아침 최저 기온(℃): " + items.item[i].fcstValue)
                     lowerTempearture = items.item[i].fcstValue
                 }
                 "TMX" -> {
-                    Log.d(weatherTag, "- 낮 최고 기온(℃): " + items.item[i].fcstValue)
+                    CRLog.d( "- 낮 최고 기온(℃): " + items.item[i].fcstValue)
                     higherTempearture = items.item[i].fcstValue
                 }
                 "UUU" -> {
-                    Log.d(weatherTag, "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue)
+                    CRLog.d( "- 풍속(동서성분)(m/s): " + items.item[i].fcstValue)
                     if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
                         items.item[i].fcstValue.toDouble()
                 }
                 "VVV" -> {
-                    Log.d(weatherTag, "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue)
+                    CRLog.d( "- 풍속(남북성분)(m/s): " + items.item[i].fcstValue)
                     if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
                         items.item[i].fcstValue.toDouble()
                 }
                 "VEC" -> {
-                    Log.d(
-                        weatherTag,
+                    CRLog.d(
+                        
                         "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt())
                     )
                     windDirection = getWindDirectionString(items.item[i].fcstValue.toInt())
                 }
                 "WSD" -> {
-                    Log.d(weatherTag, "- 풍속(m/s): " + items.item[i].fcstValue)
+                    CRLog.d( "- 풍속(m/s): " + items.item[i].fcstValue)
                     if (windSpeed < items.item[i].fcstValue.toDouble()) windSpeed =
                         items.item[i].fcstValue.toDouble()
                 }
-                else -> Log.d(weatherTag, "Invalid category: " + items.item[i].category)
+                else -> CRLog.d( "Invalid category: " + items.item[i].category)
             }
         }
-        Log.d(weatherTag, "")
+        CRLog.d( "")
 
         updateTemperature(currentTemperature, higherTempearture, lowerTempearture)
 
@@ -339,9 +339,9 @@ object WeatherStatus {
     @RequiresApi(Build.VERSION_CODES.O)
     fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location
-        Log.d(weatherTag, "Check GPS. Latitude: " + lat + " , Longitude: " + lng)
+        CRLog.d( "Check GPS. Latitude: " + lat + " , Longitude: " + lng)
         val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(lat), Math.abs(lng))
-        Log.d(weatherTag, "Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
+        CRLog.d( "Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
         var nx = CurGPS.x.toInt().toString()
         var ny = CurGPS.y.toInt().toString()
 
@@ -375,12 +375,12 @@ object WeatherStatus {
         var base_date = currdate1
         var base_time = curtime2
 
-        Log.d(weatherTag, "- request weather - ")
-        Log.d(weatherTag, "data_type: ${OnAir.data_type}")
-        Log.d(weatherTag, "num_of_rows: ${OnAir.num_of_rows}")
-        Log.d(weatherTag, "page_no: ${OnAir.page_no}")
-        Log.d(weatherTag, "date: " + base_date + ", time: " + base_time)
-        Log.d(weatherTag, "nx: " + nx + ", ny: " + ny)
+        CRLog.d( "- request weather - ")
+        CRLog.d( "data_type: ${OnAir.data_type}")
+        CRLog.d( "num_of_rows: ${OnAir.num_of_rows}")
+        CRLog.d( "page_no: ${OnAir.page_no}")
+        CRLog.d( "date: " + base_date + ", time: " + base_time)
+        CRLog.d( "nx: " + nx + ", ny: " + ny)
 
         val call = ApiObject.retrofitService.GetWeather(
             OnAir.data_type,
@@ -392,13 +392,13 @@ object WeatherStatus {
             ny
         )
 
-        Log.d(weatherTag, "URL: " + call.request().url().toString())
+        CRLog.d( "URL: " + call.request().url().toString())
 
         call.enqueue(object : retrofit2.Callback<WEATHER> {
             override fun onResponse(call: Call<WEATHER>, response: Response<WEATHER>) {
                 if (response.isSuccessful) {
                     var bodyStr = response.body()
-                    Log.d(weatherTag, bodyStr!!.toString())
+                    CRLog.d( bodyStr!!.toString())
                     if (bodyStr!!.response.body != null) {
                         parseItems(bodyStr!!.response.body.items)
                     }
@@ -406,7 +406,7 @@ object WeatherStatus {
             }
 
             override fun onFailure(call: Call<WEATHER>, t: Throwable) {
-                Log.d(weatherTag, "api fail : " + t.message)
+                CRLog.d( "api fail : " + t.message)
             }
         })
     }

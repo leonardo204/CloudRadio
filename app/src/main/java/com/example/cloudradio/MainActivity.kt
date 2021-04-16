@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        Log.d(mainTag, "onCreate")
+        CRLog.d( "onCreate")
 
         mContext = this
 
@@ -98,15 +98,15 @@ class MainActivity : AppCompatActivity() {
         viewPager.addOnPageChangeListener(TabLayout.TabLayoutOnPageChangeListener(tabLayout))
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                Log.d(mainTag, "onTabSelected: ${tab.position}")
+                CRLog.d( "onTabSelected: ${tab.position}")
                 viewPager.currentItem = tab.position
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab) {
-                //Log.d(mainTag, "onTabUnselected: ${tab.position}")
+                //CRLog.d( "onTabUnselected: ${tab.position}")
             }
             override fun onTabReselected(tab: TabLayout.Tab) {
-                //Log.d(mainTag, "onTabReselected: ${tab.position}")
+                //CRLog.d( "onTabReselected: ${tab.position}")
             }
         })
 
@@ -117,14 +117,14 @@ class MainActivity : AppCompatActivity() {
                 makeNoticePopup()
             }
         } else {
-            Log.d(mainTag, "skip checking network status. reason: version")
+            CRLog.d( "skip checking network status. reason: version")
             init()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(mainTag, "MainAcitivity onDestroyed")
+        CRLog.d( "MainAcitivity onDestroyed")
         finishAffinity()
 
         Intent(OnAir.mContext, RadioService::class.java).run {
@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.M)
     fun checkNetworkStatus(): Boolean {
         if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED ) {
-            Log.d(mainTag, "Network is not available")
+            CRLog.d( "Network is not available")
             return false
         }
         return true
@@ -156,15 +156,15 @@ class MainActivity : AppCompatActivity() {
     private fun makeNoticePopup() {
         val dlg = NoticePopupActivity(this)
         dlg.setOnOKClickedListener{ content ->
-            Log.d(mainTag, "received message: " + content)
-            Log.d(mainTag, "received on OK Click event")
+            CRLog.d( "received message: " + content)
+            CRLog.d( "received on OK Click event")
             systemRestart()
         }
         dlg.start("인터넷 연결 확인 필요\n확인을 누르면 5초 후 앱을 다시 시작합니다.")
     }
 
     private fun init() {
-        Log.d(mainTag, "MainActivity init")
+        CRLog.d( "MainActivity init")
 
         // 초기화
         RadioChannelResources.clearResources()
@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
 
         // youtube
         youtubeView = YouTubePlayerView(this)
-        Log.d(mainTag, "youtubeView: $youtubeView")
+        CRLog.d( "youtubeView: $youtubeView")
         // ui
         var uiController = youtubeView?.getPlayerUiController()
         uiController?.showCurrentTime(false)
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         uiController?.showSeekBar(false)
         uiController?.showVideoTitle(false)
         uiController?.showDuration(false)
-//        uiController?.showUi(false)
+        uiController?.showUi(false)
         uiController?.showYouTubeButton(false)
         youtubeView?.addYouTubePlayerListener(YoutubeHandler)
     }
@@ -204,7 +204,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     fun checkPermissions() {
-        Log.d(mainTag, "checkPermissions")
+        CRLog.d( "checkPermissions")
 
         val finePerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[0])
         val coastPerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[1])
@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         if ( finePerm == PackageManager.PERMISSION_GRANTED
                 && coastPerm == PackageManager.PERMISSION_GRANTED )
         {
-            Log.d(mainTag, "Permissions ok")
+            CRLog.d( "Permissions ok")
             getGPSInfo()
         }
         else {
@@ -222,14 +222,14 @@ class MainActivity : AppCompatActivity() {
                     REQUIRED_PERMISSIONS[1]
                 )) {
 
-                Log.d(mainTag, "Permissions are requested 1")
+                CRLog.d( "Permissions are requested 1")
                 ActivityCompat.requestPermissions(
                     this,
                     REQUIRED_PERMISSIONS,
                     locationPermissionCode
                 )
             } else {
-                Log.d(mainTag, "Permissions are requested 2")
+                CRLog.d( "Permissions are requested 2")
                 ActivityCompat.requestPermissions(
                     this,
                     REQUIRED_PERMISSIONS,
@@ -244,15 +244,15 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        Log.d(mainTag, "onRequestPermissionsResult: " + requestCode)
+        CRLog.d( "onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
-                Log.d(mainTag, "Permissions CB: Granted")
+                CRLog.d( "Permissions CB: Granted")
                 getGPSInfo()
             }
             else {
-                Log.d(mainTag, "Permissions CB: Denied")
+                CRLog.d( "Permissions CB: Denied")
                 Toast.makeText(this, "Permission Denied", Toast.LENGTH_LONG).show()
             }
         }
@@ -260,7 +260,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
-        Log.d(mainTag, "getGPSInfo()")
+        CRLog.d( "getGPSInfo()")
 
         locationManager?.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
@@ -274,19 +274,19 @@ class MainActivity : AppCompatActivity() {
             10f,
                 CRLocationListener
         )
-        Log.d(mainTag, "getGPSInfo end")
+        CRLog.d( "getGPSInfo end")
     }
 
     fun removeGPSTracking() {
-        Log.d(mainTag, "removeGPSTracking()")
+        CRLog.d( "removeGPSTracking()")
         locationManager?.removeUpdates(CRLocationListener)
     }
 
     @SuppressLint("RestrictedApi")
     fun installApp(path: String) {
-        Log.d(mainTag, "install: $path")
+        CRLog.d( "install: $path")
         val toInstall = File(path)
-        Log.d(mainTag, "install2: $toInstall")
+        CRLog.d( "install2: $toInstall")
         val intent: Intent
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 //            val apkUri = FileProvider.getUriForFile(
@@ -315,8 +315,8 @@ class MainActivity : AppCompatActivity() {
             intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
             intent.data = apkUri
             intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-        Log.d(mainTag, "this: $this")
-        Log.d(mainTag, "context: $mContext")
+        CRLog.d( "this: $this")
+        CRLog.d( "context: $mContext")
         mContext!!.startActivity(intent)
     }
 

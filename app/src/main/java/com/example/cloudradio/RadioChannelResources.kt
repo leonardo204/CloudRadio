@@ -16,6 +16,7 @@ import java.io.*
 import java.net.URL
 import java.net.URLConnection
 import java.nio.charset.Charset
+import java.security.cert.CRL
 
 
 var resourceTag = "CR_Resource"
@@ -139,8 +140,8 @@ object RadioChannelResources: AsyncCallback {
     fun getTitleByFilename(filename: String): String {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
-                Log.d(
-                    resourceTag,
+                Log.d(resourceTag, 
+                    
                     "getTitleByFilename: ${filename} -> ${channelList.get(i).title}"
                 )
                 return channelList.get(i).title
@@ -152,8 +153,8 @@ object RadioChannelResources: AsyncCallback {
     fun getDefaultButtonTextByFilename(filename: String): String {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
-                Log.d(
-                    resourceTag,
+                Log.d(resourceTag, 
+                    
                     "getDefaultButtonTextByFilename: ${channelList.get(i).defaultButtonText}"
                 )
                 return channelList.get(i).defaultButtonText
@@ -165,7 +166,7 @@ object RadioChannelResources: AsyncCallback {
     private fun removeChannelMapByfilename(filename: String): Int {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
-                Log.d(resourceTag, "remove channelMap: " + filename)
+                Log.d(resourceTag,  "remove channelMap: " + filename)
                 removeChannelList(i)
                 break
             }
@@ -173,24 +174,57 @@ object RadioChannelResources: AsyncCallback {
         return channelList.size
     }
 
+    fun getDefaultTextByFilename(filename: String): String {
+
+        for(i in channelList.indices) {
+//            CRLog.d( " channelList.get(i).filename: ${channelList.get(i).filename} - $filename")
+            if ( channelList.get(i).filename.equals(filename) ) {
+                return channelList.get(i).defaultButtonText
+            }
+        }
+        return "Unknown Channel"
+    }
+
+    fun getDefaultTextByTitle(title: String): String {
+
+        for(i in channelList.indices) {
+//            CRLog.d( " channelList.get(i).filename: ${channelList.get(i).filename} - $filename")
+            if ( channelList.get(i).title.equals(title) ) {
+                return channelList.get(i).defaultButtonText
+            }
+        }
+        return "Unknown Channel"
+    }
+
+    fun getFilenameByTitle(title: String): String {
+
+        for(i in channelList.indices) {
+//            CRLog.d( " channelList.get(i).filename: ${channelList.get(i).filename} - $filename")
+            if ( channelList.get(i).title.equals(title) ) {
+                return channelList.get(i).filename
+            }
+        }
+        return "Unknown Filename"
+    }
+
     fun requestUpdateResource(filename: String) {
-        Log.d(resourceTag, "requestUpdateResource: " + filename)
+        Log.d(resourceTag,  "requestUpdateResource: " + filename)
 
         // remove channel array list
-        //Log.d(resourceTag, "remove channelMap. reamins size: " + removeChannelMapByfilename(filename) )
+        //Log.d(resourceTag,  "remove channelMap. reamins size: " + removeChannelMapByfilename(filename) )
 
         // remove exist file
         var fileobj = File(DEFAULT_FILE_PATH + filename)
         if ( fileobj.exists() ) {
-            Log.d(resourceTag, "remove file: " + fileobj)
+            Log.d(resourceTag,  "remove file: " + fileobj)
             fileobj.delete()
         }
-        if ( fileobj.exists() ) { Log.d(resourceTag, "remove file is failed") }
-        else { Log.d(resourceTag, "remove file success") }
+        if ( fileobj.exists() ) { Log.d(resourceTag,  "remove file is failed") }
+        else { Log.d(resourceTag,  "remove file success") }
 
         // download again
         var httpAddress = getRadioChannelHttpAddress(filename)
-        Log.d(resourceTag, "download again: " + httpAddress)
+        Log.d(resourceTag,  "download again: " + httpAddress)
         DownloadFileFromURL(this).execute(httpAddress, filename)
     }
 
@@ -208,7 +242,7 @@ object RadioChannelResources: AsyncCallback {
             }
             it.close()
         }
-        Log.d(resourceTag, "${sb}")
+        Log.d(resourceTag,  "${sb}")
         var ele1 = Json.parseToJsonElement(sb.toString())
         val version1 = ele1.jsonObject["version"].toString().replace("\"", "")
 
@@ -222,32 +256,32 @@ object RadioChannelResources: AsyncCallback {
                 var ins: InputStream = file.inputStream()
                 content = ins.readBytes().toString(Charset.defaultCharset())
             } catch (e: Exception) {
-                Log.d(resourceTag, "checkVersion error: " + e.message)
+                Log.d(resourceTag,  "checkVersion error: " + e.message)
             }
 
             content?.let {
                 var ele2 = Json.parseToJsonElement(it)
                 version2 = ele2.jsonObject["version"].toString().replace("\"", "")
 
-                Log.d(resourceTag, "sys ch ver($version1)  down ch ver($version2)")
+                Log.d(resourceTag,  "sys ch ver($version1)  down ch ver($version2)")
 
                 if ( version1.toInt() - version2.toInt() < 0) {
-                    Log.d(resourceTag, "use download channels.json")
+                    Log.d(resourceTag,  "use download channels.json")
                     element = Json.parseToJsonElement(content)
                 } else {
-                    Log.d(resourceTag, "use internal channels.json 1")
+                    Log.d(resourceTag,  "use internal channels.json 1")
                     element = Json.parseToJsonElement(sb.toString())
                 }
             }
         } else {
-            Log.d(resourceTag, "use internal channels.json 2")
+            Log.d(resourceTag,  "use internal channels.json 2")
             element = Json.parseToJsonElement(sb.toString())
         }
         return element
     }
 
     private fun addFromDataFile() {
-        Log.d(resourceTag, "addFromDataFile")
+        Log.d(resourceTag,  "addFromDataFile")
         var element: JsonElement? = getResourceElement()
 
         // version check end
@@ -255,8 +289,8 @@ object RadioChannelResources: AsyncCallback {
             var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
             channelSize += data.jsonArray.size
             for (i in data.jsonArray.indices) {
-                Log.d(resourceTag, "-    [$i]   -")
-                Log.d(resourceTag, "${data.jsonArray[i]}")
+                Log.d(resourceTag,  "-    [$i]   -")
+                Log.d(resourceTag,  "${data.jsonArray[i]}")
 
                 val live = data.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean()
                 val title = data.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
@@ -286,7 +320,7 @@ object RadioChannelResources: AsyncCallback {
     }
 
     fun clearResources() {
-        Log.d(resourceTag, "clearResources")
+        Log.d(resourceTag,  "clearResources")
         channelSize = 0
         channelList.clear()
     }
@@ -304,17 +338,17 @@ object RadioChannelResources: AsyncCallback {
 
         // for radio
         for(i in RadioRawChannels.values().indices) {
-            Log.d(
-                resourceTag,
+            Log.d(resourceTag, 
+                
                 "add radio channels ( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename()
             )
 
             var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
             if (fileobj.exists()) {
-                Log.d(resourceTag, "File exist")
+                Log.d(resourceTag,  "File exist")
                 readChannelFile(fileobj)
             } else {
-                Log.d(resourceTag, "File don't exist")
+                Log.d(resourceTag,  "File don't exist")
                 // 파일이 없더라도 일단 빈 상태로 채널 맵을 채워둔다
                 // 다운로드 완료 되어 파일 읽는데 성공하면, 이것 지우고 새것으로 대체됨
                 var map =  RadioCompletionMap(
@@ -334,40 +368,65 @@ object RadioChannelResources: AsyncCallback {
             }
         }
 
-        Log.d(resourceTag, "initResources(cur/total): ${channelList.size} / ${channelSize}" )
+        Log.d(resourceTag,  "initResources(cur/total): ${channelList.size} / ${channelSize}" )
     }
 
     private fun addChannelList(map: RadioCompletionMap) {
         channelList.add(map)
-        Log.d(resourceTag, "addChannelList filename ${map.filename} size: ${channelList.size}")
+        Log.d(resourceTag,  "addChannelList filename ${map.filename} size: ${channelList.size}")
 
         if ( channelList.size == channelSize ) {
-            Log.d(resourceTag, "Resource init completed")
+            Log.d(resourceTag,  "Resource init completed")
             bInitCompleted = true
             OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
         }
     }
 
     private fun removeChannelList(idx: Int) {
-        Log.d(resourceTag, "removeChannelList filename ${channelList.get(idx).filename} size: ${channelList.size}")
+        Log.d(resourceTag,  "removeChannelList filename ${channelList.get(idx).filename} size: ${channelList.size}")
         channelList.removeAt(idx)
+    }
+
+    // 1. 우선 File1 의 것을 담고
+    // 2. File1 안에서 https 가 있으면 그걸 찾고
+    // 3. http 만 있으면 그것으로 address 를 설정한다.
+    private fun parseAdress(content: String): String {
+        var httpAddress: String
+        if ( content.contains("File2" ) ) {
+            httpAddress = content.substring(
+                content.indexOf("File1=") + 6,
+                content.indexOf("File2=") - 1
+            )
+        }
+        else {
+            httpAddress = content.substring(
+                content.indexOf("File1=") + 6,
+                content.indexOf("Title1=") - 1
+            )
+        }
+
+        if ( httpAddress.contains("http://") && httpAddress.contains("https://") ) {
+            // https://... http://....
+            if ( httpAddress.indexOf("http://") > httpAddress.indexOf("https://") ) {
+                httpAddress = httpAddress.substring( 0, httpAddress.indexOf("http://") )
+            }
+            // http://... https://....
+            else {
+                httpAddress = httpAddress.substring( httpAddress.indexOf("https://") )
+            }
+        }
+
+        return httpAddress
     }
 
     private fun setChannelsFromPlsFile(content: String) {
         var httpAddress: String
         var title: String
 
-        if ( content.contains("File2" ) ) {
-            httpAddress = content.substring(
-                content.indexOf("File1=") + 6,
-                content.indexOf("File2=") - 1
-            )
-        } else {
-            httpAddress = content.substring(
-                content.indexOf("File1=") + 6,
-                content.indexOf("Title1=") - 1
-            )
-        }
+        // address
+        httpAddress = parseAdress(content)
+
+        // title
         if ( content.contains("Title2") ) {
             title = content.substring(
                 content.indexOf("Title1=") + 7,
@@ -382,7 +441,7 @@ object RadioChannelResources: AsyncCallback {
         // 혹시 모를 앞 공백 제거
         title = title.trimMargin()
         httpAddress = httpAddress.trimMargin()
-        Log.d(resourceTag, "title($title) httpAddress($httpAddress)")
+        Log.d(resourceTag,  "title($title) httpAddress($httpAddress)")
 
         // check and remove duplication from channelList
         for(i in channelList.indices) {
@@ -393,7 +452,7 @@ object RadioChannelResources: AsyncCallback {
         }
 
         for(i in RadioRawChannels.values().indices) {
-            //Log.d(resourceTag, "add resource compare for ($title)(len:${title.length}) - (${RadioRawChannels.values()[i].getChannelTitle()})(len:${RadioRawChannels.values()[i].getChannelTitle().length}): ${title.compareTo(RadioRawChannels.values()[i].getChannelTitle())} ")
+            //Log.d(resourceTag,  "add resource compare for ($title)(len:${title.length}) - (${RadioRawChannels.values()[i].getChannelTitle()})(len:${RadioRawChannels.values()[i].getChannelTitle().length}): ${title.compareTo(RadioRawChannels.values()[i].getChannelTitle())} ")
             if (title.compareTo(RadioRawChannels.values()[i].getChannelTitle()) == 0) {
                 var map = RadioCompletionMap(
                     RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,
@@ -401,18 +460,18 @@ object RadioChannelResources: AsyncCallback {
                     RadioRawChannels.values()[i].getChannelAddress(), httpAddress
                 )
                 addChannelList(map)
-                Log.d(resourceTag,"channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size )
+                Log.d(resourceTag, "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size )
                 break
             }
         }
 
-        Log.d(resourceTag, "setChannelsFromPlsFile  cur/size: ${channelList.size} / ${channelSize}")
+        Log.d(resourceTag,  "setChannelsFromPlsFile  cur/size: ${channelList.size} / ${channelSize}")
     }
 
     private fun removeDuplication(title: String) {
         for(i in channelList.indices) {
             if ( channelList.get(i).title.equals(title) ) {
-                Log.d(resourceTag, "removeDuplication: ${title}")
+                Log.d(resourceTag,  "removeDuplication: ${title}")
                 channelList.removeAt(i)
                 break
             }
@@ -420,7 +479,7 @@ object RadioChannelResources: AsyncCallback {
     }
 
     fun makeChannelList(title: String, url: String) {
-        Log.d(resourceTag, "makeChannelList ${title} : ${url}")
+        Log.d(resourceTag,  "makeChannelList ${title} : ${url}")
         var videoId = url.substring( url.indexOf("watch?v=")+8)
         var filename = "youtube_" + videoId
 
@@ -438,7 +497,7 @@ object RadioChannelResources: AsyncCallback {
         val fileObj = File(OnAir.DEFAULT_FILE_PATH + OnAir.FAVORITE_CHANNEL_JSON)
 
         if ( !fileObj.exists() && !fileObj.canRead() ) {
-            Log.d(resourceTag, "checkFavListUpdate: Can't load ${OnAir.DEFAULT_FILE_PATH + OnAir.FAVORITE_CHANNEL_JSON}")
+            Log.d(resourceTag,  "checkFavListUpdate: Can't load ${OnAir.DEFAULT_FILE_PATH + OnAir.FAVORITE_CHANNEL_JSON}")
             return
         }
 
@@ -446,21 +505,21 @@ object RadioChannelResources: AsyncCallback {
         val content = ins.readBytes().toString(Charset.defaultCharset())
 
         val ele = Json.parseToJsonElement(content)
-        Log.d(resourceTag, "checkFavListUpdate size: ${ele.jsonArray.size}")
+        Log.d(resourceTag,  "checkFavListUpdate size: ${ele.jsonArray.size}")
 
         for(i in 0..ele.jsonArray.size-1) {
             val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
             val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"","")
 
             if (newTitle.equals(title)) {
-                Log.d(resourceTag, "OLD> title: ${title}  -  filename: ${filename}")
-                Log.d(resourceTag, "NEW> title: ${newTitle}  -  filename: ${newFilename}")
+                Log.d(resourceTag,  "OLD> title: ${title}  -  filename: ${filename}")
+                Log.d(resourceTag,  "NEW> title: ${newTitle}  -  filename: ${newFilename}")
 
                 if ( !newFilename.equals(filename) ) {
                     // update 해줘야 함
                     val newContent = content.replace(filename, newFilename);
-                    Log.d(resourceTag, "old json: ${content}")
-                    Log.d(resourceTag, "new json: ${newContent}")
+                    Log.d(resourceTag,  "old json: ${content}")
+                    Log.d(resourceTag,  "new json: ${newContent}")
                     Program.WriteFile().execute(Program.DEFAULT_FILE_PATH + Program.FAVORITE_CHANNEL_JSON, newContent)
                     break
                 }
@@ -469,7 +528,7 @@ object RadioChannelResources: AsyncCallback {
     }
 
     override fun onTaskDone(vararg arg: String?) {
-        Log.d(resourceTag, "callback Type: " + arg[0])
+        Log.d(resourceTag,  "callback Type: " + arg[0])
         when(arg[0])
         {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
@@ -488,7 +547,7 @@ object RadioChannelResources: AsyncCallback {
                     msg.data = bundle
                     res_handler.sendMessage(msg)
                 } else {
-                    Log.d(resourceTag, "ParseUrl failed: title=${title} url=${url}")
+                    Log.d(resourceTag,  "ParseUrl failed: title=${title} url=${url}")
                 }
             }
             "failed" -> {
@@ -500,34 +559,34 @@ object RadioChannelResources: AsyncCallback {
                         arg[3]
                     )        // fileaddress , filename
                     "ParseUrl" -> {
-                        Log.d(resourceTag, "Failed to get Channel url: ${arg[2]}")
+                        Log.d(resourceTag,  "Failed to get Channel url: ${arg[2]}")
                     }
-                    else -> Log.d(resourceTag, "ignore failed action")
+                    else -> Log.d(resourceTag,  "ignore failed action")
                 }
             }
-            else -> Log.d(resourceTag, "do nothing type: " + arg[0])
+            else -> Log.d(resourceTag,  "do nothing type: " + arg[0])
         }
     }
 
     private fun sendCallback(vararg arg: String?) {
-        Log.d(resourceTag, "doFailedAction: " + arg[0])
+        Log.d(resourceTag,  "doFailedAction: " + arg[0])
 
         if ( !OnAir.bInitialized ) {
-            Log.d(resourceTag, "Ignore callback. reason: Not initialized OnAir fragment")
+            Log.d(resourceTag,  "Ignore callback. reason: Not initialized OnAir fragment")
             return
         }
 
         when( arg[0] ) {
             "openFile" -> {
-                Log.d(resourceTag, "open failed filename: " + arg[1])
+                Log.d(resourceTag,  "open failed filename: " + arg[1])
                 arg[1]?.let { OnAir.notifyRadioResourceUpdate(it, RadioResource.OPEN_FAILED) }
             }
             "downFile" -> {
-                Log.d(resourceTag, "down failed addr: " + arg[1] + ", filename: " + arg[2])
-                Log.d(resourceTag, "reset Button Text")
+                Log.d(resourceTag,  "down failed addr: " + arg[1] + ", filename: " + arg[2])
+                Log.d(resourceTag,  "reset Button Text")
                 arg[2]?.let { OnAir.notifyRadioResourceUpdate(it, RadioResource.DOWN_FAILED) }
             }
-            else -> Log.d(resourceTag, "ignore failed action")
+            else -> Log.d(resourceTag,  "ignore failed action")
         }
     }
 
@@ -537,7 +596,7 @@ object RadioChannelResources: AsyncCallback {
             var content = ins.readBytes().toString(Charset.defaultCharset())
             setChannelsFromPlsFile(content)
         } else {
-            Log.d(resourceTag, "Can't read file: " + fileobj.toString())
+            Log.d(resourceTag,  "Can't read file: " + fileobj.toString())
         }
     }
 
@@ -548,7 +607,7 @@ object RadioChannelResources: AsyncCallback {
         override fun doInBackground(vararg params: String?): String? {
             val fileobj = File(params[0])
             var content: String? = null
-            Log.d(resourceTag, "OpenFileFromPath:" + params[0])
+            Log.d(resourceTag,  "OpenFileFromPath:" + params[0])
 
             if (fileobj.exists() && fileobj.canRead()) {
 
@@ -557,13 +616,13 @@ object RadioChannelResources: AsyncCallback {
                     content = ins.readBytes().toString(Charset.defaultCharset())
                     bCompleted = true
                 } catch (e: Exception) {
-                    Log.d(resourceTag, "OpenFileFromPath error: " + e.message)
+                    Log.d(resourceTag,  "OpenFileFromPath error: " + e.message)
                 }
             }
 
             if (bCompleted) callback.onTaskDone("fileopen", content)
             else {
-                Log.d(resourceTag, "fileopen failed")
+                Log.d(resourceTag,  "fileopen failed")
                 callback.onTaskDone("failed", "openFile", params[0])
             }
 
@@ -586,9 +645,9 @@ object RadioChannelResources: AsyncCallback {
                 //Get the logo source of the website
                 val link = document.select("link[rel=canonical]").first()
                 finalUrl = link.attr("abs:href")
-                Log.d(resourceTag, "ParseUrl.  title(${title}) url check: $finalUrl")
+                Log.d(resourceTag,  "ParseUrl.  title(${title}) url check: $finalUrl")
             } catch (e: Exception) {
-                Log.d(resourceTag, "ParseUrl Exception: "+e.message)
+                Log.d(resourceTag,  "ParseUrl Exception: "+e.message)
                 callback.onTaskDone("failed", "ParseUrl", title)
             }
 
@@ -621,11 +680,11 @@ object RadioChannelResources: AsyncCallback {
          * Downloading file in background thread
          */
         override fun doInBackground(vararg f_url: String?): String? {
-            Log.d(resourceTag, "DownloadFileFromURL.doInBackground")
+            Log.d(resourceTag,  "DownloadFileFromURL.doInBackground")
             var count: Int
             try {
                 val url = URL(f_url[0])
-                Log.d(resourceTag, "down from: " + url)
+                Log.d(resourceTag,  "down from: " + url)
                 val connection: URLConnection = url.openConnection()
                 connection.connect()
 
@@ -640,7 +699,7 @@ object RadioChannelResources: AsyncCallback {
 
                 // Output stream
                 filename = filename + f_url[1]
-                Log.d(resourceTag, "filename:" + filename)
+                Log.d(resourceTag,  "filename:" + filename)
                 val output: OutputStream = FileOutputStream(filename)
                 val data = ByteArray(1024)
                 var total: Long = 0
@@ -668,11 +727,11 @@ object RadioChannelResources: AsyncCallback {
             } finally {
 
             }
-            Log.d(resourceTag, "DownloadFileFromURL.doInBackground end")
+            Log.d(resourceTag,  "DownloadFileFromURL.doInBackground end")
 
             if (bCompleted) callback.onTaskDone("Download", filename)
             else {
-                Log.d(resourceTag, "Download failed")
+                Log.d(resourceTag,  "Download failed")
                 callback.onTaskDone("failed", "downFile", f_url[0], f_url[1])
             }
 
@@ -689,7 +748,7 @@ object RadioChannelResources: AsyncCallback {
          * After completing background task Dismiss the progress dialog
          */
         override fun onPostExecute(file_url: String?) {
-            Log.d(resourceTag, "download finished: " + file_url)
+            Log.d(resourceTag,  "download finished: " + file_url)
         }
     }
 }

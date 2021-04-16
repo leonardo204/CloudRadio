@@ -111,7 +111,7 @@ internal class FixEncodingInterceptor : Interceptor {
 private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
     val interceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
         override fun log(message: String) {
-            Log.e(geoTag, message + "")
+            CRLog.d( message + "")
         }
     })
     return interceptor.setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -138,18 +138,18 @@ object GeoInfomation {
 
     fun requestAddressInfo(lat: Double, lng: Double) {
         var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
-        Log.d(geoTag, "req URL: " + call.request().url().toString())
+        CRLog.d( "req URL: " + call.request().url().toString())
         var findit: Boolean = false
         call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
             override fun onResponse(call: Call<GEO_RESPONSE>, response: Response<GEO_RESPONSE>) {
                 var umdName: String = "N/A"
                 if (response.isSuccessful && response.body() != null) {
-                    Log.d(geoTag, "address req. response: " + response.body())
+                    CRLog.d( "address req. response: " + response.body())
                     for (i in response.body()!!.results.indices) {
                         for (j in response.body()!!.results[i].types.indices) {
-                            Log.d( geoTag,"search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j])
+                            CRLog.d( "search result[" + i + "].types[" + j + "]: " + response.body()!!.results[i].types[j])
                             if (response.body()!!.results[i].types[j].equals("postal_code")) {
-                                Log.d(geoTag,"find it! : " + response.body()!!.results[i].formatted_address  )
+                                CRLog.d("find it! : " + response.body()!!.results[i].formatted_address  )
                                 OnAir.mAddressText = response.body()!!.results[i].formatted_address
                                 findit = true
 
@@ -160,7 +160,7 @@ object GeoInfomation {
                                         if ( response.body()!!.results[i].address_components[k].types[p].equals("sublocality_level_1") ) {
                                             findumdName = true
                                             umdName = response.body()!!.results[i].address_components[k].long_name
-                                            Log.d(geoTag,"find umdName! : " + umdName  )
+                                            CRLog.d("find umdName! : " + umdName  )
                                         }
                                         if (findumdName) break
                                     }
@@ -182,7 +182,7 @@ object GeoInfomation {
             }
 
             override fun onFailure(call: Call<GEO_RESPONSE>, t: Throwable) {
-                Log.d(geoTag, "requestAddressInfo fail : " + t.message)
+                CRLog.d( "requestAddressInfo fail : " + t.message)
                 OnAir.updateAddressView(false)
             }
 
