@@ -189,7 +189,7 @@ object More : Fragment(), AsyncCallback {
     }
 
     fun buttonUpdate(button: Button, text: String, enable: Boolean) {
-        CRLog.d( "buttonUpdate: $text ($enable)")
+        Log.d(moreTag,"buttonUpdate: $text ($enable)")
 
         button.setText(text)
         button.isEnabled = enable
@@ -449,7 +449,7 @@ object More : Fragment(), AsyncCallback {
     // command - success or failed
     // value - filename (success  시에는 path 가 됨)
     override fun onTaskDone(vararg string: String?) {
-        CRLog.d( "download result: ${string[0]}")
+        Log.d(moreTag, "download result: ${string[0]}")
 
         var msg = more_handler.obtainMessage()
         var bundle = Bundle()
@@ -483,11 +483,11 @@ object More : Fragment(), AsyncCallback {
          * Downloading file in background thread
          */
         override fun doInBackground(vararg f_url: String?): String? {
-            CRLog.d( "DownloadApplication.doInBackground")
+            Log.d(moreTag, "DownloadApplication.doInBackground")
             var count: Int
             try {
                 val url = URL(f_url[0])
-                CRLog.d( "down from: " + url)
+                Log.d(moreTag, "down from: " + url)
                 val connection: URLConnection = url.openConnection()
                 connection.connect()
 
@@ -502,12 +502,12 @@ object More : Fragment(), AsyncCallback {
 
                 // Output stream
                 filename = filename + f_url[1]
-                CRLog.d( "filename:" + filename)
+                Log.d(moreTag, "filename:" + filename)
 
                 // file remove if it exist
                 var fileobj = File(filename)
                 if ( fileobj.exists() ) {
-                    CRLog.d( "remove previous version")
+                    Log.d(moreTag, "remove previous version")
                     fileobj.delete()
                 }
 
@@ -532,19 +532,19 @@ object More : Fragment(), AsyncCallback {
                 input.close()
                 bCompleted = true
             } catch (e: IOException) {
-                CRLog.d( "Download Error: " + e.message)
+                Log.d(moreTag, "Download Error: " + e.message)
             } catch (e: Exception) {
-                CRLog.d( "Download Error: " + e.message)
+                Log.d(moreTag, "Download Error: " + e.message)
             } finally {
 
             }
-            CRLog.d( "DownloadFileFromURL.doInBackground end")
+            Log.d(moreTag, "DownloadFileFromURL.doInBackground end")
 
             if (bCompleted) {
                 callback.onTaskDone("success", filename)
             }
             else {
-                CRLog.d( "Download failed")
+                Log.d(moreTag, "Download failed")
                 callback.onTaskDone("failed", f_url[0])
             }
 
