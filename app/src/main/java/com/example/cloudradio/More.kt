@@ -48,7 +48,7 @@ object : Handler() {
                         "앱 다운로드",
                         false,
                         3000,
-                        "앱 다운로드 완료되었습니다.\n${value} 에서 앱을 설치해 주십시오.",
+                        "앱 다운로드 완료되었습니다.\n다운로드 폴더에서 앱을 설치해 주십시오.",
                         null
                     )
                 }
@@ -131,6 +131,7 @@ object : Handler() {
 object More : Fragment(), AsyncCallback {
 
     lateinit var DEFAULT_FILE_PATH: String
+    lateinit var DOWNLOAD_PATH: String
 
     lateinit var mAppVersion: String
     lateinit var mChannelVersion: String
@@ -349,6 +350,7 @@ object More : Fragment(), AsyncCallback {
         }
 
         DEFAULT_FILE_PATH = mContext!!.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+        DOWNLOAD_PATH = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
         val builder = VmPolicy.Builder()
         StrictMode.setVmPolicy(builder.build())
@@ -501,7 +503,11 @@ object More : Fragment(), AsyncCallback {
 
 
                 // Output stream
-                filename = filename + f_url[1]
+                if ( f_url[1]!!.contains(".apk") ) {
+                    filename = DOWNLOAD_PATH + f_url[1]
+                } else {
+                    filename = filename + f_url[1]
+                }
                 Log.d(moreTag, "filename:" + filename)
 
                 // file remove if it exist
