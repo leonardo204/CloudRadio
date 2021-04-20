@@ -108,7 +108,7 @@ object OnAir : Fragment() {
 
     var program_layout: LinearLayout? = null
     var youtubePlayer: YouTubePlayer? = null
-    var youtubeState: PlayerConstants.PlayerState? = PlayerConstants.PlayerState.UNKNOWN
+    var mYoutubeState: PlayerConstants.PlayerState? = PlayerConstants.PlayerState.UNKNOWN
     var mVideoId: String? = null
 
     var mAddressText: String = "N/A"
@@ -346,7 +346,7 @@ object OnAir : Fragment() {
     @JvmName("setYoutubeStateManual")
     fun setYoutubeStateManual(state: PlayerConstants.PlayerState) {
         CRLog.d( "setYoutubeStateManual $state")
-        youtubeState = state
+        mYoutubeState = state
         when(state) {
             PlayerConstants.PlayerState.UNKNOWN -> {
                 CRLog.d( "state UNKNOWN")
@@ -401,7 +401,7 @@ object OnAir : Fragment() {
             return
         }
 
-        if ( youtubeState == PlayerConstants.PlayerState.PLAYING ) {
+        if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
             CRLog.d( "createYoutubeView  ----------------  stop!!!!!!!!!!")
 
             playStopYoutube(filename, videoId, false)
@@ -454,6 +454,20 @@ object OnAir : Fragment() {
         return false
     }
 
+    fun requestStopRadioService() {
+        Log.d(onairTag, "requestStopRadioService")
+        if (RadioPlayer.isPlaying()) {
+            Log.d(onairTag, "stop radio")
+            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
+        }
+        else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
+            Log.d(onairTag, "stop youtube")
+            mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
+        } else {
+            Log.d(onairTag, "stop nothing")
+        }
+    }
+
     // 라디오 버튼 누르면 모두 여기서 처리
     // 재생 중이면,
     //   - 어떤 채널에서 재생 중인지 확인 후 동일 채널이면 중지
@@ -495,7 +509,7 @@ object OnAir : Fragment() {
         }
         // youtube 실행 중인 경우 youtube 중지
         // onDestroy callback 불려짐
-        else if (youtubeState == PlayerConstants.PlayerState.PLAYING) {
+        else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
 
             // stop 시 이전 채널로 요청해야 함
             playStopYoutube(mCurrnetPlayFilename!!, null, false)
@@ -503,7 +517,7 @@ object OnAir : Fragment() {
             // 요청한 채널 저장
             CRLog.d( "mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
-        } else if ( youtubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(mCurrnetPlayFilename) ) {
+        } else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(mCurrnetPlayFilename) ) {
             CRLog.d( "play resume: ${mCurrnetPlayFilename}")
             youtubePlayer?.play()
             updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
@@ -643,7 +657,7 @@ object OnAir : Fragment() {
 
         program_layout = null
         youtubePlayer = null
-        youtubeState = PlayerConstants.PlayerState.UNKNOWN
+        mYoutubeState = PlayerConstants.PlayerState.UNKNOWN
         mVideoId = null
 
         mAddressText = "N/A"

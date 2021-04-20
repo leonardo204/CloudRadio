@@ -104,12 +104,12 @@ class RadioService : Service() {
         when(mPlayType) {
             SERVICE_TYPE.YOUTUBE -> {
                 if ( action ) {
-                    if ( OnAir.youtubeState == PlayerConstants.PlayerState.PLAYING ) {
+                    if ( OnAir.mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
                         CRLog.d( "Alreay playing")
                         return
                     }
 
-                    if ( OnAir.youtubeState == PlayerConstants.PlayerState.PAUSED ) {
+                    if ( OnAir.mYoutubeState == PlayerConstants.PlayerState.PAUSED ) {
                         CRLog.d( "playing success")
                         OnAir.youtubePlayer?.play()
                         OnAir.updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)

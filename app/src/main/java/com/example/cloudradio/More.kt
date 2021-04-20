@@ -1,9 +1,7 @@
 package com.example.cloudradio
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.*
 import android.os.StrictMode.VmPolicy
 import android.util.Log
@@ -11,9 +9,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -33,11 +31,12 @@ val more_handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
     @SuppressLint("SetTextI18n")
     override fun handleMessage(msg: Message) {
-        Log.d(moreTag, "handler handleMessage: " + msg)
-
         val bundle = msg.data
         val command = bundle.getString("command")
         val value = bundle.getString("value")
+
+        Log.d(moreTag, "more_handler handleMessage: ${command} - ${value}")
+
 
         if ( value.contains("cloudradio.apk") ) {
             when (command) {
@@ -122,6 +121,50 @@ object : Handler() {
                     )
                 }
             }
+        } else if ( value.contains("Timer") ) {
+            Log.d(moreTag, "timer button update")
+            when(command) {
+                "updateTimer" -> {
+                    More.btn_timer_start.setText("${More.mTimeMin} 분  ${More.mTimeSecond} 초")
+                    More.btn_timer_start.isEnabled = false
+                }
+                "finishTimer" -> {
+                    More.btn_timer_start.setText("시작")
+                    More.btn_timer_start.isEnabled = true
+                    OnAir.requestStopRadioService()
+                }
+            }
+        }
+    }
+}
+
+object SeekBarHandler : SeekBar.OnSeekBarChangeListener {
+    var mProgress: Int = 0
+
+    // 움직이는 중 불림
+    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+//        Log.d(moreTag,"onProgressChanged progress: ${progress}")
+        mProgress = progress
+        drawTimeText()
+    }
+
+    // 움직이기 시작할 때 불림
+    override fun onStartTrackingTouch(seekBar: SeekBar?) {
+        Log.d(moreTag,"onStartTrackingTouch progress: ${mProgress}")
+    }
+
+    // 움직임을 멈췄을 때 불림
+    override fun onStopTrackingTouch(seekBar: SeekBar?) {
+//        Log.d(moreTag,"onStartTrackingTouch progress: ${mProgress}")
+        drawTimeText()
+    }
+
+    private fun drawTimeText() {
+        if ( mProgress == 0 ) {
+            More.txt_selected_time.setText("")
+        } else {
+            More.txt_selected_time.setText("${mProgress} 분")
+            More.mInitialTimeValue = mProgress
         }
     }
 }
@@ -148,43 +191,21 @@ object More : Fragment(), AsyncCallback {
     // dpi
     lateinit var txt_dpi: TextView
 
+    // timer
+    lateinit var seekbar: SeekBar
+    lateinit var txt_selected_time: TextView
+    lateinit var btn_timer_start: Button
+    lateinit var btn_timer_cancel: Button
+    var mTimertask: Timer? = null
+    var mInitialTimeValue: Int = 0
+    var mTimeSecond: Int = 0
+    var mTimeMin: Int = 0
+
 
     var mContext: Context? = null
     var APP_VERSION_URL = "http://zerolive7.iptime.org:9093/api/public/dl/3I4X2Lnj/01_project/cloudradio/app_version.json"
     var APK_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
     var CHANNEL_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/z0Qmcjjq/01_project/cloudradio/channels.json"
-
-//    private val REQUEST_WRITE_PERMISSION = 786
-
-//    override fun onRequestPermissionsResult(
-//        requestCode: Int,
-//        permissions: Array<String?>,
-//        grantResults: IntArray
-//    ) {
-//        if (requestCode == REQUEST_WRITE_PERMISSION && grantResults[0] == PackageManager.PERMISSION_GRANTED) Toast.makeText(
-//            mContext,
-//            "Permission granted",
-//            Toast.LENGTH_LONG
-//        ).show()
-//    }
-//
-//    private fun requestPermission() {
-//        CRLog.d("requestPermission")
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//            requestPermissions(
-//                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-//                REQUEST_WRITE_PERMISSION
-//            )
-//        }
-//    }
-//
-//    private fun canReadWriteExternal(): Boolean {
-//        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-//                ContextCompat.checkSelfPermission(
-//                    mContext!!,
-//                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-//                ) != PackageManager.PERMISSION_GRANTED
-//    }
 
     fun install(path: String) {
         MainActivity.getInstance().installApp(path)
@@ -398,7 +419,60 @@ object More : Fragment(), AsyncCallback {
         CRLog.d( "device dpi => " + metrics?.density)
         txt_dpi.setText("해상도 DPI: ${metrics?.density?.let { getDPIText(it) }}")
 
+        // timer
+        seekbar = view.findViewById(R.id.seekbar_timer)
+        seekbar.setOnSeekBarChangeListener(SeekBarHandler)
+        txt_selected_time = view.findViewById(R.id.txt_selected_time)
+        btn_timer_start = view.findViewById(R.id.btn_start_timer)
+        btn_timer_start.setOnClickListener { onTimerStart() }
+        btn_timer_cancel = view.findViewById(R.id.btn_timer_cancel)
+        btn_timer_cancel.setOnClickListener { onTimerCancel() }
+
         return view
+    }
+
+    private fun onTimerStart() {
+        Log.d(moreTag,"onTimerStart: ${mInitialTimeValue}")
+        if ( mInitialTimeValue <= 0 ) {
+            Log.d(moreTag,"ignore TimeValue: ${mInitialTimeValue}")
+            return
+        }
+
+        mTimeMin = mInitialTimeValue-1
+        mTimeSecond = 60
+        var count = 0
+
+        mTimertask = timer(period = 1000) {
+            val msg = more_handler.obtainMessage()
+            val bundle = Bundle()
+            bundle.putString("value", "Timervalue")
+
+            if ( mTimeMin == 0 && mTimeSecond == 0 ) {
+                Log.d(moreTag,"timer over")
+                mTimertask!!.cancel()
+                bundle.putString("command", "finishTimer")
+
+            } else {
+                if (count < 60) {
+                    count++
+                    mTimeSecond--
+                } else {
+                    count = 0
+                    mTimeSecond = 60
+                    mTimeMin--
+                }
+                bundle.putString("command", "updateTimer")
+            }
+
+            msg.data = bundle
+            more_handler.sendMessage(msg)
+        }
+    }
+
+    private fun onTimerCancel() {
+        Log.d(moreTag,"onTimerCancel: ${mInitialTimeValue}")
+        mTimeSecond = 0
+        mTimeMin = 0
     }
 
     private fun getDPIText(density: Float): String {
