@@ -5,6 +5,7 @@ import android.location.LocationListener
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 
 object CRLocationListener: LocationListener {
@@ -42,5 +43,6 @@ object CRLocationListener: LocationListener {
     //provider가 사용 불가능 상황이 되는 순간 호출
     override fun onProviderDisabled(provider: String?) {
         CRLog.d( "onProviderDisabled. Not yet implemented")
+        MainActivity.getInstance().makeToast("GPS 공급자를 찾을 수 없습니다.")
     }
 }
