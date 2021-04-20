@@ -6,25 +6,32 @@
     android:background="@color/white"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <ScrollView
-        android:id="@+id/layout_scroll_programs"
+    <LinearLayout
+        android:id="@+id/layout_program_up_linear"
         android:layout_width="match_parent"
+        android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/layout_setting"
-        android:layout_marginBottom="25sp"
-        android:layout_height="wrap_content">
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginTop="5sp"
+        android:layout_marginBottom="50sp"
+        android:orientation="vertical"
+        tools:ignore="MissingConstraints">
 
-        <LinearLayout
-            android:id="@+id/layout_grid_programs"
+        <ScrollView
+            android:id="@+id/layout_scroll_programs"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="10dp" >
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/layout_grid_programs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+        </ScrollView>
 
 
-        </LinearLayout>
-
-    </ScrollView>
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/layout_setting"
