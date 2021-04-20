@@ -154,36 +154,37 @@ object More : Fragment(), AsyncCallback {
     var APK_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
     var CHANNEL_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/z0Qmcjjq/01_project/cloudradio/channels.json"
 
-    private val REQUEST_WRITE_PERMISSION = 786
+//    private val REQUEST_WRITE_PERMISSION = 786
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String?>,
-        grantResults: IntArray
-    ) {
-        if (requestCode == REQUEST_WRITE_PERMISSION && grantResults[0] == PackageManager.PERMISSION_GRANTED) Toast.makeText(
-            mContext,
-            "Permission granted",
-            Toast.LENGTH_LONG
-        ).show()
-    }
-
-    private fun requestPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(
-                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                REQUEST_WRITE_PERMISSION
-            )
-        }
-    }
-
-    private fun canReadWriteExternal(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                ContextCompat.checkSelfPermission(
-                    mContext!!,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) != PackageManager.PERMISSION_GRANTED
-    }
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int,
+//        permissions: Array<String?>,
+//        grantResults: IntArray
+//    ) {
+//        if (requestCode == REQUEST_WRITE_PERMISSION && grantResults[0] == PackageManager.PERMISSION_GRANTED) Toast.makeText(
+//            mContext,
+//            "Permission granted",
+//            Toast.LENGTH_LONG
+//        ).show()
+//    }
+//
+//    private fun requestPermission() {
+//        CRLog.d("requestPermission")
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//            requestPermissions(
+//                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+//                REQUEST_WRITE_PERMISSION
+//            )
+//        }
+//    }
+//
+//    private fun canReadWriteExternal(): Boolean {
+//        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+//                ContextCompat.checkSelfPermission(
+//                    mContext!!,
+//                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+//                ) != PackageManager.PERMISSION_GRANTED
+//    }
 
     fun install(path: String) {
         MainActivity.getInstance().installApp(path)
@@ -355,9 +356,10 @@ object More : Fragment(), AsyncCallback {
         val builder = VmPolicy.Builder()
         StrictMode.setVmPolicy(builder.build())
 
-        if ( !canReadWriteExternal() ) {
-            requestPermission()
-        }
+//        CRLog.d("canReadWriteExternal(): ${canReadWriteExternal()}")
+//        if ( !canReadWriteExternal() ) {
+//            requestPermission()
+//        }
 
         var view: ViewGroup = inflater.inflate(R.layout.fragment_more, container, false) as ViewGroup
 

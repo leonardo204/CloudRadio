@@ -200,7 +200,9 @@ class MainActivity : AppCompatActivity() {
     private val locationPermissionCode = 204
     var REQUIRED_PERMISSIONS = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.READ_EXTERNAL_STORAGE
     )
 
     fun checkPermissions() {
@@ -247,13 +249,13 @@ class MainActivity : AppCompatActivity() {
         CRLog.d( "onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "권한 승인 완료", Toast.LENGTH_LONG).show()
                 CRLog.d( "Permissions CB: Granted")
                 getGPSInfo()
             }
             else {
                 CRLog.d( "Permissions CB: Denied")
-                Toast.makeText(this, "Permission Denied", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "앱을 정상적으로 실행하기 위해\n앱 설정에서 권한을 설정해 주세요.", Toast.LENGTH_LONG).show()
             }
         }
     }
