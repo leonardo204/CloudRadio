@@ -1,5 +1,5 @@
 {
-  "version": "20210414",
+  "version": "20210421",
   "data" : [
     {
       "live" : "true",
@@ -72,12 +72,6 @@
       "title": "멜론 역대 힙합 1위 모음집",
       "videoId": "pOQynBTIsZ0",
       "fileaddress": "https://youtu.be/pOQynBTIsZ0"
-    },
-    {
-      "live" : "false",
-      "title": "그때 그시절 멜론",
-      "videoId": "7CV67qnNOxk",
-      "fileaddress": "https://youtu.be/7CV67qnNOxk"
     },
     {
       "live" : "false",

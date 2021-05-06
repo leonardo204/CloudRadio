@@ -160,9 +160,11 @@ object SeekBarHandler : SeekBar.OnSeekBarChangeListener {
     private fun drawTimeText() {
         if ( mProgress == 0 ) {
             More.txt_selected_time.setText("(아래를 움직여서 시간 설정)")
+            More.btn_timer_start.isEnabled = false
         } else {
             More.txt_selected_time.setText("$mProgress 분")
             More.mInitialTimeValue = mProgress
+            More.btn_timer_start.isEnabled = true
         }
     }
 }
@@ -201,6 +203,7 @@ object More : Fragment(), AsyncCallback {
     var mTimeSecond: Int = 0
     var mTimeMin: Int = 0
 
+    var bInitialized = false
 
     var mContext: Context? = null
     var APP_VERSION_URL = "http://zerolive7.iptime.org:9093/api/public/dl/3I4X2Lnj/01_project/cloudradio/app_version.json"
@@ -367,6 +370,11 @@ object More : Fragment(), AsyncCallback {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
+        CRLog.d("onCreateView ${bInitialized}")
+
+        val view: ViewGroup = inflater.inflate(R.layout.fragment_more, container, false) as ViewGroup
+
         if (container != null) {
             mContext = container.context
         }
@@ -382,7 +390,6 @@ object More : Fragment(), AsyncCallback {
 //            requestPermission()
 //        }
 
-        var view: ViewGroup = inflater.inflate(R.layout.fragment_more, container, false) as ViewGroup
 
         // version check
         var res = mContext?.resources
@@ -425,6 +432,7 @@ object More : Fragment(), AsyncCallback {
         txt_selected_time = view.findViewById(R.id.txt_selected_time)
         btn_timer_start = view.findViewById(R.id.btn_start_timer)
         btn_timer_start.setOnClickListener { onTimerStart() }
+        btn_timer_start.isEnabled = false
         btn_timer_cancel = view.findViewById(R.id.btn_timer_cancel)
         btn_timer_cancel.setOnClickListener { onTimerCancel() }
         btn_timer_minus = view.findViewById(R.id.btn_timer_minus)
@@ -432,13 +440,22 @@ object More : Fragment(), AsyncCallback {
         btn_timer_plus = view.findViewById(R.id.btn_timer_plus)
         btn_timer_plus.setOnClickListener { onTimerPlusMinus(1) }
 
+        bInitialized = true
+
         return view
     }
 
     private fun onTimerPlusMinus(degree: Int) {
         Log.d(moreTag, "onTimerPlusMinus: ${degree}")
 
+        if (( mInitialTimeValue == 0 && degree == -1 )
+            || ( mInitialTimeValue == 120 && degree == 1 )) {
+            Log.d(moreTag, "Ignore plus/minus curProgress: ${mInitialTimeValue}")
+            return
+        }
+
         seekbar.let {
+            btn_timer_start.isEnabled = true
             mInitialTimeValue += degree
             it.progress = mInitialTimeValue
             if ( mInitialTimeValue == 0 ) {
@@ -451,7 +468,7 @@ object More : Fragment(), AsyncCallback {
 
     private fun onTimerStart() {
         Log.d(moreTag,"onTimerStart: $mInitialTimeValue")
-        if ( mInitialTimeValue <= 0 ) {
+        if ( mInitialTimeValue <= 0 || mInitialTimeValue > 120 ) {
             Log.d(moreTag,"ignore TimeValue: $mInitialTimeValue")
             return
         }
@@ -491,7 +508,8 @@ object More : Fragment(), AsyncCallback {
         Log.d(moreTag,"onTimerCancel: $mInitialTimeValue")
         mTimertask?.cancel()
         btn_timer_start.setText("시작")
-        btn_timer_start.isEnabled = true
+        btn_timer_start.isEnabled = false
+
     }
 
     private fun getDPIText(density: Float): String {

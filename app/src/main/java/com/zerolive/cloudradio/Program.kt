@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
-import com.zerolive.cloudradio.R
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import java.io.*
@@ -36,7 +35,8 @@ object Program : Fragment() {
 
     // program 버튼을 누른 순서대로 favList 에 title 으로 저장
     // 먼저 들어간 program 이 1순위가 된다.
-    var favList = ArrayList<String>()
+    var mCurFavList = ArrayList<String>()
+    var mBackFavList = ArrayList<String>()
 
     lateinit var btn_save_setting: Button
     lateinit var btn_reset_setting: Button
@@ -50,24 +50,25 @@ object Program : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        CRLog.d("Program onCreateView")
+        CRLog.d("Program onCreateView ${bInitilized}")
+
+        val view: ViewGroup = inflater.inflate(R.layout.fragment_program, container, false) as ViewGroup
 
         if ( container != null ) {
             mContext = container.context
         }
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
-        var view: ViewGroup = inflater.inflate(R.layout.fragment_program, container, false) as ViewGroup
-
         layout_programs = view.findViewById(R.id.layout_grid_programs)
         btn_save_setting = view.findViewById(R.id.btn_save_setting)
         btn_reset_setting = view.findViewById(R.id.btn_reset_setting)
+        btn_save_setting.isEnabled = false
         btn_save_setting.setOnClickListener { onRadioButton("SAVE") }
         btn_reset_setting.setOnClickListener { onRadioButton("RESET") }
 
-        bInitilized = true
-
         initProgramButtons()
+
+        bInitilized = true
 
         // Inflate the layout for this fragment
         return view
@@ -116,11 +117,11 @@ object Program : Fragment() {
                 idx++
             }
         }
-        if ( favList.size > 0 ) {
-            for(i in favList.indices) {
+        if ( mCurFavList.size > 0 ) {
+            for(i in mCurFavList.indices) {
                 updateProgramButtonText(
-                    RadioChannelResources.getFilenameByTitle(favList.get(i)), RadioChannelResources.getDefaultTextByTitle(
-                        favList.get(i)), true, true)
+                    RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)), RadioChannelResources.getDefaultTextByTitle(
+                        mCurFavList.get(i)), true, true)
             }
         }
         CRLog.d("2 updateProgramButtons() btnList: " + program_btnList.size)
@@ -147,11 +148,11 @@ object Program : Fragment() {
             updateProgramButtonText(filename, message, true, false)
         }
 
-        if ( favList.size > 0 ) {
-            for(i in favList.indices) {
+        if ( mCurFavList.size > 0 ) {
+            for(i in mCurFavList.indices) {
                 updateProgramButtonText(
-                    RadioChannelResources.getFilenameByTitle(favList.get(i)), RadioChannelResources.getDefaultTextByFilename(
-                        favList.get(i)), true, true)
+                    RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)), RadioChannelResources.getDefaultTextByFilename(
+                        mCurFavList.get(i)), true, true)
             }
         }
         CRLog.d("initProgramButtons() btnList: " + program_btnList.size)
@@ -167,15 +168,20 @@ object Program : Fragment() {
     fun onRadioButton(title: String) {
         when(title) {
             "SAVE" -> saveAction()
-            "RESET" -> resetAction()
+            "RESET" -> {
+                btn_save_setting.isEnabled = true
+                resetAction()
+            }
             else -> {
-                if ( favList.contains(title) ) {
+                if ( mCurFavList.contains(title) ) {
                     CRLog.d("remove favList: ${title}")
-                    favList.remove(title)
+                    mCurFavList.remove(title)
+                    btn_save_setting.isEnabled = !isSameFavoriteList()
                     updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), RadioChannelResources.getDefaultTextByTitle(title), true, false)
                 } else {
                     CRLog.d("add favList: ${title}")
-                    favList.add(title)
+                    mCurFavList.add(title)
+                    btn_save_setting.isEnabled = !isSameFavoriteList()
                     updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
                 }
             }
@@ -183,7 +189,7 @@ object Program : Fragment() {
     }
 
     private fun dumpFavList() {
-        val iter = favList.iterator()
+        val iter = mCurFavList.iterator()
         var idx = 0
         CRLog.d(" - dumpFavList - ")
         while( iter.hasNext() ) {
@@ -193,20 +199,47 @@ object Program : Fragment() {
         CRLog.d(" ")
     }
 
+    private fun doBackupFavroiteList() {
+        mBackFavList.clear()
+        for(i in mCurFavList.indices) {
+            val title = mCurFavList.get(i)
+            mBackFavList.add(title)
+        }
+        CRLog.d("doBackupFavroiteList size: ${mBackFavList.size}")
+    }
+
+    private fun isSameFavoriteList(): Boolean {
+        CRLog.d("isSameFavoriteList backsize: ${mBackFavList.size} - curSize: ${mCurFavList.size}")
+        if ( mBackFavList.size != mCurFavList.size ) {
+            CRLog.d("isSameFavoriteList : false")
+            return false
+        } else {
+            if ( mBackFavList.containsAll(mCurFavList) && mCurFavList.containsAll(mBackFavList) ) {
+                CRLog.d("isSameFavoriteList : true")
+                return true
+            }
+        }
+        CRLog.d("isSameFavoriteList : false")
+        return false
+    }
+
     private fun saveAction() {
-        if ( favList.size > 0 ) {
+        if ( mCurFavList.size > 0 ) {
             dumpFavList()
-            OnAir.makePrograms(favList)
+            OnAir.updateOnAirPrograms(mCurFavList)
             saveFavList()
+            doBackupFavroiteList()
         } else {
             removeFavList()
         }
+        btn_save_setting.isEnabled = false
     }
 
     fun resetAction() {
         resetAllButtonText()
         OnAir.resetPrograms()
-        favList.clear()
+        mCurFavList.clear()
+        mBackFavList.clear()
         dumpFavList()
     }
 
@@ -255,8 +288,8 @@ object Program : Fragment() {
         }
     }
 
-    private fun saveFavList() {
-        val iter = favList.iterator()
+    fun saveFavList() {
+        val iter = mCurFavList.iterator()
         var itemList: List<FavoriteItem> = listOf()
         while( iter.hasNext() ) {
             val title = iter.next()
@@ -276,15 +309,17 @@ object Program : Fragment() {
         WriteFile().execute(DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON, arr.toString())
     }
 
+    // initial time 에 OnAir 에서 즐겨찾기 파일 로딩 후 호출됨
     fun updatePrograms(list: ArrayList<String>) {
         CRLog.d("updatePrograms size: ${list.size}")
         val iter = list.iterator()
         while( iter.hasNext() ) {
             val title = iter.next()
             CRLog.d("updatePrograms ${title}")
-            favList.add(title)
+            mCurFavList.add(title)
             updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
         }
+        doBackupFavroiteList()
     }
 
     @SuppressLint("StaticFieldLeak")

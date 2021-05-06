@@ -214,6 +214,7 @@ class MainActivity : AppCompatActivity() {
 
         val filter2 = IntentFilter(Intent.ACTION_HEADSET_PLUG)
         registerReceiver(HeadSetConnectReceiver, filter2)
+
     }
 
     private val locationPermissionCode = 204

@@ -48,6 +48,7 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         super.onStateChange(youTubePlayer, state)
         CRLog.d("onStateChange: " + state)
         OnAir.setYoutubeState(state)
+        CRLog.d(""+Thread.dumpStack())
     }
 
     override fun onVideoDuration(youTubePlayer: YouTubePlayer, duration: Float) {

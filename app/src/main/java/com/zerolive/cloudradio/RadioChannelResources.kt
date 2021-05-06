@@ -376,10 +376,14 @@ object RadioChannelResources: AsyncCallback {
         Log.d(resourceTag,  "addChannelList filename ${map.filename} size: ${channelList.size}")
 
         if ( channelList.size == channelSize ) {
-            Log.d(resourceTag,  "Resource init completed")
-            bInitCompleted = true
-            OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
+            initResourceComplete()
         }
+    }
+
+    private fun initResourceComplete() {
+        Log.d(resourceTag,  "Resource init completed")
+        bInitCompleted = true
+        OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
     }
 
     private fun removeChannelList(idx: Int) {
@@ -480,8 +484,8 @@ object RadioChannelResources: AsyncCallback {
 
     fun makeChannelList(title: String, url: String) {
         Log.d(resourceTag,  "makeChannelList ${title} : ${url}")
-        var videoId = url.substring( url.indexOf("watch?v=")+8)
-        var filename = "youtube_" + videoId
+        val videoId = url.substring( url.indexOf("watch?v=")+8)
+        val filename = "youtube_" + videoId
 
         // title 이 겹치는 channel 이 있는 경우 조사하여 중복 제거
         removeDuplication(title)
@@ -533,7 +537,10 @@ object RadioChannelResources: AsyncCallback {
         when(arg[0])
         {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
-            "fileopen" -> setChannelsFromPlsFile(arg[1]!!)
+            "fileopen" -> {
+                setChannelsFromPlsFile(arg[1]!!)
+                OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
+            }
             "ParseUrl" -> {
                 val msg = res_handler.obtainMessage()
                 val bundle = Bundle()
@@ -548,7 +555,11 @@ object RadioChannelResources: AsyncCallback {
                     msg.data = bundle
                     res_handler.sendMessage(msg)
                 } else {
-                    Log.d(resourceTag,  "ParseUrl failed: title=${title} url=${url}")
+                    channelSize--
+                    Log.d(resourceTag,  "ParseUrl failed: title=${title} url=${url} cur/channelSize: ${channelList.size}/${channelSize}")
+                    if ( channelList.size == channelSize ) {
+                        initResourceComplete()
+                    }
                 }
             }
             "failed" -> {
@@ -560,7 +571,11 @@ object RadioChannelResources: AsyncCallback {
                         arg[3]
                     )        // fileaddress , filename
                     "ParseUrl" -> {
-                        Log.d(resourceTag,  "Failed to get Channel url: ${arg[2]}")
+                        channelSize--
+                        Log.d(resourceTag,  "ParseUrl Failed to get Channel url: ${arg[2]} cur/channelSize: ${channelList.size}/${channelSize}")
+                        if ( channelList.size == channelSize ) {
+                            initResourceComplete()
+                        }
                     }
                     else -> Log.d(resourceTag,  "ignore failed action")
                 }
@@ -650,6 +665,7 @@ object RadioChannelResources: AsyncCallback {
             } catch (e: Exception) {
                 Log.d(resourceTag,  "ParseUrl Exception: "+e.message)
                 callback.onTaskDone("failed", "ParseUrl", title)
+                return null
             }
 
             callback.onTaskDone("ParseUrl", title, finalUrl)

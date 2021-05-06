@@ -20,12 +20,13 @@ object RadioNotification {
         mContext?.let {
             val manager = it.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.cancel(NOTIFICATION_ID)
-            val notification = NotificationPlayer.createNotification(
-                it,
-                filename,
-                manager,
-                playPause
-            )
+//            val notification = NotificationPlayer.createNotification(
+//                it,
+//                filename,
+//                manager,
+//                playPause
+//            )
+            val notification = createNotification(filename, playPause)
             manager.notify(NOTIFICATION_ID, notification)
         }
     }

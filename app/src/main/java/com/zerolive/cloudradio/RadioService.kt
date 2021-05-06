@@ -56,7 +56,7 @@ class RadioService : Service() {
                 CRLog.d("start foreground services")
                 startForegroundService(intent?.getStringExtra("name"))
                 var serviceName = intent?.getStringExtra("serviceName")
-                when(serviceName) {
+                when (serviceName) {
                     "youtube" -> mPlayType = SERVICE_TYPE.YOUTUBE
                     "radio" -> mPlayType = SERVICE_TYPE.RADIO
                 }
@@ -70,14 +70,14 @@ class RadioService : Service() {
             Constants.ACTION.PLAY_ACTION -> {
                 CRLog.d("play action file(${OnAir.mCurrnetPlayFilename})")
                 OnAir.mCurrnetPlayFilename?.let {
-                    playStopMedia(it,true)
+                    playStopMedia(it, true)
                     RadioNotification.updateNotification(it, true)
                 }
             }
             Constants.ACTION.PAUSE_ACTION -> {
                 CRLog.d("pause action file(${OnAir.mCurrnetPlayFilename})")
                 OnAir.mCurrnetPlayFilename?.let {
-                    playStopMedia(it,false)
+                    playStopMedia(it, false)
                     RadioNotification.updateNotification(it, false)
                 }
             }
@@ -103,13 +103,13 @@ class RadioService : Service() {
 
         when(mPlayType) {
             SERVICE_TYPE.YOUTUBE -> {
-                if ( action ) {
-                    if ( OnAir.mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
+                if (action) {
+                    if (OnAir.mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
                         CRLog.d("Alreay playing")
                         return
                     }
 
-                    if ( OnAir.mYoutubeState == PlayerConstants.PlayerState.PAUSED ) {
+                    if (OnAir.mYoutubeState == PlayerConstants.PlayerState.PAUSED) {
                         CRLog.d("playing success")
                         OnAir.youtubePlayer?.play()
                         OnAir.updateOnAirButtonText(
@@ -144,7 +144,7 @@ class RadioService : Service() {
                             return
                         } else {
                             try {
-                                if ( !RadioPlayer.play(it)) {
+                                if (!RadioPlayer.play(it)) {
                                     // play 했지만 실패
                                     RadioPlayer.stop()
                                     OnAir.updateOnAirButtonText(
@@ -209,7 +209,7 @@ class RadioService : Service() {
 
                 // address 가 null 이어서 실패
                 // 실패되는 정보에 대한 channel map 을 임의로 생성하여 callback 에 담아 보낸다
-                if ( mAddress == null ) {
+                if (mAddress == null) {
                     mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
                     return START_STICKY
                 }
@@ -221,13 +221,13 @@ class RadioService : Service() {
                 // 이 경우도 실패에 대한 callback 을 전달한다.
                 try {
                     mAddress?.let {
-                        if ( !RadioPlayer.play(it)) {
+                        if (!RadioPlayer.play(it)) {
                             RadioPlayer.stop()
                             mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
                             return START_NOT_STICKY
                         }
                     }
-                } catch ( e: Exception ) {
+                } catch (e: Exception) {
                     CRLog.d("error: " + e.message)
                 }
                 OnAir.mRadioStatus = RADIO_STATUS.PLAYING

@@ -13,11 +13,9 @@ import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
-import com.zerolive.cloudradio.R
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
@@ -130,32 +128,7 @@ object OnAir : Fragment() {
 
     lateinit var txt_loading: TextView
 
-    // 중간 중간 live 채널 주소 업데이트를 위해 불러줌
-    fun checkUpdateFavoriteList() {
-        CRLog.d("checkUpdateFavoriteList")
-
-        var element: JsonElement? = RadioChannelResources.getResourceElement()
-
-        element?.let {
-            var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
-            for (i in data.jsonArray.indices) {
-                CRLog.d("-    [$i]   -")
-                CRLog.d("${data.jsonArray[i]}")
-
-                val live =
-                    data.jsonArray[i].jsonObject["live"].toString().replace("\"", "").toBoolean()
-                val title = data.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
-                val address =
-                    data.jsonArray[i].jsonObject["fileaddress"].toString().replace("\"", "")
-
-                // live 인 경우엔 redirection url 을 얻어서 설정해야 함
-                if (live) {
-                    RadioChannelResources.ParseUrl(RadioChannelResources).execute(title, address)
-                    continue
-                }
-            }
-        }
-    }
+    var mView: ViewGroup? = null
 
     // init resource 시점에만 단독으로 부름
     fun updateFavoriteList() {
@@ -182,56 +155,30 @@ object OnAir : Fragment() {
             list.add(title)
         }
 
-        makePrograms(list)
+        updateOnAirPrograms(list)
         Program.updatePrograms(list)
         Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
+
+        bInitialized = true
     }
 
-    // read favorite list from file
-//    fun updateFavoriteList() {
-//        CRLog.d( "updateFavoriteList")
-//
-//        val parent = txt_loading.parent as ViewGroup?
-//        parent?.removeView(txt_loading)
-//
-//        val fileObj = File(DEFAULT_FILE_PATH+ FAVORITE_CHANNEL_JSON)
-//        if ( !fileObj.exists() && !fileObj.canRead() ) {
-//            CRLog.d( "Can't load ${DEFAULT_FILE_PATH+FAVORITE_CHANNEL_JSON}")
-//            Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
-//            return
-//        }
-//
-//        val ins = fileObj.inputStream()
-//        val content = ins.readBytes().toString(Charset.defaultCharset())
-//        val list = ArrayList<String>()
-//
-//        val ele = Json.parseToJsonElement(content)
-//        CRLog.d( "updateFavoriteList size: ${ele.jsonArray.size}")
-//
-//        for(i in 0..ele.jsonArray.size-1) {
-//            val filename = ele.jsonArray[i].jsonObject["filename"].toString().replace("\"","")
-//            CRLog.d( "updateFavoriteList: $filename")
-//            list.add(filename)
-//        }
-//
-//        makePrograms(list)
-//        Program.updatePrograms(list)
-//        Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
-//    }
-
     private fun loadFavoriteList() {
-        makePrograms(Program.favList)
+        updateOnAirPrograms(Program.mCurFavList)
     }
 
     // title 들을 담은 array list 가 전달됨
     // array list 로부터 title 에 해당하는 버튼을 동적 생성
-    fun makePrograms(favList: ArrayList<String>) {
+    fun updateOnAirPrograms(favList: ArrayList<String>) {
         resetPrograms()
 
         var iter = favList.iterator()
         while( iter.hasNext() ) {
             var title = iter.next()
-            CRLog.d("makePrograms:" + title)
+            CRLog.d("updateOnAirPrograms:" + title)
+            if ( RadioChannelResources.getDefaultTextByTitle(title).equals("Unknown Channel") ) {
+                CRLog.d(" > skip unknown channels.")
+                continue
+            }
             var btn = Button(mContext)
             onair_btnList.put(title, btn)
             btn.setOnClickListener { onRadioButton(title, CLICK_TYPE.CLICK) }
@@ -250,7 +197,7 @@ object OnAir : Fragment() {
 //        if ( mRadioStatus == RADIO_STATUS.PLAYING || mRadioStatus == RADIO_STATUS.PAUSED) {
 //            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
 //        }
-        requestStopRadioService()
+        if ( !bInitialized ) requestStopRadioService()
         program_layout?.removeAllViews()
     }
 
@@ -459,13 +406,6 @@ object OnAir : Fragment() {
         return false
     }
 
-    fun doHeadsetPlugAction(state: Int) {
-        if ( state != 0 && state != 1 ) {
-            CRLog.d("ignore headset plugged state: ${state}")
-            return
-        }
-    }
-
     fun requestStartRadioService() {
         Log.d(onairTag, "requestStartRadioService for ${mCurrnetPlayFilename}")
         mCurrnetPlayFilename?.let {
@@ -611,39 +551,60 @@ object OnAir : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        CRLog.d("OnAir onCreateView")
+        CRLog.d("OnAir onCreateView ${bInitialized}")
+
+        val view: ViewGroup = inflater.inflate(R.layout.fragment_onair, container, false) as ViewGroup
+        mView = view
+
+        mView?.let {
+            txt_timeView = it.findViewById(R.id.text_time)
+            txt_addrView = it.findViewById(R.id.text_address)
+            txt_skyView = it.findViewById(R.id.text_sky)
+            txt_rainView = it.findViewById(R.id.text_rain)
+            txt_fcstView = it.findViewById(R.id.text_fcstTime)
+            txt_windView = it.findViewById(R.id.text_wind)
+            txt_pmGrade = it.findViewById(R.id.txt_pmGrade)
+            txt_pmValue = it.findViewById(R.id.txt_pmValue)
+            txt_loading = it.findViewById(R.id.txt_loading)
+
+            img_weatherView = it.findViewById(R.id.image_empty_weather)
+            img_skyView = it.findViewById(R.id.img_sky)
+            img_rainView = it.findViewById(R.id.img_humidity)
+            img_airStatus = it.findViewById(R.id.image_airStatus)
+
+            mBtn_weather_refresh = it.findViewById(R.id.btn_weatherRefresh)
+
+            program_layout = it.findViewById(R.id.layout_radio_linear)
+        }
 
         if ( container != null ) {
             mContext = container.context
         }
 
-        DEFAULT_FILE_PATH = mContext?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+        init()
+        loadFavoriteList()
 
-        var view: ViewGroup = inflater.inflate(R.layout.fragment_onair, container, false) as ViewGroup
+        return view
+    }
 
-        txt_timeView = view.findViewById(R.id.text_time)
-        txt_addrView = view.findViewById(R.id.text_address)
-        txt_skyView = view.findViewById(R.id.text_sky)
-        txt_rainView = view.findViewById(R.id.text_rain)
-        txt_fcstView = view.findViewById(R.id.text_fcstTime)
-        txt_windView = view.findViewById(R.id.text_wind)
-        txt_pmGrade = view.findViewById(R.id.txt_pmGrade)
-        txt_pmValue = view.findViewById(R.id.txt_pmValue)
-
-        img_weatherView = view.findViewById(R.id.image_empty_weather)
-        img_skyView = view.findViewById(R.id.img_sky)
-        img_rainView = view.findViewById(R.id.img_humidity)
-        img_airStatus = view.findViewById(R.id.image_airStatus)
-
-        mBtn_weather_refresh = view.findViewById(R.id.btn_weatherRefresh)
-        mBtn_weather_refresh.setOnClickListener { onRefreshClick() }
-
-        program_layout = view.findViewById(R.id.layout_radio_linear)
-
-        txt_loading = view.findViewById(R.id.txt_loading)
-
-        CRLog.d("init data")
+    override fun onStart() {
+        super.onStart()
+        CRLog.d("onStart")
+        if ( bInitialized ) {
+            YoutubeLiveUpdater.update()
+        }
         bInitialized = true
+    }
+
+    private fun init() {
+        CRLog.d("init data")
+
+        mContext?.let {
+            DEFAULT_FILE_PATH =
+                it.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+        }
+
+        mBtn_weather_refresh.setOnClickListener { onRefreshClick() }
 
         // 시간은 최초 1회만 ... 혹은 refresh 인 경우
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -653,17 +614,8 @@ object OnAir : Fragment() {
             val currentDate = sdf.format(Date())
             txt_timeView.setText(currentDate)
         }
-
-        loadFavoriteList()
-
         resetAllButtonText(true)
 
-        return view
-    }
-
-    override fun onStart() {
-        super.onStart()
-        CRLog.d("onStart")
     }
 
     override fun onStop() {
