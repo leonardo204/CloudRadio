@@ -703,6 +703,8 @@ object RadioChannelResources: AsyncCallback {
                 val url = URL(f_url[0])
                 Log.d(resourceTag,  "down from: " + url)
                 val connection: URLConnection = url.openConnection()
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
                 connection.connect()
 
                 // this will be useful so that you can show a tipical 0-100%
