@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
+import java.io.InputStream
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -72,6 +73,11 @@ enum class RADIO_BUTTON {
 enum class RADIO_STATUS {
     PLAYING, STOPPED, PAUSED, UNSTARTED
 }
+
+data class YTBPLSITEM (
+    var title: String,
+    var videoId: String
+)
 
 @SuppressLint("StaticFieldLeak")
 object OnAir : Fragment() {
@@ -129,6 +135,9 @@ object OnAir : Fragment() {
     lateinit var txt_loading: TextView
 
     var mView: ViewGroup? = null
+
+    var mCurPlsItems = ArrayList<YTBPLSITEM>()
+    var mCurPlsIdx = 0
 
     // init resource 시점에만 단독으로 부름
     fun updateFavoriteList() {
@@ -269,7 +278,7 @@ object OnAir : Fragment() {
     // youtube view 에서 직접 controll 하는 경우에 notification bar 업데이트 해줌
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
-        //CRLog.d( "setYoutubeState $state")
+        CRLog.d( "setYoutubeState $state")
         //youtubeState = state
         when(state) {
 //            PlayerConstants.PlayerState.PLAYING -> {
@@ -282,10 +291,23 @@ object OnAir : Fragment() {
 //                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
 //                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
 //            }
+            PlayerConstants.PlayerState.VIDEO_CUED -> {
+                CRLog.d("state VIDEO_CUED")
+                youtubePlayer?.play()
+            }
             PlayerConstants.PlayerState.ENDED -> {
                 CRLog.d("state ENDED")
 
-                if ( mVideoId != null ) {
+                if ( mCurPlsItems.size > 0 ) {
+                    CRLog.d("Auto re-play for pls")
+                    mCurPlsIdx++
+                    if ( mCurPlsIdx == mCurPlsItems.size ) {
+                        mCurPlsIdx = 0
+                    }
+                    mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
+                    CRLog.d("Next Playing... [${mCurPlsIdx}] videoId: ${mVideoId}    - title: ${mCurPlsItems.get(mCurPlsIdx).title}  ")
+                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+                } else if ( mVideoId != null ) {
                     CRLog.d("Auto re-play")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 }
@@ -304,9 +326,17 @@ object OnAir : Fragment() {
             PlayerConstants.PlayerState.ENDED -> {
                 CRLog.d("state ENDED")
 
-                if ( mVideoId != null ) {
+                if ( mCurPlsItems.size > 0 ) {
+                    CRLog.d("Auto re-play for pls")
+                    mCurPlsIdx++
+                    if ( mCurPlsIdx == mCurPlsItems.size ) {
+                        mCurPlsIdx = 0
+                    }
+                    mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
+                    youtubePlayer?.cueVideo(mVideoId!!, 0.0f)
+                } else if ( mVideoId != null ) {
                     CRLog.d("Auto re-play")
-                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+                    youtubePlayer?.cueVideo(mVideoId!!, 0.0f)
                 }
             }
             PlayerConstants.PlayerState.PLAYING -> {
@@ -490,11 +520,21 @@ object OnAir : Fragment() {
             updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
             RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
         } else {
+            mCurPlsItems.clear()
+            mCurPlsIdx = 0
+
             // youtube play
             if ( filename.contains("youtube") ) {
-                var videoId = filename.substring(filename.indexOf("youtube_") + 8)
-                CRLog.d("videoId: " + videoId)
+                val videoId = filename.substring(filename.indexOf("youtube_") + 8)
+                CRLog.d("youtube videoId: " + videoId)
                 createYoutubeView(filename, videoId)
+                return
+            }
+            // youtube playlist
+            else if ( filename.startsWith("ytbpls_") ) {
+                val videoId = getVideoId(filename)
+                CRLog.d("ytbpls videoId: " + videoId)
+                videoId?.let { createYoutubeView(filename, it) }
                 return
             }
             // radio play
@@ -502,6 +542,30 @@ object OnAir : Fragment() {
                 startRadioForegroundService("radio", filename, null)
             }
         }
+    }
+
+    private fun getVideoId(filename: String): String? {
+        var videoId: String? = null
+
+        val fileobj = File(DEFAULT_FILE_PATH + filename +".json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val items = Json.parseToJsonElement(content)
+            for(i in items.jsonArray.indices) {
+                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
+                CRLog.d("[${i}] videoId: ${vid}    - title: ${title}  ")
+                val map = YTBPLSITEM(title.toString().replace("\"",""), vid.toString().replace("\"",""))
+                mCurPlsItems.add(map)
+            }
+        }
+
+        if ( mCurPlsItems.size > 0 ) {
+            videoId = mCurPlsItems.get(0).videoId
+        }
+
+        return videoId
     }
 
     @SuppressLint("NewApi")

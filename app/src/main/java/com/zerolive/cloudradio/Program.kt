@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +15,9 @@ import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import java.io.*
 import java.nio.charset.Charset
 import java.util.HashMap
@@ -25,6 +29,11 @@ data class FavoriteItem(
     val title: String
 )
 
+data class YtbListItem(
+    val filename: String,
+    val title: String
+)
+
 
 @SuppressLint("StaticFieldLeak")
 object Program : Fragment() {
@@ -32,6 +41,7 @@ object Program : Fragment() {
     var bInitilized = false
     lateinit var mContext: Context
     var program_btnList = HashMap<String, Button>()
+    var ytbpls_btnList = HashMap<String, Button>()
 
     // program 버튼을 누른 순서대로 favList 에 title 으로 저장
     // 먼저 들어간 program 이 1순위가 된다.
@@ -45,6 +55,8 @@ object Program : Fragment() {
 
     var DEFAULT_FILE_PATH: String? = null
     var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
+
+    var mNumOfPlsFiles = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,6 +77,8 @@ object Program : Fragment() {
         btn_save_setting.isEnabled = false
         btn_save_setting.setOnClickListener { onRadioButton("SAVE") }
         btn_reset_setting.setOnClickListener { onRadioButton("RESET") }
+
+        readPlsFileCount()
 
         initProgramButtons()
 
@@ -94,6 +108,67 @@ object Program : Fragment() {
         layout_programs.removeAllViews()
 
         program_btnList.clear()
+    }
+
+    private fun readPlsFileCount() {
+        val fileobj = File(DEFAULT_FILE_PATH + "ytbpls.json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            CRLog.d("readPlsFileCount1(${content})")
+            val items = Json.parseToJsonElement(content)
+            mNumOfPlsFiles = items.jsonArray.size
+        } else {
+            mNumOfPlsFiles = 0
+        }
+        CRLog.d("readPlsFileCount: ${mNumOfPlsFiles}")
+    }
+
+    private fun getYtbPlsListFromFile(title: String): List<YtbListItem> {
+        // add title
+        var list: List<YtbListItem> = listOf()
+        var oriItem = YtbListItem(title+".json", title)
+        list += oriItem
+
+        // add extra from json file
+        val fileobj = File(DEFAULT_FILE_PATH + "ytbpls.json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val items = Json.parseToJsonElement(content)
+            for(i in items.jsonArray.indices) {
+                val filename = Json.parseToJsonElement(items.jsonArray[i].jsonObject["filename"].toString())
+                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+
+                val item = YtbListItem(filename.toString(), title.toString())
+                list += item
+            }
+        }
+
+        return list
+    }
+
+    // youtube playlist 로 추가한 프로그램
+    fun addProgramButtons(title: String) {
+        Log.d(programTag, "addProgramButtons: ${title}")
+        val button = Button(mContext)
+        button.setText(title)
+        button.setOnClickListener { onRadioButton(title) }
+        program_btnList.put(title, button)
+        layout_programs.addView(button)
+        val map = RadioCompletionMap(title, title, RadioChannelResources.channelList.size, title, title, null)
+        RadioChannelResources.channelList.add(map)
+        RadioChannelResources.channelSize++
+        updateProgramButtonText(title, title, true, false)
+
+        // write json
+        val list = getYtbPlsListFromFile(title)
+        val gson = GsonBuilder().create()
+        val listType: TypeToken<List<YtbListItem>> = object : TypeToken<List<YtbListItem>>() {}
+        val arr = gson.toJson(list, listType.type)
+
+        Log.d(programTag, "write json: ${arr}")
+        WriteFile().execute(DEFAULT_FILE_PATH + "ytbpls.json", arr.toString())
     }
 
     fun updateProgramButtons() {
@@ -263,7 +338,7 @@ object Program : Fragment() {
         while( iter.hasNext() ) {
             val obj = iter.next()
             val title = obj.key
-            //CRLog.d( "updateButtonText: "+obj.key )
+            //CRLog.d( "updateButtonText title: ${title} - ${filename}" )
             if ( RadioChannelResources.getFilenameByTitle(title).equals(filename) ) {
                 val button = obj.value
                 if (bFavorite) {

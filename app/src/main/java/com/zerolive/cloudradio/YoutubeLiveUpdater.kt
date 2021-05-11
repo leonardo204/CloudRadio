@@ -1,6 +1,9 @@
 package com.zerolive.cloudradio
 
+import android.annotation.SuppressLint
 import android.os.AsyncTask
+import android.os.Handler
+import android.os.Message
 import android.util.Log
 import com.zerolive.cloudradio.YoutubeLiveUpdater.updaterTag
 import kotlinx.serialization.json.Json
@@ -71,31 +74,31 @@ object YoutubeLiveUpdater : AsyncCallback{
             Program.saveFavList()
         }
     }
-}
 
-internal class CheckLiveAddress(context: YoutubeLiveUpdater) : AsyncTask<String, String, String>() {
-    val callback: AsyncCallback = context
-    override fun doInBackground(vararg param: String?): String? {
-        var title = param[0]
-        var url = param[1]
-        var finalUrl: String? = null
-        try {
-            //Connect to the website
-            val document: Document = Jsoup.connect(url)
-                .timeout(3000)
-                .get()
+    internal class CheckLiveAddress(context: YoutubeLiveUpdater) : AsyncTask<String, String, String>() {
+        val callback: AsyncCallback = context
+        override fun doInBackground(vararg param: String?): String? {
+            var title = param[0]
+            var url = param[1]
+            var finalUrl: String? = null
+            try {
+                //Connect to the website
+                val document: Document = Jsoup.connect(url)
+                    .timeout(3000)
+                    .get()
 
-            //Get the logo source of the website
-            val link = document.select("link[rel=canonical]").first()
-            finalUrl = link.attr("abs:href")
-            Log.d(updaterTag,  "CheckLiveAddress.  title(${title}) url check: $finalUrl")
-        } catch (e: Exception) {
-            Log.d(updaterTag,  "CheckLiveAddress Exception(title:${title}): "+e.message)
-            callback.onTaskDone(null)
+                //Get the logo source of the website
+                val link = document.select("link[rel=canonical]").first()
+                finalUrl = link.attr("abs:href")
+                Log.d(updaterTag,  "CheckLiveAddress.  title(${title}) url check: $finalUrl")
+            } catch (e: Exception) {
+                Log.d(updaterTag,  "CheckLiveAddress Exception(title:${title}): "+e.message)
+                callback.onTaskDone(null)
+                return null
+            }
+
+            callback.onTaskDone(title, finalUrl)
             return null
         }
-
-        callback.onTaskDone(title, finalUrl)
-        return null
     }
 }

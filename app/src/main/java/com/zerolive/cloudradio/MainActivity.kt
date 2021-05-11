@@ -197,7 +197,7 @@ class MainActivity : AppCompatActivity() {
         var uiController = youtubeView?.getPlayerUiController()
         uiController?.showCurrentTime(false)
         uiController?.showFullscreenButton(false)
-//        uiController?.showPlayPauseButton(false)
+        uiController?.showPlayPauseButton(false)
         uiController?.showSeekBar(false)
         uiController?.showSeekBar(false)
         uiController?.showVideoTitle(false)

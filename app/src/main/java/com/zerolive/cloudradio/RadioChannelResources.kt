@@ -324,14 +324,40 @@ object RadioChannelResources: AsyncCallback {
         channelList.clear()
     }
 
+    private fun addYtbPlaylist(): Int {
+        var num = 0
+        val fileobj = File(DEFAULT_FILE_PATH + "ytbpls.json")
+
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val items = Json.parseToJsonElement(content)
+            num = items.jsonArray.size
+            for(i in items.jsonArray.indices) {
+                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                    .toString()
+                    .replace("\"","")
+                    .replace("\\","")
+                val map = RadioCompletionMap(title, title, channelList.size, title, title, null)
+                addChannelList(map)
+            }
+        }
+
+        CRLog.d("addYtbPlaylist : ${num}")
+
+        return num
+    }
+
     fun initResources(context: Context) {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
+        // for youtube playlist
+        val num = addYtbPlaylist()
+        channelSize += num
 
         // for youtube
         addFromDataFile()
-
 
         channelSize += RadioRawChannels.values().size
 
@@ -394,7 +420,7 @@ object RadioChannelResources: AsyncCallback {
     // 1. 우선 File1 의 것을 담고
     // 2. File1 안에서 https 가 있으면 그걸 찾고
     // 3. http 만 있으면 그것으로 address 를 설정한다.
-    private fun parseAdress(content: String): String {
+    private fun parseAddress(content: String): String {
         var httpAddress: String
         if ( content.contains("File2" ) ) {
             httpAddress = content.substring(
@@ -428,7 +454,7 @@ object RadioChannelResources: AsyncCallback {
         var title: String
 
         // address
-        httpAddress = parseAdress(content)
+        httpAddress = parseAddress(content)
 
         // title
         if ( content.contains("Title2") ) {

@@ -5,7 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
+import androidx.lifecycle.Lifecycle
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.loadOrCueVideo
 
 var radioServiceTag = "CR_RadioService"
 
@@ -105,7 +107,7 @@ class RadioService : Service() {
             SERVICE_TYPE.YOUTUBE -> {
                 if (action) {
                     if (OnAir.mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
-                        CRLog.d("Alreay playing")
+                        CRLog.d("Already playing")
                         return
                     }
 
@@ -118,7 +120,10 @@ class RadioService : Service() {
                             true
                         )
                     } else {
-                        mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
+                        mVideoId?.let {
+                            OnAir.youtubePlayer?.cueVideo(it, 0.0f)
+//                            OnAir.youtubePlayer?.play()
+                        }
                     }
                     OnAir.mRadioStatus = RADIO_STATUS.PLAYING
                     OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.PLAYING)
@@ -194,7 +199,7 @@ class RadioService : Service() {
         when(mPlayType) {
             SERVICE_TYPE.YOUTUBE -> {
                 mVideoId = intent?.getStringExtra("videoId")
-                CRLog.d("onStartCommand: $mVideoId")
+                CRLog.d("onStartCommand: ($mVideoId) ")
 
                 MainActivity.youtubeView?.enableBackgroundPlayback(true)
                 mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }

@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.fragment.app.Fragment
 import com.zerolive.cloudradio.R
@@ -202,6 +203,12 @@ object More : Fragment(), AsyncCallback {
     var mInitialTimeValue: Int = 0
     var mTimeSecond: Int = 0
     var mTimeMin: Int = 0
+
+    // youtube playlists
+    lateinit var txt_ytb_url: EditText
+    lateinit var txt_ytb_title: EditText
+    lateinit var btn_ytb_ok: Button
+    lateinit var btn_ytb_cancel: Button
 
     var bInitialized = false
 
@@ -440,9 +447,45 @@ object More : Fragment(), AsyncCallback {
         btn_timer_plus = view.findViewById(R.id.btn_timer_plus)
         btn_timer_plus.setOnClickListener { onTimerPlusMinus(1) }
 
+        // youtube playlists
+        txt_ytb_url = view.findViewById(R.id.text_ytb_url)
+        txt_ytb_title = view.findViewById(R.id.text_ytb_title)
+        btn_ytb_ok = view.findViewById(R.id.btn_ytb_ok)
+        btn_ytb_cancel = view.findViewById(R.id.btn_ytb_cancel)
+        btn_ytb_ok.setOnClickListener { onYoutubeButtonHandler("ok") }
+        btn_ytb_cancel.setOnClickListener { onYoutubeButtonHandler("cancel") }
+
         bInitialized = true
 
         return view
+    }
+
+    private fun clearYtbText() {
+        txt_ytb_url.setText("")
+        txt_ytb_url.clearFocus()
+
+        txt_ytb_title.setText("")
+        txt_ytb_title.clearFocus()
+    }
+
+    private fun onYoutubeButtonHandler(str: String) {
+        if ( txt_ytb_url.text.toString().length > 0 && txt_ytb_title.text.toString().length > 0 ) {
+            when (str) {
+                "ok" -> {
+                    YoutubePlaylistUpdater.checkUrl(DEFAULT_FILE_PATH, txt_ytb_title.text.toString(), txt_ytb_url.text.toString())
+                }
+                "cancel" -> {
+                    MainActivity.getInstance().makeToast("추가 취소")
+                }
+            }
+        } else {
+            MainActivity.getInstance().makeToast("입력 칸을 모두 입력하세요.")
+        }
+        clearYtbText()
+
+        // keyboard auto hiding
+        val imm = mContext?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(txt_ytb_url.windowToken, 0)
     }
 
     private fun onTimerPlusMinus(degree: Int) {
