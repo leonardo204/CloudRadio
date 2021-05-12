@@ -5,9 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.annotation.RequiresApi
-import androidx.lifecycle.Lifecycle
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.loadOrCueVideo
 
 var radioServiceTag = "CR_RadioService"
 
@@ -121,8 +119,7 @@ class RadioService : Service() {
                         )
                     } else {
                         mVideoId?.let {
-                            OnAir.youtubePlayer?.cueVideo(it, 0.0f)
-//                            OnAir.youtubePlayer?.play()
+                            OnAir.youtubePlayer?.loadVideo(it, 0.0f)
                         }
                     }
                     OnAir.mRadioStatus = RADIO_STATUS.PLAYING

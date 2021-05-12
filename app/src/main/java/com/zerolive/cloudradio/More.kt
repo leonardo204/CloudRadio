@@ -209,6 +209,7 @@ object More : Fragment(), AsyncCallback {
     lateinit var txt_ytb_title: EditText
     lateinit var btn_ytb_ok: Button
     lateinit var btn_ytb_cancel: Button
+    lateinit var btn_check_random: CheckBox
 
     var bInitialized = false
 
@@ -454,6 +455,7 @@ object More : Fragment(), AsyncCallback {
         btn_ytb_cancel = view.findViewById(R.id.btn_ytb_cancel)
         btn_ytb_ok.setOnClickListener { onYoutubeButtonHandler("ok") }
         btn_ytb_cancel.setOnClickListener { onYoutubeButtonHandler("cancel") }
+        btn_check_random = view.findViewById(R.id.btn_random_check)
 
         bInitialized = true
 
@@ -472,7 +474,7 @@ object More : Fragment(), AsyncCallback {
         if ( txt_ytb_url.text.toString().length > 0 && txt_ytb_title.text.toString().length > 0 ) {
             when (str) {
                 "ok" -> {
-                    YoutubePlaylistUpdater.checkUrl(DEFAULT_FILE_PATH, txt_ytb_title.text.toString(), txt_ytb_url.text.toString())
+                    YoutubePlaylistUpdater.checkUrl(DEFAULT_FILE_PATH, txt_ytb_title.text.toString(), txt_ytb_url.text.toString(), btn_check_random.isChecked)
                 }
                 "cancel" -> {
                     MainActivity.getInstance().makeToast("추가 취소")

@@ -31,7 +31,9 @@ data class FavoriteItem(
 
 data class YtbListItem(
     val filename: String,
-    val title: String
+    val title: String,
+    val url: String,
+    val random: String
 )
 
 
@@ -78,7 +80,7 @@ object Program : Fragment() {
         btn_save_setting.setOnClickListener { onRadioButton("SAVE") }
         btn_reset_setting.setOnClickListener { onRadioButton("RESET") }
 
-        readPlsFileCount()
+//        readPlsFileCount()
 
         initProgramButtons()
 
@@ -124,10 +126,10 @@ object Program : Fragment() {
         CRLog.d("readPlsFileCount: ${mNumOfPlsFiles}")
     }
 
-    private fun getYtbPlsListFromFile(title: String): List<YtbListItem> {
+    private fun getYtbPlsListFromFile(title: String, url: String, random: String): List<YtbListItem> {
         // add title
         var list: List<YtbListItem> = listOf()
-        var oriItem = YtbListItem(title+".json", title)
+        var oriItem = YtbListItem(title+".json", title, url, random)
         list += oriItem
 
         // add extra from json file
@@ -137,10 +139,20 @@ object Program : Fragment() {
             val content = ins.readBytes().toString(Charset.defaultCharset())
             val items = Json.parseToJsonElement(content)
             for(i in items.jsonArray.indices) {
-                val filename = Json.parseToJsonElement(items.jsonArray[i].jsonObject["filename"].toString())
-                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                val ff = Json.parseToJsonElement(items.jsonArray[i].jsonObject["filename"].toString())
+                val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                val uu = Json.parseToJsonElement(items.jsonArray[i].jsonObject["url"].toString())
+                val rr = Json.parseToJsonElement(items.jsonArray[i].jsonObject["random"].toString())
 
-                val item = YtbListItem(filename.toString(), title.toString())
+                if ( ff.toString().replace("\"","").equals(title + ".json") ) {
+                    Log.d(programTag, "skip filename: ${ff.toString().replace("\"","")}")
+                    continue
+                }
+
+                val item = YtbListItem(ff.toString().replace("\"",""),
+                    tt.toString().replace("\"",""),
+                    uu.toString().replace("\"",""),
+                    rr.toString().replace("\"",""))
                 list += item
             }
         }
@@ -149,8 +161,14 @@ object Program : Fragment() {
     }
 
     // youtube playlist 로 추가한 프로그램
-    fun addProgramButtons(title: String) {
-        Log.d(programTag, "addProgramButtons: ${title}")
+    fun addProgramButtons(title: String, url: String, random: String) {
+        Log.d(programTag, "addProgramButtons: ${title} - random: ${random} - ${url}")
+
+        if ( program_btnList.containsKey(title) ) {
+            Log.d(programTag, "skip title: ${title}   reason. duplication")
+            return
+        }
+
         val button = Button(mContext)
         button.setText(title)
         button.setOnClickListener { onRadioButton(title) }
@@ -162,8 +180,8 @@ object Program : Fragment() {
         updateProgramButtonText(title, title, true, false)
 
         // write json
-        val list = getYtbPlsListFromFile(title)
-        val gson = GsonBuilder().create()
+        val list = getYtbPlsListFromFile(title, url, random)
+        val gson = GsonBuilder().disableHtmlEscaping().create()
         val listType: TypeToken<List<YtbListItem>> = object : TypeToken<List<YtbListItem>>() {}
         val arr = gson.toJson(list, listType.type)
 
@@ -274,7 +292,7 @@ object Program : Fragment() {
         CRLog.d(" ")
     }
 
-    private fun doBackupFavroiteList() {
+    private fun cloneFavroiteList() {
         mBackFavList.clear()
         for(i in mCurFavList.indices) {
             val title = mCurFavList.get(i)
@@ -303,7 +321,7 @@ object Program : Fragment() {
             dumpFavList()
             OnAir.updateOnAirPrograms(mCurFavList)
             saveFavList()
-            doBackupFavroiteList()
+            cloneFavroiteList()
         } else {
             removeFavList()
         }
@@ -394,7 +412,11 @@ object Program : Fragment() {
             mCurFavList.add(title)
             updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
         }
-        doBackupFavroiteList()
+        // favoriate list 파일 재작성
+        saveFavList()
+
+        // backup
+        cloneFavroiteList()
     }
 
     @SuppressLint("StaticFieldLeak")

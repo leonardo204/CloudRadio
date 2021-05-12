@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<LinearLayout xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:background="@color/white"
-    xmlns:android="http://schemas.android.com/apk/res/android" >
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <TextView
         android:id="@+id/txt_dpi"
@@ -146,14 +147,28 @@
             android:layout_marginBottom="5sp"
             >
 
-            <EditText
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/text_ytb_title"
-                android:hint="ex> 나의 음악 모음집"
-                android:textSize="15sp"
-                android:textColorHint="@color/purple_200"
-                />
+                >
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/text_ytb_title"
+                    android:hint="ex> 나의 음악 모음집"
+                    android:textSize="15sp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:textColorHint="@color/purple_200"
+                    android:ellipsize="start"
+                    tools:ignore="MissingConstraints" />
+                <CheckBox
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/btn_random_check"
+                    android:text="랜덤재생"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    tools:ignore="MissingConstraints" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <EditText
                 android:layout_width="match_parent"
@@ -162,6 +177,8 @@
                 android:hint="ex> https://youtube.com/playlist?list=id"
                 android:textSize="15sp"
                 android:textColorHint="@color/purple_200"
+                android:inputType="text"
+                android:ellipsize="middle"
                 />
 
         </LinearLayout>

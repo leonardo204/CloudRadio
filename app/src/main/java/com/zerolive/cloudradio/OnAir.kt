@@ -21,10 +21,12 @@ import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.io.InputStream
 import java.nio.charset.Charset
+import java.security.cert.CRL
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.concurrent.timer
 
@@ -112,6 +114,8 @@ object OnAir : Fragment() {
     lateinit var txt_pmGrade: TextView
 
     var program_layout: LinearLayout? = null
+    var youtube_layout: LinearLayout? = null
+
     var youtubePlayer: YouTubePlayer? = null
     var mYoutubeState: PlayerConstants.PlayerState? = PlayerConstants.PlayerState.UNKNOWN
     var mVideoId: String? = null
@@ -164,8 +168,8 @@ object OnAir : Fragment() {
             list.add(title)
         }
 
-        updateOnAirPrograms(list)
-        Program.updatePrograms(list)
+        var realList = updateOnAirPrograms(list)
+        Program.updatePrograms(realList)
         Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
 
         bInitialized = true
@@ -177,8 +181,10 @@ object OnAir : Fragment() {
 
     // title 들을 담은 array list 가 전달됨
     // array list 로부터 title 에 해당하는 버튼을 동적 생성
-    fun updateOnAirPrograms(favList: ArrayList<String>) {
+    fun updateOnAirPrograms(favList: ArrayList<String>): ArrayList<String> {
         resetPrograms()
+
+        var list = ArrayList<String>()
 
         var iter = favList.iterator()
         while( iter.hasNext() ) {
@@ -188,6 +194,7 @@ object OnAir : Fragment() {
                 CRLog.d(" > skip unknown channels.")
                 continue
             }
+            list.add(title)
             var btn = Button(mContext)
             onair_btnList.put(title, btn)
             btn.setOnClickListener { onRadioButton(title, CLICK_TYPE.CLICK) }
@@ -198,6 +205,7 @@ object OnAir : Fragment() {
                 true
             )
         }
+        return list
     }
 
     fun resetPrograms() {
@@ -306,6 +314,7 @@ object OnAir : Fragment() {
                     }
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
                     CRLog.d("Next Playing... [${mCurPlsIdx}] videoId: ${mVideoId}    - title: ${mCurPlsItems.get(mCurPlsIdx).title}  ")
+                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 } else if ( mVideoId != null ) {
                     CRLog.d("Auto re-play")
@@ -333,10 +342,11 @@ object OnAir : Fragment() {
                         mCurPlsIdx = 0
                     }
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-                    youtubePlayer?.cueVideo(mVideoId!!, 0.0f)
+                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 } else if ( mVideoId != null ) {
                     CRLog.d("Auto re-play")
-                    youtubePlayer?.cueVideo(mVideoId!!, 0.0f)
+                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 }
             }
             PlayerConstants.PlayerState.PLAYING -> {
@@ -413,12 +423,12 @@ object OnAir : Fragment() {
         if ( play ) {
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
             parent?.removeView(MainActivity.youtubeView)
-            program_layout?.addView(MainActivity.youtubeView)
+            youtube_layout?.addView(MainActivity.youtubeView)
             startRadioForegroundService("youtube", filename, videoId!!)
         } else {
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
             parent?.removeView(MainActivity.youtubeView)
-            program_layout?.removeView(MainActivity.youtubeView)
+            youtube_layout?.removeView(MainActivity.youtubeView)
             stopRadioForegroundService(filename)
         }
         CRLog.d("playStopYoutube: $play")
@@ -502,6 +512,12 @@ object OnAir : Fragment() {
             CRLog.d("mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
         }
+        // youtube playlist 재생 중인 경우에는 stop 대신 그냥 pause 를 함
+        else if (filename.startsWith("ytbpls_") && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(mCurrnetPlayFilename) ) {
+            youtubePlayer?.pause()
+            mRadioStatus = RADIO_STATUS.PAUSED
+            setYoutubeStateManual(PlayerConstants.PlayerState.PAUSED)
+        }
         // youtube 실행 중인 경우 youtube 중지
         // onDestroy callback 불려짐
         else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
@@ -544,8 +560,30 @@ object OnAir : Fragment() {
         }
     }
 
+    private fun checkDoRandom(title: String): Boolean {
+        CRLog.d("checkDoRandom: ${title}")
+        val fileobj = File(DEFAULT_FILE_PATH + "ytbpls.json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val items = Json.parseToJsonElement(content)
+            for(i in items.jsonArray.indices) {
+                val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                val rr = Json.parseToJsonElement(items.jsonArray[i].jsonObject["random"].toString())
+                if ( title.equals(tt.toString().replace("\"",""))) {
+                    CRLog.d("checkDoRandom result: ${rr.toString().replace("\"","").toBoolean()}")
+                    return rr.toString().replace("\"","").toBoolean()
+                }
+            }
+        }
+        CRLog.d("checkDoRandom result: false")
+        return false
+    }
+
     private fun getVideoId(filename: String): String? {
         var videoId: String? = null
+
+        CRLog.d("getVideoId from file: ${filename}")
 
         val fileobj = File(DEFAULT_FILE_PATH + filename +".json")
         if ( fileobj.exists() && fileobj.canRead() ) {
@@ -555,14 +593,28 @@ object OnAir : Fragment() {
             for(i in items.jsonArray.indices) {
                 val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
                 val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
-                CRLog.d("[${i}] videoId: ${vid}    - title: ${title}  ")
                 val map = YTBPLSITEM(title.toString().replace("\"",""), vid.toString().replace("\"",""))
                 mCurPlsItems.add(map)
             }
         }
 
         if ( mCurPlsItems.size > 0 ) {
+            if ( checkDoRandom(filename) ) {
+                Collections.shuffle(mCurPlsItems)
+            }
+            for(i in mCurPlsItems.indices) {
+                CRLog.d("[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${mCurPlsItems.get(i).title}  ")
+            }
             videoId = mCurPlsItems.get(0).videoId
+        }
+
+        if ( videoId == null ) {
+            updateOnAirButtonText(
+                filename,
+                RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
+                true
+            )
+            MainActivity.getInstance().makeToast("비디오 목록을 가져올 수 없습니다. 앱을 다시 시작하여 주십시오.")
         }
 
         return videoId
@@ -639,6 +691,7 @@ object OnAir : Fragment() {
             mBtn_weather_refresh = it.findViewById(R.id.btn_weatherRefresh)
 
             program_layout = it.findViewById(R.id.layout_radio_linear)
+            youtube_layout = it.findViewById(R.id.layout_youtube_view)
         }
 
         if ( container != null ) {
@@ -656,6 +709,7 @@ object OnAir : Fragment() {
         CRLog.d("onStart")
         if ( bInitialized ) {
             YoutubeLiveUpdater.update()
+            YoutubePlaylistUpdater.update()
         }
         bInitialized = true
     }
@@ -699,6 +753,7 @@ object OnAir : Fragment() {
         mContext = null
 
         program_layout = null
+        youtube_layout = null
         youtubePlayer = null
         mYoutubeState = PlayerConstants.PlayerState.UNKNOWN
         mVideoId = null
@@ -769,17 +824,20 @@ object OnAir : Fragment() {
         var grade: String = "1"
         var gradeName: String
 
+        CRLog.d("updateAirStatus: ${data}")
+
         if ( data.pm10Grade1h.equals("알 수 없음") ) {
             grade = "99"
         } else if ( data.pm10Grade1h!!.toInt() > grade.toInt() ) {
             grade = data.pm10Grade1h
         }
 
-        if ( grade != "99" && data.pm25Grade1h.equals("알 수 없음") ) {
+        if ( data.pm25Grade1h.equals("알 수 없음") ) {
             grade = "99"
         } else if ( data.pm25Grade1h!!.toInt() > grade.toInt() ) {
             grade = data.pm25Grade1h
         }
+
         CRLog.d("worst grade: " + AirStatus.getGradeString(grade))
         when(grade) {
             "1" -> {

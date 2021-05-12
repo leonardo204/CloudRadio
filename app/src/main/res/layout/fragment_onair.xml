@@ -240,11 +240,21 @@
                 />
         </RelativeLayout>
 
+        <LinearLayout
+            android:id="@+id/layout_youtube_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@+id/layout_loading"
+            >
+
+        </LinearLayout>
+
         <ScrollView
             android:id="@+id/layout_scroll_radio"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/layout_loading">
+            app:layout_constraintTop_toBottomOf="@+id/layout_youtube_view">
 
             <LinearLayout
                 android:id="@+id/layout_radio_linear"

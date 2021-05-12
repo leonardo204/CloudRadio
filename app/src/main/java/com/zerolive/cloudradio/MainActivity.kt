@@ -16,6 +16,7 @@ import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -107,6 +108,12 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 CRLog.d("onTabSelected: ${tab.position}")
                 viewPager.currentItem = tab.position
+
+                if ( More.bInitialized ) {
+                    // keyboard auto hiding
+                    val imm = More.mContext?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(More.txt_ytb_url.windowToken, 0)
+                }
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab) {

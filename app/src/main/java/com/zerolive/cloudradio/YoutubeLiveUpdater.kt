@@ -40,6 +40,7 @@ object YoutubeLiveUpdater : AsyncCallback{
                 }
             }
         }
+        MainActivity.getInstance().makeToast("유튜브 라이브 채널 업데이트 요청 완료")
     }
 
     override fun onTaskDone(vararg arg: String?) {
