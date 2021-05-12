@@ -393,7 +393,7 @@ object Program : Fragment() {
         }
         CRLog.d("saveFavList itemList: ${itemList}")
 
-        val gson = GsonBuilder().create()
+        val gson = GsonBuilder().disableHtmlEscaping().create()
         val listType: TypeToken<List<FavoriteItem>> = object: TypeToken<List<FavoriteItem>>() {}
 
         val arr = gson.toJson(itemList, listType.type)

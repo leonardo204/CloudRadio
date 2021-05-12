@@ -187,7 +187,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
     // 각 재생목록에 대한 video id 들을 작성
     // ex) ytbpls_케이팝.json
     private fun writePlayList(list: List<YtbPlayListItem>) {
-        val gson = GsonBuilder().create()
+        val gson = GsonBuilder().disableHtmlEscaping().create()
         val listType: TypeToken<List<YtbPlayListItem>> = object: TypeToken<List<YtbPlayListItem>>() {}
 
         val arr = gson.toJson(list, listType.type)
