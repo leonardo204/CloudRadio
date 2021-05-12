@@ -30,10 +30,11 @@ object : Handler() {
         val title = bundle.getString("title")
         val url = bundle.getString("url")
         val random = bundle.getString("random")
+        val filename = bundle.getString("filename")
 
         message?.let {
             Log.d(plstTag, "ytbpls_handler message: ${it}")
-            YoutubePlaylistUpdater.updatePlayLists(it)
+            YoutubePlaylistUpdater.updatePlayLists(it, filename)
         }
 
         title?.let {
@@ -102,12 +103,11 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
         mPlayListId?.let {
             CRLog.d("mPlayListId: ${it}")
-            GetPlayLists(this).execute(it)
-
             mDirPath = path
             mUrl = url
             mRandom = random
             mTitle = "ytbpls_" + title.replace(" ", "_")
+            GetPlayLists(this, null).execute(it)
         }
     }
 
@@ -131,7 +131,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 mPlayListId = jUrl.toString().replace("\"","").substring(jUrl.toString().replace("\"","").indexOf("playlist?list=") + 14)
                 mTitle = jTitle.toString().replace(" ", "_").replace("\"","")
                 CRLog.d("update title: ${mTitle}  -  playlistId: ${mPlayListId}")
-                GetPlayLists(this).execute(mPlayListId)
+                GetPlayLists(this, mTitle).execute(mPlayListId)
             }
         }
 
@@ -145,7 +145,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         pageToken = Json.parseToJsonElement(element.jsonObject["nextPageToken"].toString()).toString().replace("\"","")
         Log.d(plstTag, "pageToken: ${pageToken}")
         if ( pageToken != null && !pageToken.equals("null") ) {
-            GetPlayLists(this).execute(mPlayListId, pageToken)
+            GetPlayLists(this, null).execute(mPlayListId, pageToken)
         }
 
         var ytbPlsLists: List<YtbPlayListItem> = listOf()
@@ -156,6 +156,10 @@ object YoutubePlaylistUpdater : AsyncCallback {
             val resId = Json.parseToJsonElement(snippet.jsonObject["resourceId"].toString())
             val videoId = resId.jsonObject["videoId"].toString()
             Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
+            if ( title.toString().replace("\"","").equals("Deleted video") ) {
+                Log.d(plstTag, " > skip Deleted video!")
+                continue
+            }
             val item = YtbPlayListItem(title.replace("\"", ""), videoId.replace("\"", ""))
             ytbPlsLists += item
         }
@@ -176,8 +180,24 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
                 val videoId = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
 
-                val item = YtbPlayListItem(title.toString().replace("\"",""), videoId.toString().replace("\"",""))
-                l += item
+                // check duplication
+                var dupl = false
+                for(k in l.indices) {
+                    if ( l.get(k).videoId.equals( videoId.toString().replace("\"","") ) ) {
+                        dupl = true
+                        break;
+                    }
+                }
+
+                if ( dupl ) {
+                    Log.d(plstTag, "skip update! reason. duplication: v(${videoId}) -  ${title}")
+                } else {
+                    val item = YtbPlayListItem(
+                        title.toString().replace("\"", ""),
+                        videoId.toString().replace("\"", "")
+                    )
+                    l += item
+                }
             }
         }
 
@@ -186,17 +206,27 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
     // 각 재생목록에 대한 video id 들을 작성
     // ex) ytbpls_케이팝.json
-    private fun writePlayList(list: List<YtbPlayListItem>) {
+    private fun writePlayList(list: List<YtbPlayListItem>, filename: String) {
         val gson = GsonBuilder().disableHtmlEscaping().create()
         val listType: TypeToken<List<YtbPlayListItem>> = object: TypeToken<List<YtbPlayListItem>>() {}
 
         val arr = gson.toJson(list, listType.type)
-        CRLog.d("writePlayList json: ${arr}")
+        CRLog.d("writePlayList filename(${filename+".json"}) -  json: ${arr}")
 
-        WritePlaylistFile().execute(mDirPath + mTitle + ".json", arr.toString().replace("\\",""))
+        if ( filename.equals("N/A") ) {
+            WritePlaylistFile().execute(
+                mDirPath + mTitle + ".json",
+                arr.toString().replace("\\", "")
+            )
+        } else {
+            WritePlaylistFile().execute(
+                mDirPath + filename+ ".json",
+                arr.toString().replace("\\", "")
+            )
+        }
     }
 
-    fun updatePlayLists(message: String) {
+    fun updatePlayLists(message: String, filename: String) {
         // pasring
         val list1: List<YtbPlayListItem> = parseResult(message)
 
@@ -204,7 +234,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         val list2 = getYtbPlsListFromFile(list1)
 
         // write json file
-        writePlayList(list2)
+        writePlayList(list2, filename)
 
         // make program list
         if ( !mUpdate && mUrl != null ) {
@@ -223,13 +253,22 @@ object YoutubePlaylistUpdater : AsyncCallback {
     }
 
     override fun onTaskDone(vararg str: String?) {
-        Log.d(plstTag, "result: ${str[0]}")
+        var title: String? = null
+        if ( str.size > 1 ) {
+            title = str[1]
+        }
+        Log.d(plstTag, "result: ${title} - ${str[0]}")
 
         MainActivity.getInstance().runOnUiThread( Runnable {
             str[0]?.let {
                 val msg = pls_handler.obtainMessage()
                 val bundle = Bundle()
                 bundle.putString("message", it)
+                if ( title != null ) {
+                    bundle.putString("filename", title)
+                } else {
+                    bundle.putString("filename", "N/A")
+                }
                 msg.data = bundle
                 pls_handler.sendMessage(msg)
             }
@@ -240,9 +279,11 @@ object YoutubePlaylistUpdater : AsyncCallback {
     internal class WritePlaylistFile() : AsyncTask<String?, String?, String?>() {
 
         override fun doInBackground(vararg param: String?): String? {
-            CRLog.d("WritePlaylistFile.doInBackground")
-            var filename = param[0]
-            var data = param[1]
+            val filename = param[0]
+            val data = param[1]
+
+            CRLog.d("WritePlaylistFile filename: ${filename}")
+            CRLog.d("WritePlaylistFile data: ${data}")
 
             try {
                 var fileObj = File(filename)
@@ -269,10 +310,11 @@ object YoutubePlaylistUpdater : AsyncCallback {
     }
 }
 
-class GetPlayLists(context: YoutubePlaylistUpdater) : AsyncTask<String, String, String>() {
+class GetPlayLists(context: YoutubePlaylistUpdater, title: String?) : AsyncTask<String, String, String>() {
     val callback: AsyncCallback = context
     val API_KEY = "AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w"
     var mToken: String? = null
+    var mTitle: String? = title
 
     override fun doInBackground(vararg param: String?): String? {
         val id = param[0]
@@ -301,7 +343,7 @@ class GetPlayLists(context: YoutubePlaylistUpdater) : AsyncTask<String, String, 
             }
             br.close()
             Log.d(plstTag, "length: ${response.length}")
-            callback.onTaskDone(response.toString())
+            callback.onTaskDone(response.toString(), mTitle)
 
         } catch (e: Exception) {
             Log.d(plstTag,"GetPlayLists Error: " + e.message)

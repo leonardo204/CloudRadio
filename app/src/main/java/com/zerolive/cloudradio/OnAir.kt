@@ -586,7 +586,10 @@ object OnAir : Fragment() {
         CRLog.d("getVideoId from file: ${filename}")
 
         val fileobj = File(DEFAULT_FILE_PATH + filename +".json")
+
         if ( fileobj.exists() && fileobj.canRead() ) {
+            mCurPlsItems.clear()
+
             val ins: InputStream = fileobj.inputStream()
             val content = ins.readBytes().toString(Charset.defaultCharset())
             val items = Json.parseToJsonElement(content)
