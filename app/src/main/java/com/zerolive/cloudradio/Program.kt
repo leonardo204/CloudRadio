@@ -384,12 +384,19 @@ object Program : Fragment() {
     fun saveFavList() {
         val iter = mCurFavList.iterator()
         var itemList: List<FavoriteItem> = listOf()
+        var tempList = HashMap<String, String>()
         while( iter.hasNext() ) {
             val title = iter.next()
             val filename = RadioChannelResources.getFilenameByTitle(title)
             val item = FavoriteItem(filename, title)
-            itemList += item
 
+            // check duplication
+            if ( tempList.containsKey(title) || tempList.containsValue(filename) ) {
+                CRLog.d("skip duplication: ${title} - ${filename}")
+                continue
+            }
+            tempList.put(title, filename)
+            itemList += item
         }
         CRLog.d("saveFavList itemList: ${itemList}")
 

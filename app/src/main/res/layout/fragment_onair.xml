@@ -217,7 +217,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layout_radio"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_gravity="start"
         android:layout_marginTop="16dp" >
 
@@ -241,30 +241,38 @@
         </RelativeLayout>
 
         <LinearLayout
-            android:id="@+id/layout_youtube_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="vertical"
             app:layout_constraintTop_toBottomOf="@+id/layout_loading"
+            app:layout_constraintBottom_toBottomOf="parent"
             >
 
-        </LinearLayout>
-
-        <ScrollView
-            android:id="@+id/layout_scroll_radio"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/layout_youtube_view">
-
             <LinearLayout
-                android:id="@+id/layout_radio_linear"
+                android:id="@+id/layout_youtube_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
+                android:orientation="vertical"
+                android:layout_marginBottom="8sp"
+                >
             </LinearLayout>
 
-        </ScrollView>
+            <ScrollView
+                android:id="@+id/layout_scroll_radio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                >
+                <LinearLayout
+                    android:id="@+id/layout_radio_linear"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                </LinearLayout>
+            </ScrollView>
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

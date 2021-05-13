@@ -165,6 +165,10 @@ object OnAir : Fragment() {
         for(i in 0..ele.jsonArray.size-1) {
             val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"","")
             CRLog.d("updateFavoriteList: $title")
+            if ( list.contains(title) ) {
+                CRLog.d(" > skip duplication: ${title}")
+                continue
+            }
             list.add(title)
         }
 
