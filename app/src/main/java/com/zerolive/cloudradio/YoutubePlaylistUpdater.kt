@@ -238,19 +238,45 @@ object YoutubePlaylistUpdater : AsyncCallback {
     }
 
 
+    // prev 에 없는 list 의 것만 newList 에 넣어서 mListMap 에 합침
+    private fun addWithCheckDupl(filename: String, list: List<YtbPlayListItem>) {
+        var prev = mListMap.get(filename)!!
+        var newList: List<YtbPlayListItem> = listOf()
+        newList += prev
+
+        for(i in list.indices) {
+            val vid = list.get(i).videoId
+            val title = list.get(i).title
+            var bDupl = false
+            for(k in prev.indices) {
+                if ( prev.get(k).videoId.equals(vid) || prev.get(k).title.equals(title) ) {
+                    bDupl = true
+                    break
+                }
+            }
+            if ( bDupl ) {
+                Log.d(plstTag, " > skip duplication: videoId: ${vid}    - title: ${title}")
+            } else {
+                newList += YtbPlayListItem(title, vid)
+            }
+        }
+
+        mListMap.put(filename, newList)
+    }
+
     private fun addYtbPlsList(filename: String, list: List<YtbPlayListItem>, update: Boolean) {
 
         if ( mListMap.containsKey(filename) ) {
             var l = mListMap.get(filename)!! + list
-            mListMap.put(filename, l)
+            addWithCheckDupl(filename, l)
         } else {
             mListMap.put(filename, list)
         }
 
         // add extra from json file
-        val fileobj = File(mDirPath + mTitle + ".json")
+        val fileobj = File(mDirPath + filename + ".json")
         if ( fileobj.exists() && fileobj.canRead() && update ) {
-            Log.d(plstTag, "remove ${mTitle}.json for update")
+            Log.d(plstTag, "remove ${filename}.json for update")
             fileobj.delete()
         }
     }
@@ -288,6 +314,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
         if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)!! < 1 ) {
             // write json file
+            Log.d(plstTag, "writePlayList num: ${mListMap.size}")
             writePlayList(mListMap.get(filename)!!, filename)
         }
 

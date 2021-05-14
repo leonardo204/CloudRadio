@@ -48,6 +48,8 @@ object : Handler() {
         when(command) {
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
+                YoutubeLiveUpdater.update()
+                YoutubePlaylistUpdater.update()
             }
         }
     }
