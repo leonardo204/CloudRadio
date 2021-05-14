@@ -222,6 +222,7 @@ object Program : Fragment() {
 
     private fun initProgramButtons() {
         layout_programs.removeAllViews()
+        program_btnList.clear()
 
         CRLog.d("initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {

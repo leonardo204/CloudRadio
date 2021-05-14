@@ -208,10 +208,10 @@ object AirStatus {
         data?.let { OnAir.updateAirStatus(it) }
         MainActivity.getInstance().makeToast("날씨 정보가 업데이트 되었습니다.")
 
-//        if (OnAir.bUpdateReady) {
-//            YoutubeLiveUpdater.update()
-//            YoutubePlaylistUpdater.update()
-//        }
+        if (OnAir.bUpdateReady) {
+            YoutubeLiveUpdater.update()
+            YoutubePlaylistUpdater.update()
+        }
     }
 
     fun requestTMCoordination(umdName: String) {
