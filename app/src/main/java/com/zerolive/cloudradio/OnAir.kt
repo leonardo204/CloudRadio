@@ -310,49 +310,10 @@ object OnAir : Fragment() {
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
         CRLog.d( "setYoutubeState $state")
-        setYoutubeStateManual(state)
-        //youtubeState = state
-        when(state) {
-//            PlayerConstants.PlayerState.PLAYING -> {
-//                CRLog.d( "state PLAYING")
-//                RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
-//                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
-//            }
-//            PlayerConstants.PlayerState.PAUSED -> {
-//                CRLog.d( "state PAUSED")
-//                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
-//                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
-//            }
-//            PlayerConstants.PlayerState.VIDEO_CUED -> {
-//                CRLog.d("state VIDEO_CUED")
-//                youtubePlayer?.play()
-//            }
-//            PlayerConstants.PlayerState.ENDED -> {
-//                CRLog.d("state ENDED")
-//
-//                if ( mCurPlsItems.size > 0 ) {
-//                    CRLog.d("Auto re-play for pls")
-//                    mCurPlsIdx++
-//                    if ( mCurPlsIdx == mCurPlsItems.size ) {
-//                        mCurPlsIdx = 0
-//                    }
-//                    mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-//                    CRLog.d("Next Playing... [${mCurPlsIdx}] videoId: ${mVideoId}    - title: ${mCurPlsItems.get(mCurPlsIdx).title}  ")
-//                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
-//                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
-//                } else if ( mVideoId != null ) {
-//                    CRLog.d("Auto re-play")
-//                    youtubePlayer?.loadVideo(mVideoId!!
-        //
-        //
-        //
-        //
-        //
-        //
-        //
-        //                    , 0.0f)
-//                }
-//            }
+        if ( mYoutubeState == PlayerConstants.PlayerState.UNSTARTED && state ==  PlayerConstants.PlayerState.PAUSED ) {
+            CRLog.d("Ignore late pause event")
+        } else {
+            setYoutubeStateManual(state)
         }
     }
 
