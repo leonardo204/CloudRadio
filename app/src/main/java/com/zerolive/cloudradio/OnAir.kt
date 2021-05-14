@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.*
+import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -85,10 +86,14 @@ data class YTBPLSITEM (
 object OnAir : Fragment() {
 
     var bInitialized: Boolean = false
+    var bUpdateReady = false
     var onair_btnList = HashMap<String, Button>()
 
-    // 현재 재생 중인 채널의 title
+    // 현재 재생 중인 채널의 filename
     var mCurrnetPlayFilename: String? = null
+
+    // 현재 재생 중인 채널의 컨텐츠 제목
+    var mCurrnetPlayTitle: String? = null
 
     // request wether (fixed)
     val num_of_rows = 10
@@ -248,7 +253,21 @@ object OnAir : Fragment() {
                 when(text) {
                     RADIO_BUTTON.PLAYING_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.CYAN)
-                        button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
+                        if ( mCurPlsItems.size == 0 ) {
+                            button.setText(
+                                RadioChannelResources.getDefaultButtonTextByFilename(
+                                    filename
+                                ) + " : " + text
+                            )
+                        } else {
+                            button.ellipsize = TextUtils.TruncateAt.MARQUEE
+                            button.marqueeRepeatLimit = -1
+                            button.setSingleLine()
+                            button.isSelected = true
+                            button.setText(
+                                mCurPlsItems.get(mCurPlsIdx).title + " : " + text
+                            )
+                        }
                     }
                     RADIO_BUTTON.STOPPED_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.YELLOW)
@@ -291,6 +310,7 @@ object OnAir : Fragment() {
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
         CRLog.d( "setYoutubeState $state")
+        setYoutubeStateManual(state)
         //youtubeState = state
         when(state) {
 //            PlayerConstants.PlayerState.PLAYING -> {
@@ -303,28 +323,36 @@ object OnAir : Fragment() {
 //                RadioNotification.updateNotification(mCurrnetPlayFilename!!, false)
 //                mCurrnetPlayFilename?.let { updateButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
 //            }
-            PlayerConstants.PlayerState.VIDEO_CUED -> {
-                CRLog.d("state VIDEO_CUED")
-                youtubePlayer?.play()
-            }
-            PlayerConstants.PlayerState.ENDED -> {
-                CRLog.d("state ENDED")
-
-                if ( mCurPlsItems.size > 0 ) {
-                    CRLog.d("Auto re-play for pls")
-                    mCurPlsIdx++
-                    if ( mCurPlsIdx == mCurPlsItems.size ) {
-                        mCurPlsIdx = 0
-                    }
-                    mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-                    CRLog.d("Next Playing... [${mCurPlsIdx}] videoId: ${mVideoId}    - title: ${mCurPlsItems.get(mCurPlsIdx).title}  ")
-                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
-                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
-                } else if ( mVideoId != null ) {
-                    CRLog.d("Auto re-play")
-                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
-                }
-            }
+//            PlayerConstants.PlayerState.VIDEO_CUED -> {
+//                CRLog.d("state VIDEO_CUED")
+//                youtubePlayer?.play()
+//            }
+//            PlayerConstants.PlayerState.ENDED -> {
+//                CRLog.d("state ENDED")
+//
+//                if ( mCurPlsItems.size > 0 ) {
+//                    CRLog.d("Auto re-play for pls")
+//                    mCurPlsIdx++
+//                    if ( mCurPlsIdx == mCurPlsItems.size ) {
+//                        mCurPlsIdx = 0
+//                    }
+//                    mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
+//                    CRLog.d("Next Playing... [${mCurPlsIdx}] videoId: ${mVideoId}    - title: ${mCurPlsItems.get(mCurPlsIdx).title}  ")
+//                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+//                    youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+//                } else if ( mVideoId != null ) {
+//                    CRLog.d("Auto re-play")
+//                    youtubePlayer?.loadVideo(mVideoId!!
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //                    , 0.0f)
+//                }
+//            }
         }
     }
 
@@ -332,6 +360,18 @@ object OnAir : Fragment() {
     fun setYoutubeStateManual(state: PlayerConstants.PlayerState) {
         CRLog.d("setYoutubeStateManual $state")
         mYoutubeState = state
+
+        mCurrnetPlayFilename?.let {
+            CRLog.d("check content type ${it}")
+
+            if ( it.contains("youtube") || it.contains("ytbpls") ) {
+                CRLog.d("youtube content OK")
+            } else {
+                CRLog.d("Ignore non-youtube content")
+                return
+            }
+        }
+
         when(state) {
             PlayerConstants.PlayerState.UNKNOWN -> {
                 CRLog.d("state UNKNOWN")
@@ -456,6 +496,9 @@ object OnAir : Fragment() {
             if ( it.contains("youtube") && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null) {
                 Log.d(onairTag, "start youtube")
                 playStopYoutube(it, mVideoId, true)
+            } else if ( it.contains("ytbpls_") && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null ) {
+                Log.d(onairTag, "start youtube playlist")
+                playStopYoutube(it, mVideoId, true)
             } else if ( !it.contains("youtube") && !RadioPlayer.isPlaying() ) {
                 Log.d(onairTag, "start radio")
                 startRadioForegroundService("radio", it, null)
@@ -522,9 +565,18 @@ object OnAir : Fragment() {
             mRadioStatus = RADIO_STATUS.PAUSED
             setYoutubeStateManual(PlayerConstants.PlayerState.PAUSED)
         }
-        // youtube 실행 중인 경우 youtube 중지
+        // youtube pause 상태인 경우 + 같은 파일 요청이면 pause 파일 resume
+        else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(
+                mCurrnetPlayFilename
+            ) ) {
+            CRLog.d("play resume: $mCurrnetPlayFilename")
+            youtubePlayer?.play()
+            updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+            RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
+        }
+        // youtube 실행/PAUSE 중 + 다른 파일 요청인 경우 youtube 중지
         // onDestroy callback 불려짐
-        else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
+        else if (mYoutubeState == PlayerConstants.PlayerState.PAUSED || mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
 
             // stop 시 이전 채널로 요청해야 함
             playStopYoutube(mCurrnetPlayFilename!!, null, false)
@@ -532,14 +584,12 @@ object OnAir : Fragment() {
             // 요청한 채널 저장
             CRLog.d("mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
-        } else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(
-                mCurrnetPlayFilename
-            ) ) {
-            CRLog.d("play resume: $mCurrnetPlayFilename")
-            youtubePlayer?.play()
-            updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
-            RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
-        } else {
+
+            mCurPlsItems.clear()
+            mCurPlsIdx = 0
+        }
+        // play radio / youtube
+        else {
             mCurPlsItems.clear()
             mCurPlsIdx = 0
 
@@ -746,6 +796,7 @@ object OnAir : Fragment() {
     override fun onStop() {
         super.onStop()
         CRLog.d("onStop")
+        bUpdateReady = true
     }
 
     override fun onDestroyView() {
@@ -939,7 +990,6 @@ object OnAir : Fragment() {
     //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
     fun notifyRadioServiceStatus(filename: String, result: RESULT) {
         CRLog.d(
-
             "notifyRadioServiceStatus: " + result + ", filename: " + filename + " - mCurrnetPlayFilename: $mCurrnetPlayFilename"
         )
 
@@ -981,6 +1031,7 @@ object OnAir : Fragment() {
                 if (filename.equals(mCurrnetPlayFilename)) {
                     resetAllButtonText(true)
                     updateOnAirButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
+                    setYoutubeStateManual(PlayerConstants.PlayerState.UNSTARTED)
                 }
                 // 서로 filename 이 다르면 요청된 filename 서비스 시작
                 else if (mCurrnetPlayFilename != null) {

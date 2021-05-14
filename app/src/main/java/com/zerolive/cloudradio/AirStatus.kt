@@ -204,7 +204,14 @@ object AirStatus {
         CRLog.d("==   AirStatus  ==")
         CRLog.d("1. 미세먼지(PM10): " + data.pm10Value + " (" + getGradeString(data?.pm10Grade1h) + ")")
         CRLog.d("1. 초미세먼지(PM2.5): " + data.pm25Value + " (" + getGradeString(data?.pm25Grade1h) + ")")
+
         data?.let { OnAir.updateAirStatus(it) }
+        MainActivity.getInstance().makeToast("날씨 정보가 업데이트 되었습니다.")
+
+//        if (OnAir.bUpdateReady) {
+//            YoutubeLiveUpdater.update()
+//            YoutubePlaylistUpdater.update()
+//        }
     }
 
     fun requestTMCoordination(umdName: String) {

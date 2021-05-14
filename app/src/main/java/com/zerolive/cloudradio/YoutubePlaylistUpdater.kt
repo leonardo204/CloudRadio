@@ -31,10 +31,11 @@ object : Handler() {
         val url = bundle.getString("url")
         val random = bundle.getString("random")
         val filename = bundle.getString("filename")
+        val update = bundle.getString("update").toBoolean()
 
         message?.let {
-            Log.d(plstTag, "ytbpls_handler message: ${it}")
-            YoutubePlaylistUpdater.updatePlayLists(it, filename)
+            Log.d(plstTag, "ytbpls_handler call updatePlayLists: ${it}")
+            YoutubePlaylistUpdater.updatePlayLists(it, filename, update)
         }
 
         title?.let {
@@ -55,6 +56,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
     var mUrl: String? = null
     var mUpdate = false
     var mRandom = false
+    var mRequestStatus = HashMap<String, Int>()
+    var mListMap = HashMap<String, List<YtbPlayListItem>>()
 
     // title, url 중 하나라도 저장된 내용이 있으면 false
     fun checkValidation(path: String, title: String, url: String): Boolean {
@@ -101,16 +104,22 @@ object YoutubePlaylistUpdater : AsyncCallback {
             MainActivity.getInstance().makeToast("입력한 URL이 올바르지 않습니다. 확인해 주세요.")
         }
 
+        // 처음 playlist 요청하는 시점
+        // 1) 사용자가 직접 playlist 를 추가했음
         mPlayListId?.let {
             CRLog.d("mPlayListId: ${it}")
             mDirPath = path
             mUrl = url
             mRandom = random
             mTitle = "ytbpls_" + title.replace(" ", "_")
-            GetPlayLists(this, null).execute(it)
+            mRequestStatus.put(mTitle!!, 1)
+            CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
+            GetPlayLists(this, mTitle, false).execute(it)
         }
     }
 
+    // 처음 playlist 요청하는 시점
+    // 2) playlist update 를 요청함
     fun update() {
         if ( mDirPath == null ) {
             CRLog.d("path isn't set.")
@@ -130,22 +139,35 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 val jUrl = Json.parseToJsonElement(items.jsonArray[i].jsonObject["url"].toString())
                 mPlayListId = jUrl.toString().replace("\"","").substring(jUrl.toString().replace("\"","").indexOf("playlist?list=") + 14)
                 mTitle = jTitle.toString().replace(" ", "_").replace("\"","")
-                CRLog.d("update title: ${mTitle}  -  playlistId: ${mPlayListId}")
-                GetPlayLists(this, mTitle).execute(mPlayListId)
+                if ( mRequestStatus.containsKey(mTitle!!) ) {
+                    mRequestStatus.put(mTitle!!, mRequestStatus.get(mTitle!!)!!+1)
+                } else {
+                    mRequestStatus.put(mTitle!!, 1)
+                }
+                CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
+                GetPlayLists(this, mTitle, true).execute(mPlayListId)
             }
         }
 
         MainActivity.getInstance().makeToast("유튜브 재생목록 업데이트 요청 완료")
     }
 
-    private fun parseResult(jsonStr: String): List<YtbPlayListItem> {
+    private fun parseResult(filename: String, jsonStr: String): List<YtbPlayListItem> {
         val element = Json.parseToJsonElement(jsonStr)
         val items = Json.parseToJsonElement(element.jsonObject["items"].toString())
         var pageToken: String? = null
         pageToken = Json.parseToJsonElement(element.jsonObject["nextPageToken"].toString()).toString().replace("\"","")
         Log.d(plstTag, "pageToken: ${pageToken}")
+
+        if ( mRequestStatus.containsKey(filename) ) {
+            mRequestStatus.put(filename, mRequestStatus.get(filename)!!.toInt()-1)
+        }
         if ( pageToken != null && !pageToken.equals("null") ) {
-            GetPlayLists(this, null).execute(mPlayListId, pageToken)
+            if ( mRequestStatus.containsKey(filename) ) {
+                mRequestStatus.put(filename, mRequestStatus.get(filename)!!.toInt()+1)
+            }
+            CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
+            GetPlayLists(this, filename, false).execute(mPlayListId, pageToken)
         }
 
         var ytbPlsLists: List<YtbPlayListItem> = listOf()
@@ -167,41 +189,70 @@ object YoutubePlaylistUpdater : AsyncCallback {
         return ytbPlsLists
     }
 
-    private fun getYtbPlsListFromFile(list: List<YtbPlayListItem>): List<YtbPlayListItem> {
+    private fun getYtbPlsListFromFile(list: List<YtbPlayListItem>, update: Boolean): List<YtbPlayListItem> {
         var l = list
 
         // add extra from json file
         val fileobj = File(mDirPath + mTitle + ".json")
         if ( fileobj.exists() && fileobj.canRead() ) {
-            val ins: InputStream = fileobj.inputStream()
-            val content = ins.readBytes().toString(Charset.defaultCharset())
-            val items = Json.parseToJsonElement(content)
-            for(i in items.jsonArray.indices) {
-                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
-                val videoId = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
+            if ( update ) {
+                Log.d(plstTag, "remove ${mTitle}.json for update")
+                fileobj.delete()
+            } else {
+                val ins: InputStream = fileobj.inputStream()
+                val content = ins.readBytes().toString(Charset.defaultCharset())
+                Log.d(plstTag, " > read content:${content}")
+                val items = Json.parseToJsonElement(content)
+                for (i in items.jsonArray.indices) {
+                    val title =
+                        Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
+                    val videoId =
+                        Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
 
-                // check duplication
-                var dupl = false
-                for(k in l.indices) {
-                    if ( l.get(k).videoId.equals( videoId.toString().replace("\"","") ) ) {
-                        dupl = true
-                        break;
+                    // check duplication
+                    var dupl = false
+                    for (k in l.indices) {
+                        if (l.get(k).videoId.equals(videoId.toString().replace("\"", ""))) {
+                            dupl = true
+                            break;
+                        }
                     }
-                }
 
-                if ( dupl ) {
-                    Log.d(plstTag, "skip update! reason. duplication: v(${videoId}) -  ${title}")
-                } else {
-                    val item = YtbPlayListItem(
-                        title.toString().replace("\"", ""),
-                        videoId.toString().replace("\"", "")
-                    )
-                    l += item
+                    if (dupl) {
+                        Log.d(
+                            plstTag,
+                            "skip update! reason. duplication: v(${videoId}) -  ${title}"
+                        )
+                    } else {
+                        val item = YtbPlayListItem(
+                            title.toString().replace("\"", ""),
+                            videoId.toString().replace("\"", "")
+                        )
+                        l += item
+                    }
                 }
             }
         }
 
         return l
+    }
+
+
+    private fun addYtbPlsList(filename: String, list: List<YtbPlayListItem>, update: Boolean) {
+
+        if ( mListMap.containsKey(filename) ) {
+            var l = mListMap.get(filename)!! + list
+            mListMap.put(filename, l)
+        } else {
+            mListMap.put(filename, list)
+        }
+
+        // add extra from json file
+        val fileobj = File(mDirPath + mTitle + ".json")
+        if ( fileobj.exists() && fileobj.canRead() && update ) {
+            Log.d(plstTag, "remove ${mTitle}.json for update")
+            fileobj.delete()
+        }
     }
 
     // 각 재생목록에 대한 video id 들을 작성
@@ -226,15 +277,19 @@ object YoutubePlaylistUpdater : AsyncCallback {
         }
     }
 
-    fun updatePlayLists(message: String, filename: String) {
+    fun updatePlayLists(message: String, filename: String, update: Boolean) {
+        Log.d(plstTag, "updatePlsyLists ${filename} u(${update})")
+
         // pasring
-        val list1: List<YtbPlayListItem> = parseResult(message)
+        val list1: List<YtbPlayListItem> = parseResult(filename, message)
 
-        // read exist list
-        val list2 = getYtbPlsListFromFile(list1)
+        // add reserved list
+        addYtbPlsList(filename, list1, update)
 
-        // write json file
-        writePlayList(list2, filename)
+        if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)!! < 1 ) {
+            // write json file
+            writePlayList(mListMap.get(filename)!!, filename)
+        }
 
         // make program list
         if ( !mUpdate && mUrl != null ) {
@@ -254,10 +309,12 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
     override fun onTaskDone(vararg str: String?) {
         var title: String? = null
+        var update = false
         if ( str.size > 1 ) {
             title = str[1]
+            update = str[2].toBoolean()
         }
-        Log.d(plstTag, "result: ${title} - ${str[0]}")
+        Log.d(plstTag, "result: u(${update}) >  ${title} - ${str[0]}")
 
         MainActivity.getInstance().runOnUiThread( Runnable {
             str[0]?.let {
@@ -269,6 +326,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 } else {
                     bundle.putString("filename", "N/A")
                 }
+                bundle.putString("update", update.toString())
                 msg.data = bundle
                 pls_handler.sendMessage(msg)
             }
@@ -310,11 +368,12 @@ object YoutubePlaylistUpdater : AsyncCallback {
     }
 }
 
-class GetPlayLists(context: YoutubePlaylistUpdater, title: String?) : AsyncTask<String, String, String>() {
+class GetPlayLists(context: YoutubePlaylistUpdater, title: String?, update: Boolean) : AsyncTask<String, String, String>() {
     val callback: AsyncCallback = context
     val API_KEY = "AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w"
     var mToken: String? = null
     var mTitle: String? = title
+    var mUpdate = update
 
     override fun doInBackground(vararg param: String?): String? {
         val id = param[0]
@@ -343,7 +402,7 @@ class GetPlayLists(context: YoutubePlaylistUpdater, title: String?) : AsyncTask<
             }
             br.close()
             Log.d(plstTag, "length: ${response.length}")
-            callback.onTaskDone(response.toString(), mTitle)
+            callback.onTaskDone(response.toString(), mTitle, mUpdate.toString())
 
         } catch (e: Exception) {
             Log.d(plstTag,"GetPlayLists Error: " + e.message)
