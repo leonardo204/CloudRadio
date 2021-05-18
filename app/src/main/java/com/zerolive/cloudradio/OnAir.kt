@@ -10,19 +10,22 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.*
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.io.InputStream
 import java.nio.charset.Charset
-import java.security.cert.CRL
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -49,7 +52,7 @@ object : Handler() {
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
                 YoutubeLiveUpdater.update()
-                YoutubePlaylistUpdater.update()
+//                YoutubePlaylistUpdater.update()
             }
         }
     }
@@ -79,7 +82,7 @@ enum class RADIO_STATUS {
     PLAYING, STOPPED, PAUSED, UNSTARTED
 }
 
-data class YTBPLSITEM (
+data class YTBPLSITEM(
     var title: String,
     var videoId: String
 )
@@ -103,6 +106,8 @@ object OnAir : Fragment() {
     val data_type = "JSON"
     var mContext: Context? = null
 
+    lateinit var weather_view: ConstraintLayout
+
     lateinit var txt_timeView: TextView
     lateinit var txt_addrView: TextView
     lateinit var txt_skyView: TextView
@@ -122,6 +127,7 @@ object OnAir : Fragment() {
 
     var program_layout: LinearLayout? = null
     var youtube_layout: LinearLayout? = null
+
 
     var youtubePlayer: YouTubePlayer? = null
     var mYoutubeState: PlayerConstants.PlayerState? = PlayerConstants.PlayerState.UNKNOWN
@@ -170,7 +176,7 @@ object OnAir : Fragment() {
         CRLog.d("updateFavoriteList size: ${ele.jsonArray.size}")
 
         for(i in 0..ele.jsonArray.size-1) {
-            val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"","")
+            val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
             CRLog.d("updateFavoriteList: $title")
             if ( list.contains(title) ) {
                 CRLog.d(" > skip duplication: ${title}")
@@ -255,7 +261,7 @@ object OnAir : Fragment() {
                 when(text) {
                     RADIO_BUTTON.PLAYING_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.CYAN)
-                        if ( mCurPlsItems.size == 0 ) {
+                        if (mCurPlsItems.size == 0) {
                             button.setText(
                                 RadioChannelResources.getDefaultButtonTextByFilename(
                                     filename
@@ -311,7 +317,7 @@ object OnAir : Fragment() {
     // youtube view 에서 직접 controll 하는 경우에 notification bar 업데이트 해줌
     @JvmName("setYoutubeState1")
     fun setYoutubeState(state: PlayerConstants.PlayerState) {
-        CRLog.d( "setYoutubeState $state")
+        CRLog.d("setYoutubeState $state")
         if ( mYoutubeState == PlayerConstants.PlayerState.UNSTARTED && state ==  PlayerConstants.PlayerState.PAUSED ) {
             CRLog.d("Ignore late pause event")
         } else {
@@ -342,30 +348,44 @@ object OnAir : Fragment() {
             PlayerConstants.PlayerState.ENDED -> {
                 CRLog.d("state ENDED")
 
-                if ( mCurPlsItems.size > 0 ) {
+                if (mCurPlsItems.size > 0) {
                     CRLog.d("Auto re-play for pls")
                     mCurPlsIdx++
-                    if ( mCurPlsIdx == mCurPlsItems.size ) {
+                    if (mCurPlsIdx == mCurPlsItems.size) {
                         mCurPlsIdx = 0
                     }
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-                    MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+                    MainActivity.getInstance()
+                        .makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
-                } else if ( mVideoId != null ) {
+                } else if (mVideoId != null) {
                     CRLog.d("Auto re-play")
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 }
             }
             PlayerConstants.PlayerState.PLAYING -> {
                 CRLog.d("state PLAYING")
-                mCurrnetPlayFilename?.let { updateOnAirButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true) }
+                mCurrnetPlayFilename?.let {
+                    updateOnAirButtonText(
+                        it,
+                        RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
+                        true
+                    )
+                }
+                weather_view.visibility = View.GONE
             }
             PlayerConstants.PlayerState.BUFFERING -> {
                 CRLog.d("state BUFFERING")
             }
             PlayerConstants.PlayerState.PAUSED -> {
                 CRLog.d("state PAUSED")
-                mCurrnetPlayFilename?.let { updateOnAirButtonText(it, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true) }
+                mCurrnetPlayFilename?.let {
+                    updateOnAirButtonText(
+                        it,
+                        RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),
+                        true
+                    )
+                }
             }
             PlayerConstants.PlayerState.UNSTARTED -> {
                 CRLog.d("state UNSTARTED")
@@ -408,9 +428,9 @@ object OnAir : Fragment() {
             mVideoId = null
 
             updateOnAirButtonText(
-                    filename,
-                    RadioChannelResources.getDefaultTextByFilename(filename),
-                    true
+                filename,
+                RadioChannelResources.getDefaultTextByFilename(filename),
+                true
             )
         } else {
             CRLog.d("createYoutubeView  ----------------- play!!!!!!!!!!")
@@ -523,7 +543,9 @@ object OnAir : Fragment() {
             mCurrnetPlayFilename = filename
         }
         // youtube playlist 재생 중인 경우에는 stop 대신 그냥 pause 를 함
-        else if (filename.startsWith("ytbpls_") && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(mCurrnetPlayFilename) ) {
+        else if (filename.startsWith("ytbpls_") && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(
+                mCurrnetPlayFilename
+            ) ) {
             youtubePlayer?.pause()
             mRadioStatus = RADIO_STATUS.PAUSED
             setYoutubeStateManual(PlayerConstants.PlayerState.PAUSED)
@@ -534,7 +556,11 @@ object OnAir : Fragment() {
             ) ) {
             CRLog.d("play resume: $mCurrnetPlayFilename")
             youtubePlayer?.play()
-            updateOnAirButtonText(mCurrnetPlayFilename!!, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+            updateOnAirButtonText(
+                mCurrnetPlayFilename!!,
+                RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
+                true
+            )
             RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
         }
         // youtube 실행/PAUSE 중 + 다른 파일 요청인 경우 youtube 중지
@@ -587,9 +613,9 @@ object OnAir : Fragment() {
             for(i in items.jsonArray.indices) {
                 val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
                 val rr = Json.parseToJsonElement(items.jsonArray[i].jsonObject["random"].toString())
-                if ( title.equals(tt.toString().replace("\"",""))) {
-                    CRLog.d("checkDoRandom result: ${rr.toString().replace("\"","").toBoolean()}")
-                    return rr.toString().replace("\"","").toBoolean()
+                if ( title.equals(tt.toString().replace("\"", ""))) {
+                    CRLog.d("checkDoRandom result: ${rr.toString().replace("\"", "").toBoolean()}")
+                    return rr.toString().replace("\"", "").toBoolean()
                 }
             }
         }
@@ -602,7 +628,7 @@ object OnAir : Fragment() {
 
         CRLog.d("getVideoId from file: ${filename}")
 
-        val fileobj = File(DEFAULT_FILE_PATH + filename +".json")
+        val fileobj = File(DEFAULT_FILE_PATH + filename + ".json")
 
         if ( fileobj.exists() && fileobj.canRead() ) {
             mCurPlsItems.clear()
@@ -613,7 +639,12 @@ object OnAir : Fragment() {
             for(i in items.jsonArray.indices) {
                 val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
                 val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
-                val map = YTBPLSITEM(title.toString().replace("\"",""), vid.toString().replace("\"",""))
+                val map = YTBPLSITEM(
+                    title.toString().replace("\"", ""), vid.toString().replace(
+                        "\"",
+                        ""
+                    )
+                )
                 mCurPlsItems.add(map)
             }
         }
@@ -623,7 +654,13 @@ object OnAir : Fragment() {
                 Collections.shuffle(mCurPlsItems)
             }
             for(i in mCurPlsItems.indices) {
-                CRLog.d("[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${mCurPlsItems.get(i).title}  ")
+                CRLog.d(
+                    "[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${
+                        mCurPlsItems.get(
+                            i
+                        ).title
+                    }  "
+                )
             }
             videoId = mCurPlsItems.get(0).videoId
         }
@@ -693,6 +730,7 @@ object OnAir : Fragment() {
         mView = view
 
         mView?.let {
+            weather_view = it.findViewById(R.id.layout_weather_const)
             txt_timeView = it.findViewById(R.id.text_time)
             txt_addrView = it.findViewById(R.id.text_address)
             txt_skyView = it.findViewById(R.id.text_sky)
@@ -902,6 +940,7 @@ object OnAir : Fragment() {
         CRLog.d("startRadioForegroundService ${serviceName} ${filename} ${videoId}")
         var address:String? = null
         if ( serviceName.equals("radio") ) {
+            weather_view.visibility = View.VISIBLE
             address = getRadioChannelHttpAddress(filename)
         }
 
@@ -1000,10 +1039,16 @@ object OnAir : Fragment() {
                 else if (mCurrnetPlayFilename != null) {
                     CRLog.d("start to service for $mCurrnetPlayFilename")
                     mCurrnetPlayFilename?.let {
-                        if ( it.contains("youtube") ) {
+                        if (it.contains("youtube")) {
                             var videoId = it.substring(it.indexOf("youtube_") + 8)
                             CRLog.d("videoId: " + videoId)
                             createYoutubeView(it, videoId)
+                        }
+                        // youtube playlist
+                        else if ( it.startsWith("ytbpls_") ) {
+                            val videoId = getVideoId(it)
+                            CRLog.d("ytbpls videoId: " + videoId)
+                            videoId?.let { createYoutubeView(mCurrnetPlayFilename!!, it) }
                         }
                         // radio play
                         else {

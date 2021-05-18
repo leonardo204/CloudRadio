@@ -56,6 +56,7 @@ class RadioService : Service() {
                 CRLog.d("start foreground services")
                 startForegroundService(intent?.getStringExtra("name"))
                 var serviceName = intent?.getStringExtra("serviceName")
+                CRLog.d("service name: ${serviceName}")
                 when (serviceName) {
                     "youtube" -> mPlayType = SERVICE_TYPE.YOUTUBE
                     "radio" -> mPlayType = SERVICE_TYPE.RADIO
@@ -191,6 +192,7 @@ class RadioService : Service() {
 
     private fun controllService(intent: Intent?): Int {
         mFilename = intent?.getStringExtra("name")
+        CRLog.d("controllService name:${mFilename} type:${mPlayType}")
 
         // youtube 요청인 경우 처리
         when(mPlayType) {

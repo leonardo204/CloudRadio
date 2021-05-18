@@ -5,17 +5,21 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHeadset
-import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.location.Location
 import android.location.LocationManager
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
+import android.view.Surface
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -25,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerFullScreenListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import java.io.File
 
@@ -82,6 +87,9 @@ class MainActivity : AppCompatActivity() {
 
         CRLog.d("onCreate")
 
+        // 앱 자체는 세로모드로 고정시킨다
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
         mContext = this
 
         setContentView(R.layout.activity_main)
@@ -109,9 +117,10 @@ class MainActivity : AppCompatActivity() {
                 CRLog.d("onTabSelected: ${tab.position}")
                 viewPager.currentItem = tab.position
 
-                if ( More.bInitialized ) {
+                if (More.bInitialized) {
                     // keyboard auto hiding
-                    val imm = More.mContext?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    val imm =
+                        More.mContext?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(More.txt_ytb_url.windowToken, 0)
                 }
             }
@@ -180,6 +189,25 @@ class MainActivity : AppCompatActivity() {
         dlg.start("인터넷 연결 확인 필요\n확인을 누르면 5초 후 앱을 다시 시작합니다.")
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+
+        CRLog.d("onConfigurationChanged: ${newConfig}")
+
+        if ( newConfig.orientation == ORIENTATION_LANDSCAPE ) {
+            CRLog.d("landscape")
+            val display = this.windowManager.defaultDisplay
+            when( display.rotation ) {
+                Surface.ROTATION_0 -> { CRLog.d("rotaion 0") }
+                Surface.ROTATION_90 -> { CRLog.d("rotaion 90") }
+                Surface.ROTATION_180 -> { CRLog.d("rotaion 180") }
+                Surface.ROTATION_270 -> { CRLog.d("rotation 270") }
+            }
+        } else {
+            CRLog.d("portrait")
+        }
+    }
+
     private fun init() {
         CRLog.d("MainActivity init")
 
@@ -203,15 +231,41 @@ class MainActivity : AppCompatActivity() {
         // ui
         var uiController = youtubeView?.getPlayerUiController()
         uiController?.showCurrentTime(false)
-        uiController?.showFullscreenButton(false)
-        uiController?.showPlayPauseButton(false)
+        uiController?.showFullscreenButton(true)
+        uiController?.showPlayPauseButton(true)
         uiController?.showSeekBar(false)
         uiController?.showSeekBar(false)
         uiController?.showVideoTitle(false)
         uiController?.showDuration(false)
-        uiController?.showUi(false)
+        uiController?.showUi(true)
         uiController?.showYouTubeButton(false)
         youtubeView?.addYouTubePlayerListener(YoutubeHandler)
+        youtubeView?.addFullScreenListener(object : YouTubePlayerFullScreenListener {
+            override fun onYouTubePlayerEnterFullScreen() {
+                CRLog.d("onYouTubePlayerEnterFullScreen")
+                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        )
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                youtubeView?.let {
+                    CRLog.d("enterFullScreen")
+                    it.enterFullScreen()
+                    tabLayout.visibility = View.GONE
+                }
+            }
+
+            override fun onYouTubePlayerExitFullScreen() {
+                CRLog.d("onYouTubePlayerExitFullScreen")
+                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_VISIBLE)
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                youtubeView?.let {
+                    CRLog.d("exitFullScreen")
+                    it.exitFullScreen()
+                    tabLayout.visibility = View.VISIBLE
+                }
+            }
+        })
 
         // bluetooth
         val filter1 = IntentFilter()

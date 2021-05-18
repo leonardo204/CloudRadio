@@ -46,7 +46,6 @@ object : Handler() {
 }
 
 // TODO
-// 3. 재생 시 순차/랜덤 재생
 // 4. 추가한 playlist 제거 필요 (ui 로 할 수 있게)
 object YoutubePlaylistUpdater : AsyncCallback {
 
