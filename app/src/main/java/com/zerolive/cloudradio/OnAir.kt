@@ -764,10 +764,13 @@ object OnAir : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        CRLog.d("onStart")
+        CRLog.d("onStart fullScreen(${FullScreenHelper.mFullScreen})")
         if ( bInitialized ) {
             YoutubeLiveUpdater.update()
             YoutubePlaylistUpdater.update()
+            if ( FullScreenHelper.mFullScreen ) {
+                MainActivity.getInstance().setFullScreen()
+            }
         }
         bInitialized = true
     }

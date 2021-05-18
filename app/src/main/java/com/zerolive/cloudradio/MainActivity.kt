@@ -20,6 +20,7 @@ import android.os.Bundle
 import android.os.SystemClock.sleep
 import android.view.Surface
 import android.view.View
+import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -58,15 +59,18 @@ class WeatherTask: AsyncTask<Location, Void, Void>() {
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var tabLayout: TabLayout
-    lateinit var viewPager: ViewPager
+
 
     companion object {
         @SuppressLint("StaticFieldLeak")
+        lateinit var tabLayout: TabLayout
+        lateinit var viewPager: ViewPager
+
         private var instance: MainActivity? = null
         var locationManager: LocationManager? = null
         @SuppressLint("StaticFieldLeak")
         var mContext: Context? = null
+        var mWindow: Window? = null
         var youtubeView: YouTubePlayerView? = null
 
         var bluetoothHeadset: BluetoothHeadset? = null
@@ -91,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         mContext = this
+        mWindow = window
 
         setContentView(R.layout.activity_main)
         title = "CloudRadio"
@@ -208,6 +213,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun setFullScreen() {
+        CRLog.d("window: ${mWindow}")
+        mWindow?.decorView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                )
+        if ( !FullScreenHelper.mFullScreen ) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            youtubeView?.let {
+                CRLog.d("enterFullScreen")
+                it.enterFullScreen()
+                tabLayout.visibility = View.GONE
+                FullScreenHelper.mFullScreen = true
+            }
+        } else {
+            CRLog.d("Already full screen")
+        }
+    }
+
+    fun exitFullScreen() {
+        if ( FullScreenHelper.mFullScreen ) {
+            mWindow?.decorView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_VISIBLE)
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            youtubeView?.let {
+                CRLog.d("exitFullScreen")
+                it.exitFullScreen()
+                tabLayout.visibility = View.VISIBLE
+                FullScreenHelper.mFullScreen = false
+            }
+        } else {
+            CRLog.d("Already protrait screen")
+        }
+    }
+
     private fun init() {
         CRLog.d("MainActivity init")
 
@@ -243,27 +282,12 @@ class MainActivity : AppCompatActivity() {
         youtubeView?.addFullScreenListener(object : YouTubePlayerFullScreenListener {
             override fun onYouTubePlayerEnterFullScreen() {
                 CRLog.d("onYouTubePlayerEnterFullScreen")
-                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        )
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                youtubeView?.let {
-                    CRLog.d("enterFullScreen")
-                    it.enterFullScreen()
-                    tabLayout.visibility = View.GONE
-                }
+                setFullScreen()
             }
 
             override fun onYouTubePlayerExitFullScreen() {
                 CRLog.d("onYouTubePlayerExitFullScreen")
-                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_VISIBLE)
-                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                youtubeView?.let {
-                    CRLog.d("exitFullScreen")
-                    it.exitFullScreen()
-                    tabLayout.visibility = View.VISIBLE
-                }
+                exitFullScreen()
             }
         })
 

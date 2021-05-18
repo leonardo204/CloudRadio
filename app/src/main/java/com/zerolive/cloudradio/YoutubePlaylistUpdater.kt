@@ -254,7 +254,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 }
             }
             if ( bDupl ) {
-                Log.d(plstTag, " > skip duplication: videoId: ${vid}    - title: ${title}")
+//                Log.d(plstTag, " > skip duplication: videoId: ${vid}    - title: ${title}")
             } else {
                 newList += YtbPlayListItem(title, vid)
             }
