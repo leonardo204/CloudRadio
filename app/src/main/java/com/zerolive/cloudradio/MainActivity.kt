@@ -12,6 +12,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationManager
 import android.os.AsyncTask
@@ -20,6 +21,7 @@ import android.os.Bundle
 import android.os.SystemClock.sleep
 import android.view.Surface
 import android.view.View
+import android.view.View.OnClickListener
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -28,10 +30,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerFullScreenListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.ui.PlayerUiController
 import java.io.File
 
 
@@ -72,8 +76,12 @@ class MainActivity : AppCompatActivity() {
         var mContext: Context? = null
         var mWindow: Window? = null
         var youtubeView: YouTubePlayerView? = null
+        var uiController: PlayerUiController? = null
 
         var bluetoothHeadset: BluetoothHeadset? = null
+
+        var ic_forward: Drawable? = null
+        var ic_rewind: Drawable? = null
 
         // Get the default adapter
         val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -265,31 +273,41 @@ class MainActivity : AppCompatActivity() {
         RadioPlayer.init()
 
         // youtube
+        ic_forward = ResourcesCompat.getDrawable(resources, R.drawable.forward, null)
+        ic_rewind = ResourcesCompat.getDrawable(resources, R.drawable.rewind, null)
+
         youtubeView = YouTubePlayerView(this)
         CRLog.d("youtubeView: $youtubeView")
         // ui
-        var uiController = youtubeView?.getPlayerUiController()
-        uiController?.showCurrentTime(false)
-        uiController?.showFullscreenButton(true)
-        uiController?.showPlayPauseButton(true)
-        uiController?.showSeekBar(false)
-        uiController?.showSeekBar(false)
-        uiController?.showVideoTitle(false)
-        uiController?.showDuration(false)
-        uiController?.showUi(true)
-        uiController?.showYouTubeButton(false)
-        youtubeView?.addYouTubePlayerListener(YoutubeHandler)
-        youtubeView?.addFullScreenListener(object : YouTubePlayerFullScreenListener {
-            override fun onYouTubePlayerEnterFullScreen() {
-                CRLog.d("onYouTubePlayerEnterFullScreen")
-                setFullScreen()
-            }
+        youtubeView?.let {
+            it.addYouTubePlayerListener(YoutubeHandler)
+            it.addFullScreenListener(object : YouTubePlayerFullScreenListener {
+                override fun onYouTubePlayerEnterFullScreen() {
+                    CRLog.d("onYouTubePlayerEnterFullScreen")
+                    setFullScreen()
+                }
 
-            override fun onYouTubePlayerExitFullScreen() {
-                CRLog.d("onYouTubePlayerExitFullScreen")
-                exitFullScreen()
-            }
-        })
+                override fun onYouTubePlayerExitFullScreen() {
+                    CRLog.d("onYouTubePlayerExitFullScreen")
+                    exitFullScreen()
+                }
+            })
+            uiController = it.getPlayerUiController()
+        }
+        uiController?.let {
+            it.showCurrentTime(false)
+            it.showFullscreenButton(true)
+            it.showPlayPauseButton(true)
+            it.showSeekBar(false)
+            it.showVideoTitle(false)
+            it.showDuration(false)
+            it.showUi(true)
+            it.showYouTubeButton(false)
+            it.setCustomAction1(ic_rewind!!, onRewFFClick("rewind"));
+            it.setCustomAction2(ic_forward!!, onRewFFClick("forward"));
+            it.showCustomAction1(true);
+            it.showCustomAction2(true);
+        }
 
         // bluetooth
         val filter1 = IntentFilter()
@@ -299,8 +317,30 @@ class MainActivity : AppCompatActivity() {
 
         val filter2 = IntentFilter(Intent.ACTION_HEADSET_PLUG)
         registerReceiver(HeadSetConnectReceiver, filter2)
-
     }
+
+    private fun onRewFFClick(command: String): OnClickListener {
+        return OnClickListener {
+            if ( command.equals("rewind") ) {
+                CRLog.d("rewind!")
+                OnAir.requestPlayPrevious()
+            } else if ( command.equals("forward") ) {
+                CRLog.d("forward!")
+                OnAir.requestPlayNext()
+            } else {
+                CRLog.d("unknown command: ${command}")
+            }
+        }
+    }
+
+//    val onRewFFClick(command: String) : OnClickListener = object : OnClickListener {
+//        override fun onClick(v: View?) {
+//            if ( v == ic_forward ) {
+//                CRLog.d("forward")
+//            }
+//            CRLog.d("onClick:  rew:${R.drawable.rewind} ff:${R.drawable.forward} ${v?.id}")
+//        }
+//    }
 
     private val locationPermissionCode = 204
     var REQUIRED_PERMISSIONS = arrayOf(

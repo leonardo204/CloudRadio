@@ -473,6 +473,38 @@ object OnAir : Fragment() {
         return false
     }
 
+    fun requestPlayNext() {
+        mCurrnetPlayFilename?.let {
+            if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
+                CRLog.d("Ignore forward")
+                return
+            }
+            mCurPlsIdx++
+            if (mCurPlsIdx == mCurPlsItems.size) {
+                mCurPlsIdx = 0
+            }
+            mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
+            MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+            youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+        }
+    }
+
+    fun requestPlayPrevious() {
+        mCurrnetPlayFilename?.let {
+            if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
+                CRLog.d("Ignore rewind")
+                return
+            }
+            mCurPlsIdx--
+            if (mCurPlsIdx < 0) {
+                mCurPlsIdx = 0
+            }
+            mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
+            MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+            youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
+        }
+    }
+
     fun requestStartRadioService() {
         Log.d(onairTag, "requestStartRadioService for ${mCurrnetPlayFilename}")
         mCurrnetPlayFilename?.let {
@@ -480,26 +512,42 @@ object OnAir : Fragment() {
                 Log.d(onairTag, "start youtube")
                 playStopYoutube(it, mVideoId, true)
             } else if ( it.contains("ytbpls_") && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null ) {
-                Log.d(onairTag, "start youtube playlist")
-                playStopYoutube(it, mVideoId, true)
-            } else if ( !it.contains("youtube") && !RadioPlayer.isPlaying() ) {
+                Log.d(onairTag, "start youtube playlist state: ${mYoutubeState}")
+                if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED ) {
+                    youtubePlayer?.play()
+                } else {
+                    playStopYoutube(it, mVideoId, true)
+                }
+            } else if ( !(it.contains("youtube") || it.startsWith("ytbpls_") ) && !RadioPlayer.isPlaying() ) {
                 Log.d(onairTag, "start radio")
                 startRadioForegroundService("radio", it, null)
+            } else {
+                Log.d(onairTag, "start nothing")
             }
         }
     }
 
     fun requestStopRadioService() {
-        Log.d(onairTag, "requestStopRadioService")
+        Log.d(onairTag, "requestStopRadioService: ${mCurrnetPlayFilename}")
         if (RadioPlayer.isPlaying()) {
             Log.d(onairTag, "stop radio")
+            weather_view.visibility = View.VISIBLE
             mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
         }
-        else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
-            Log.d(onairTag, "stop youtube")
-            mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
-        } else {
-            Log.d(onairTag, "stop nothing")
+        else {
+            mCurrnetPlayFilename?.let {
+                if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
+                    if ( it.startsWith("ytbpls_") ) {
+                        Log.d(onairTag, "pause youtube playlist")
+                        youtubePlayer?.pause()
+                    } else {
+                        Log.d(onairTag, "stop youtube")
+                        weather_view.visibility = View.VISIBLE
+                        if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
+                        mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
+                    }
+                }
+            }
         }
     }
 
