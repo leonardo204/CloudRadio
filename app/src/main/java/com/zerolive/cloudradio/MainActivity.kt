@@ -298,7 +298,7 @@ class MainActivity : AppCompatActivity() {
             it.showCurrentTime(false)
             it.showFullscreenButton(true)
             it.showPlayPauseButton(true)
-            it.showSeekBar(false)
+            it.showSeekBar(true)
             it.showVideoTitle(false)
             it.showDuration(false)
             it.showUi(true)
