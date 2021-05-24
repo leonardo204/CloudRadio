@@ -113,6 +113,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         // 1) 사용자가 직접 playlist 를 추가했음
         mPlayListId?.let {
             CRLog.d("mPlayListId: ${it}")
+            mRequestStatus.clear()
             mDirPath = path
             mUrl = url
             mRandom = random
@@ -130,6 +131,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         if ( mDirPath == null ) {
             CRLog.d("path isn't set.")
             mDirPath = Program.DEFAULT_FILE_PATH
+            mRequestStatus.clear()
         }
         CRLog.d("path: ${mDirPath}")
 
@@ -139,6 +141,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
             val ins: InputStream = fileobj.inputStream()
             val content = ins.readBytes().toString(Charset.defaultCharset())
+            CRLog.d("update for content from file: ${content}")
             val items = Json.parseToJsonElement(content)
             for(i in items.jsonArray.indices) {
                 val jTitle = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
