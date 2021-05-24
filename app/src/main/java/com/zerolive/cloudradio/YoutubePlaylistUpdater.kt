@@ -22,6 +22,12 @@ data class YtbPlayListItem(
     val videoId: String
 )
 
+data class CurPlsUpdateItem(
+    val filename: String,
+    val playlistId: String?,
+    val num: Int
+)
+
 val pls_handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
     override fun handleMessage(msg: Message) {
@@ -55,7 +61,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
     var mUrl: String? = null
     var mUpdate = false
     var mRandom = false
-    var mRequestStatus = HashMap<String, Int>()
+    var mRequestStatus = HashMap<String, CurPlsUpdateItem>()
     var mListMap = HashMap<String, List<YtbPlayListItem>>()
 
     // title, url 중 하나라도 저장된 내용이 있으면 false
@@ -111,7 +117,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
             mUrl = url
             mRandom = random
             mTitle = "ytbpls_" + title.replace(" ", "_")
-            mRequestStatus.put(mTitle!!, 1)
+            val item = CurPlsUpdateItem(mTitle!!, null, 1)
+            mRequestStatus.put(mTitle!!, item)
             CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
             GetPlayLists(this, mTitle, false).execute(it)
         }
@@ -139,11 +146,14 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 mPlayListId = jUrl.toString().replace("\"","").substring(jUrl.toString().replace("\"","").indexOf("playlist?list=") + 14)
                 mTitle = jTitle.toString().replace(" ", "_").replace("\"","")
                 if ( mRequestStatus.containsKey(mTitle!!) ) {
-                    mRequestStatus.put(mTitle!!, mRequestStatus.get(mTitle!!)!!+1)
+                    val num = mRequestStatus.get(mTitle)?.num
+                    val item = CurPlsUpdateItem(mTitle!!, mPlayListId, num!!+1)
+                    mRequestStatus.put(mTitle!!, item)
                 } else {
-                    mRequestStatus.put(mTitle!!, 1)
+                    val item = CurPlsUpdateItem(mTitle!!, mPlayListId, 1)
+                    mRequestStatus.put(mTitle!!, item)
                 }
-                CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
+                CRLog.d("update [req. ${mRequestStatus.get(mTitle)?.num}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
                 GetPlayLists(this, mTitle, true).execute(mPlayListId)
             }
         }
@@ -156,18 +166,27 @@ object YoutubePlaylistUpdater : AsyncCallback {
         val items = Json.parseToJsonElement(element.jsonObject["items"].toString())
         var pageToken: String? = null
         pageToken = Json.parseToJsonElement(element.jsonObject["nextPageToken"].toString()).toString().replace("\"","")
-        Log.d(plstTag, "pageToken: ${pageToken}")
+        Log.d(plstTag, "parseResult filename: ${filename} pageToken: ${pageToken}")
 
-        if ( mRequestStatus.containsKey(filename) ) {
-            mRequestStatus.put(filename, mRequestStatus.get(filename)!!.toInt()-1)
-        }
         if ( pageToken != null && !pageToken.equals("null") ) {
             if ( mRequestStatus.containsKey(filename) ) {
-                mRequestStatus.put(filename, mRequestStatus.get(filename)!!.toInt()+1)
+                val num = mRequestStatus.get(filename)?.num
+                val plsId = mRequestStatus.get(filename)?.playlistId
+                val item = CurPlsUpdateItem(filename, plsId, num!!+1)
+                mRequestStatus.put(filename, item)
             }
-            CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
-            GetPlayLists(this, filename, false).execute(mPlayListId, pageToken)
+            CRLog.d("parseResult requestGetPlayList more [req. ${mRequestStatus.get(filename)?.num}] update title: ${filename}  -  playlistId: ${mRequestStatus.get(filename)?.playlistId}")
+            GetPlayLists(this, filename, false).execute(mRequestStatus.get(filename)?.playlistId, pageToken)
         }
+
+        if ( mRequestStatus.containsKey(filename) ) {
+            val num = mRequestStatus.get(filename)?.num
+            val plsId = mRequestStatus.get(filename)?.playlistId
+            val item = CurPlsUpdateItem(filename, plsId, num!!-1)
+            mRequestStatus.put(filename, item)
+        }
+
+        CRLog.d("parseResult [req. ${mRequestStatus.get(filename)?.num}] update title: ${filename}  -  playlistId: ${mRequestStatus.get(filename)?.playlistId}")
 
         var ytbPlsLists: List<YtbPlayListItem> = listOf()
 
@@ -176,9 +195,9 @@ object YoutubePlaylistUpdater : AsyncCallback {
             val title = snippet.jsonObject["title"].toString()
             val resId = Json.parseToJsonElement(snippet.jsonObject["resourceId"].toString())
             val videoId = resId.jsonObject["videoId"].toString()
-            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
+//            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
             if ( title.toString().replace("\"","").equals("Deleted video") ) {
-                Log.d(plstTag, " > skip Deleted video!")
+//                Log.d(plstTag, " > skip Deleted video!")
                 continue
             }
             val item = YtbPlayListItem(title.replace("\"", ""), videoId.replace("\"", ""))
@@ -311,7 +330,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         // add reserved list
         addYtbPlsList(filename, list1, update)
 
-        if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)!! < 1 ) {
+        if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)?.num!! < 1 ) {
             // write json file
             Log.d(plstTag, "writePlayList num: ${mListMap.size}")
             writePlayList(mListMap.get(filename)!!, filename)

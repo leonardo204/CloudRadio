@@ -106,6 +106,8 @@ object OnAir : Fragment() {
     val data_type = "JSON"
     var mContext: Context? = null
 
+    var mDuration: Long = 0
+
     lateinit var weather_view: ConstraintLayout
 
     lateinit var txt_timeView: TextView
@@ -473,6 +475,27 @@ object OnAir : Fragment() {
         return false
     }
 
+    fun getTitle(): String {
+        mCurrnetPlayFilename?.let {
+            return RadioChannelResources.getDefaultTextByFilename(it)
+        }
+        return "알 수 없음"
+    }
+
+    fun getArtist() : String {
+        mCurrnetPlayFilename?.let {
+            if ( it.startsWith("ytbpls_") ) {
+                return mCurPlsItems.get(mCurPlsIdx).title
+            }
+            return RadioChannelResources.getDefaultTextByFilename(it)
+        }
+        return "알 수 없음"
+    }
+
+    fun getDuration() : Long {
+        return mDuration
+    }
+
     fun requestPlayNext() {
         mCurrnetPlayFilename?.let {
             if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
@@ -503,6 +526,29 @@ object OnAir : Fragment() {
             MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
+    }
+
+    fun isPlayingRadioService() : Boolean {
+        if ( mCurrnetPlayFilename == null ) {
+            CRLog.d("isPlayingRadioService() false:  mCurrentPlayFilename is null")
+            return false
+        } else {
+            if ( mCurrnetPlayFilename!!.contains("youtube") || mCurrnetPlayFilename!!.startsWith("ytbpls_")) {
+                if (mYoutubeState != PlayerConstants.PlayerState.PLAYING || mVideoId == null) {
+                    CRLog.d("isPlayingRadioService() false: youtube state is not playing or video id is null")
+                    return false
+                }
+            }
+            else {
+                if (!RadioPlayer.isPlaying()) {
+                    CRLog.d("isPlayingRadioService() false:  RadioPlayer is not playing")
+                    return false
+                }
+            }
+        }
+        CRLog.d("isPlayingRadioService() true")
+
+        return true
     }
 
     fun requestStartRadioService() {

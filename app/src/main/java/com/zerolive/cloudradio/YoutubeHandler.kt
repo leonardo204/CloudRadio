@@ -54,6 +54,7 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
     override fun onVideoDuration(youTubePlayer: YouTubePlayer, duration: Float) {
         super.onVideoDuration(youTubePlayer, duration)
         CRLog.d("onVideoDuration: " + duration)
+        OnAir.mDuration = duration.toLong()
     }
 
     override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {

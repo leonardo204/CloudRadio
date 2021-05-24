@@ -2,6 +2,7 @@ package com.zerolive.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothHeadset
@@ -15,10 +16,14 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationManager
+import android.media.MediaMetadata
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.view.Surface
 import android.view.View
 import android.view.View.OnClickListener
@@ -37,10 +42,6 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.You
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.ui.PlayerUiController
 import java.io.File
-
-
-var mainTag = "CR_Main"
-
 
 
 class GeoInfoTask: AsyncTask<Location, Void, Void>() {
@@ -63,8 +64,6 @@ class WeatherTask: AsyncTask<Location, Void, Void>() {
 
 class MainActivity : AppCompatActivity() {
 
-
-
     companion object {
         @SuppressLint("StaticFieldLeak")
         lateinit var tabLayout: TabLayout
@@ -85,6 +84,8 @@ class MainActivity : AppCompatActivity() {
 
         // Get the default adapter
         val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+
+        var mMediaSession : MediaSessionCompat? = null
 
         fun getInstance(): MainActivity =
                 instance ?: synchronized(this) {
@@ -211,10 +212,18 @@ class MainActivity : AppCompatActivity() {
             CRLog.d("landscape")
             val display = this.windowManager.defaultDisplay
             when( display.rotation ) {
-                Surface.ROTATION_0 -> { CRLog.d("rotaion 0") }
-                Surface.ROTATION_90 -> { CRLog.d("rotaion 90") }
-                Surface.ROTATION_180 -> { CRLog.d("rotaion 180") }
-                Surface.ROTATION_270 -> { CRLog.d("rotation 270") }
+                Surface.ROTATION_0 -> {
+                    CRLog.d("rotaion 0")
+                }
+                Surface.ROTATION_90 -> {
+                    CRLog.d("rotaion 90")
+                }
+                Surface.ROTATION_180 -> {
+                    CRLog.d("rotaion 180")
+                }
+                Surface.ROTATION_270 -> {
+                    CRLog.d("rotation 270")
+                }
             }
         } else {
             CRLog.d("portrait")
@@ -303,23 +312,45 @@ class MainActivity : AppCompatActivity() {
             it.showDuration(false)
             it.showUi(true)
             it.showYouTubeButton(false)
-            it.setCustomAction1(ic_rewind!!, onRewFFClick("rewind"));
-            it.setCustomAction2(ic_forward!!, onRewFFClick("forward"));
+            it.setCustomAction1(ic_rewind!!, onYoutubeRewFFClick("rewind"));
+            it.setCustomAction2(ic_forward!!, onYoutubeRewFFClick("forward"));
             it.showCustomAction1(true);
             it.showCustomAction2(true);
         }
 
         // bluetooth
         val filter1 = IntentFilter()
-        filter1.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
-        filter1.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        filter1.addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+        filter1.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
         registerReceiver(HeadSetConnectReceiver, filter1)
 
         val filter2 = IntentFilter(Intent.ACTION_HEADSET_PLUG)
         registerReceiver(HeadSetConnectReceiver, filter2)
+
+        mMediaSession = MediaSessionCompat(this, "cloudradio").apply {
+            setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            var stateBuilder = PlaybackStateCompat.Builder().
+            setActions(
+                PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP
+                        or PlaybackStateCompat.ACTION_FAST_FORWARD or PlaybackStateCompat.ACTION_PAUSE
+                        or PlaybackStateCompat.ACTION_REWIND or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                        or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+            )
+            setPlaybackState(stateBuilder.build())
+            setCallback(MediaSessoinCallback)
+            val activityIntent = Intent(mContext, MainActivity::class.java)
+            setSessionActivity(PendingIntent.getActivity(mContext, 0, activityIntent, 0))
+            isActive = true
+            val metadata = MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
+                .build()
+            setMetadata(metadata)
+        }
     }
 
-    private fun onRewFFClick(command: String): OnClickListener {
+    private fun onYoutubeRewFFClick(command: String): OnClickListener {
         return OnClickListener {
             if ( command.equals("rewind") ) {
                 CRLog.d("rewind!")
@@ -333,14 +364,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-//    val onRewFFClick(command: String) : OnClickListener = object : OnClickListener {
-//        override fun onClick(v: View?) {
-//            if ( v == ic_forward ) {
-//                CRLog.d("forward")
-//            }
-//            CRLog.d("onClick:  rew:${R.drawable.rewind} ff:${R.drawable.forward} ${v?.id}")
-//        }
-//    }
 
     private val locationPermissionCode = 204
     var REQUIRED_PERMISSIONS = arrayOf(
@@ -468,6 +491,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun makeToast(message: String) {
-        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
+        Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show()
     }
 }

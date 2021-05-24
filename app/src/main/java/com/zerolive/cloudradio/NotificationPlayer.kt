@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
-import com.zerolive.cloudradio.R
 import com.fasterxml.jackson.databind.util.ClassUtil.getPackageName
 
 
@@ -38,6 +37,14 @@ object NotificationPlayer {
         val pauseIntent = Intent(context, RadioService::class.java)
         pauseIntent.action = Constants.ACTION.PAUSE_ACTION
         val pausePendingIntent = PendingIntent.getService(context, 0, pauseIntent, 0)
+
+        val prevIntent = Intent(context, RadioService::class.java)
+        prevIntent.action = Constants.ACTION.PREV_ACTION
+        val prevPendingIntent = PendingIntent.getService(context, 0, prevIntent, 0)
+
+        val nextIntent = Intent(context, RadioService::class.java)
+        nextIntent.action = Constants.ACTION.NEXT_ACTION
+        val nextPendingIntent = PendingIntent.getService(context, 0, nextIntent, 0)
 
         // custom view
         val remoteViews = RemoteViews(getPackageName(OnAir::class.java),
