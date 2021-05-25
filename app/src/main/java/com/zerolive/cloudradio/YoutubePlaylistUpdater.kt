@@ -118,9 +118,9 @@ object YoutubePlaylistUpdater : AsyncCallback {
             mUrl = url
             mRandom = random
             mTitle = "ytbpls_" + title.replace(" ", "_")
-            val item = CurPlsUpdateItem(mTitle!!, null, 1)
+            val item = CurPlsUpdateItem(mTitle!!, it, 1)
             mRequestStatus.put(mTitle!!, item)
-            CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${mPlayListId}")
+            CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${it}")
             GetPlayLists(this, mTitle, false).execute(it)
         }
     }

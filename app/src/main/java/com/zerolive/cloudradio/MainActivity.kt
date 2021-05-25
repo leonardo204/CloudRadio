@@ -174,6 +174,8 @@ class MainActivity : AppCompatActivity() {
         youtubeView?.release()
 
         unregisterReceiver(HeadSetConnectReceiver)
+
+        mMediaSession?.isActive = true
     }
 
     fun systemRestart() {
@@ -308,7 +310,7 @@ class MainActivity : AppCompatActivity() {
             it.showFullscreenButton(true)
             it.showPlayPauseButton(true)
             it.showSeekBar(true)
-            it.showVideoTitle(false)
+            it.showVideoTitle(true)
             it.showDuration(false)
             it.showUi(true)
             it.showYouTubeButton(false)
@@ -329,7 +331,7 @@ class MainActivity : AppCompatActivity() {
 
         mMediaSession = MediaSessionCompat(this, "cloudradio").apply {
             setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
-            var stateBuilder = PlaybackStateCompat.Builder().
+            val stateBuilder = PlaybackStateCompat.Builder().
             setActions(
                 PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP
                         or PlaybackStateCompat.ACTION_FAST_FORWARD or PlaybackStateCompat.ACTION_PAUSE

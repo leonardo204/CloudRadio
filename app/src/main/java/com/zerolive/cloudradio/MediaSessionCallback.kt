@@ -33,6 +33,24 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
         return super.onMediaButtonEvent(mediaButtonEvent)
     }
 
+//    override fun onPlay() {
+//        super.onPlay()
+//        CRLog.d("onPlay()")
+//        MainActivity.mMediaSession?.isActive = true
+//    }
+//
+//    override fun onPause() {
+//        super.onPause()
+//        CRLog.d("onPause()")
+//        MainActivity.mMediaSession?.isActive = false
+//    }
+//
+//    override fun onStop() {
+//        super.onStop()
+//        CRLog.d("onStop()")
+//        MainActivity.mMediaSession?.isActive = false
+//    }
+
     private fun requestNext() {
         CRLog.d("requestNext()")
         OnAir.requestPlayNext()

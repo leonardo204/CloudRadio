@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.*
+import android.support.v4.media.MediaMetadataCompat
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
@@ -476,23 +477,29 @@ object OnAir : Fragment() {
     }
 
     fun getTitle(): String {
+        var ret = "알 수 없음"
         mCurrnetPlayFilename?.let {
-            return RadioChannelResources.getDefaultTextByFilename(it)
+            if ( it.startsWith("ytbpls_") ) {
+                ret = mCurPlsItems.get(mCurPlsIdx).title
+            } else {
+                ret = RadioChannelResources.getDefaultTextByFilename(it)
+            }
         }
-        return "알 수 없음"
+        CRLog.d("getTitle() ${ret}")
+        return ret
     }
 
     fun getArtist() : String {
+        var ret = "알 수 없음"
         mCurrnetPlayFilename?.let {
-            if ( it.startsWith("ytbpls_") ) {
-                return mCurPlsItems.get(mCurPlsIdx).title
-            }
-            return RadioChannelResources.getDefaultTextByFilename(it)
+            ret = RadioChannelResources.getDefaultTextByFilename(it)
         }
-        return "알 수 없음"
+        CRLog.d("getArtist() ${ret}")
+        return ret
     }
 
     fun getDuration() : Long {
+        CRLog.d("getDuration() ${mDuration}")
         return mDuration
     }
 
@@ -1098,6 +1105,18 @@ object OnAir : Fragment() {
                 updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
                 CRLog.d("mCurrnetPlayFilename: $filename")
                 mCurrnetPlayFilename = filename
+
+                // radio playing success 인 경우 metadata 업데이트 해준다.
+                // youtube는 YoutubeHandler 의 onDuration callback 에서 함
+                if ( !filename.contains("youtube") && !filename.startsWith("ytbpls_") ) {
+                    mDuration = 0L
+                    val metadata = MediaMetadataCompat.Builder()
+                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
+                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
+                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
+                        .build()
+                    MainActivity.mMediaSession?.setMetadata(metadata)
+                }
             }
             RESULT.PLAY_FAILED -> {
 

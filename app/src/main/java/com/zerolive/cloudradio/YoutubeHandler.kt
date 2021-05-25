@@ -1,5 +1,6 @@
 package com.zerolive.cloudradio
 
+import android.support.v4.media.MediaMetadataCompat
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
@@ -55,6 +56,19 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         super.onVideoDuration(youTubePlayer, duration)
         CRLog.d("onVideoDuration: " + duration)
         OnAir.mDuration = duration.toLong()
+//        MainActivity.mMediaSession?.isActive = false
+
+
+        // metadata
+        // onVideoDuration 은 video playing state 이후에 가장 늦게 불림
+        // duration 불린 이후 metadata 를 한번에 같이 전송한다.
+        val metadata = MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
+            .build()
+        MainActivity.mMediaSession?.setMetadata(metadata)
+//        MainActivity.mMediaSession?.isActive = true
     }
 
     override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {
