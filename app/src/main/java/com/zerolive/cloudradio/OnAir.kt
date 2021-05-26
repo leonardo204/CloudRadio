@@ -3,6 +3,7 @@ package com.zerolive.cloudradio
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.*
 import android.support.v4.media.MediaMetadataCompat
@@ -18,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
@@ -26,6 +28,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.io.InputStream
+import java.net.URL
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -85,7 +88,8 @@ enum class RADIO_STATUS {
 
 data class YTBPLSITEM(
     var title: String,
-    var videoId: String
+    var videoId: String,
+    var thumbnail: String
 )
 
 @SuppressLint("StaticFieldLeak")
@@ -108,6 +112,7 @@ object OnAir : Fragment() {
     var mContext: Context? = null
 
     var mDuration: Long = 0
+    var mThumbnail: Bitmap? = null
 
     lateinit var weather_view: ConstraintLayout
 
@@ -360,6 +365,7 @@ object OnAir : Fragment() {
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
                     MainActivity.getInstance()
                         .makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+                    mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 } else if (mVideoId != null) {
                     CRLog.d("Auto re-play")
@@ -503,6 +509,29 @@ object OnAir : Fragment() {
         return mDuration
     }
 
+    fun getThumbnail() : Bitmap? {
+        CRLog.d("getThumbnail(): ${mThumbnail}")
+        return mThumbnail
+    }
+
+    private fun setThumbnail(bitmap: Bitmap) {
+        mThumbnail = bitmap
+        CRLog.d("setThumbnail(): ${mThumbnail}")
+    }
+
+    internal class GetBitmapFromUrl(context: Context) : AsyncTask<String?, String?, String?>() {
+        var ctx = context
+
+        override fun doInBackground(vararg params: String?): String? {
+            val url = params[0]
+            if ( url != null ) {
+                Log.d(onairTag, "GetBitmapFromUrl: ${url}")
+                setThumbnail( Glide.with(ctx).asBitmap().load(URL(url)).submit().get() )
+            }
+            return null
+        }
+    }
+
     fun requestPlayNext() {
         mCurrnetPlayFilename?.let {
             if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
@@ -515,6 +544,7 @@ object OnAir : Fragment() {
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
             MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
     }
@@ -531,6 +561,7 @@ object OnAir : Fragment() {
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
             MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
     }
@@ -675,13 +706,11 @@ object OnAir : Fragment() {
             CRLog.d("mCurrnetPlayFilename: " + filename)
             mCurrnetPlayFilename = filename
 
-            mCurPlsItems.clear()
-            mCurPlsIdx = 0
+            clearYoutubePlayListItem()
         }
         // play radio / youtube
         else {
-            mCurPlsItems.clear()
-            mCurPlsIdx = 0
+            clearYoutubePlayListItem()
 
             // youtube play
             if ( filename.contains("youtube") ) {
@@ -695,6 +724,7 @@ object OnAir : Fragment() {
                 val videoId = getVideoId(filename)
                 CRLog.d("ytbpls videoId: " + videoId)
                 videoId?.let { createYoutubeView(filename, it) }
+                mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
                 return
             }
             // radio play
@@ -702,6 +732,13 @@ object OnAir : Fragment() {
                 startRadioForegroundService("radio", filename, null)
             }
         }
+    }
+
+    private fun clearYoutubePlayListItem() {
+        CRLog.d("clearYoutubePlayListItem()")
+        mCurPlsItems.clear()
+        mCurPlsIdx = 0
+        mThumbnail = null
     }
 
     private fun checkDoRandom(title: String): Boolean {
@@ -732,20 +769,16 @@ object OnAir : Fragment() {
         val fileobj = File(DEFAULT_FILE_PATH + filename + ".json")
 
         if ( fileobj.exists() && fileobj.canRead() ) {
-            mCurPlsItems.clear()
+            clearYoutubePlayListItem()
 
             val ins: InputStream = fileobj.inputStream()
             val content = ins.readBytes().toString(Charset.defaultCharset())
             val items = Json.parseToJsonElement(content)
             for(i in items.jsonArray.indices) {
-                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
-                val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
-                val map = YTBPLSITEM(
-                    title.toString().replace("\"", ""), vid.toString().replace(
-                        "\"",
-                        ""
-                    )
-                )
+                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace("\"", "")
+                val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString()).toString().replace("\"", "")
+                val thumbnail = Json.parseToJsonElement(items.jsonArray[i].jsonObject["thumbnail"].toString()).toString().replace("\"", "")
+                val map = YTBPLSITEM(title, vid, thumbnail)
                 mCurPlsItems.add(map)
             }
         }
@@ -755,13 +788,7 @@ object OnAir : Fragment() {
                 Collections.shuffle(mCurPlsItems)
             }
             for(i in mCurPlsItems.indices) {
-                CRLog.d(
-                    "[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${
-                        mCurPlsItems.get(
-                            i
-                        ).title
-                    }  "
-                )
+                CRLog.d("[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${mCurPlsItems.get(i).title}   - thumbnail: ${mCurPlsItems.get(i).thumbnail} ")
             }
             videoId = mCurPlsItems.get(0).videoId
         }
@@ -772,7 +799,8 @@ object OnAir : Fragment() {
                 RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
                 true
             )
-            MainActivity.getInstance().makeToast("비디오 목록을 가져올 수 없습니다. 앱을 다시 시작하여 주십시오.")
+            MainActivity.getInstance().makeToast("비디오 목록을 가져올 수 없습니다. 목록을 업데이트 합니다. 잠시만 기다려 주십시오.")
+            YoutubePlaylistUpdater.update()
         }
 
         return videoId
@@ -1164,6 +1192,7 @@ object OnAir : Fragment() {
                         else if ( it.startsWith("ytbpls_") ) {
                             val videoId = getVideoId(it)
                             CRLog.d("ytbpls videoId: " + videoId)
+                            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
                             videoId?.let { createYoutubeView(mCurrnetPlayFilename!!, it) }
                         }
                         // radio play

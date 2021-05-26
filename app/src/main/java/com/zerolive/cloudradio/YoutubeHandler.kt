@@ -55,20 +55,21 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
     override fun onVideoDuration(youTubePlayer: YouTubePlayer, duration: Float) {
         super.onVideoDuration(youTubePlayer, duration)
         CRLog.d("onVideoDuration: " + duration)
-        OnAir.mDuration = duration.toLong()
-//        MainActivity.mMediaSession?.isActive = false
-
+        OnAir.mDuration = (duration*1000).toLong()
 
         // metadata
         // onVideoDuration 은 video playing state 이후에 가장 늦게 불림
         // duration 불린 이후 metadata 를 한번에 같이 전송한다.
-        val metadata = MediaMetadataCompat.Builder()
+        var metadata = MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
-            .build()
-        MainActivity.mMediaSession?.setMetadata(metadata)
-//        MainActivity.mMediaSession?.isActive = true
+        if ( OnAir.getThumbnail() != null ) {
+            metadata.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, OnAir.getThumbnail())
+        } else {
+            CRLog.d("Thumbnail is null")
+        }
+        MainActivity.mMediaSession?.setMetadata(metadata.build())
     }
 
     override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {

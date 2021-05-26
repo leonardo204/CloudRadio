@@ -26,6 +26,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS,
                 KeyEvent.KEYCODE_MEDIA_REWIND-> { requestPrevious() }
                 KeyEvent.KEYCODE_MEDIA_PAUSE,
+                KeyEvent.KEYCODE_MEDIA_PLAY,
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { requestPlayPause() }
             }
         }

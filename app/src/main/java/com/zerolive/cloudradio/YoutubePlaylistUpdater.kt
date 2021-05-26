@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.*
 import android.util.Log
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -16,12 +17,14 @@ import java.nio.charset.Charset
 
 private const val plstTag = "CR_youtubePls"
 
-
+// 실제 playlist 결과
 data class YtbPlayListItem(
     val title: String,
-    val videoId: String
+    val videoId: String,
+    val thumbnail: String
 )
 
+// update 중 playlist 를 관리하기 위한 data class
 data class CurPlsUpdateItem(
     val filename: String,
     val playlistId: String?,
@@ -171,6 +174,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         pageToken = Json.parseToJsonElement(element.jsonObject["nextPageToken"].toString()).toString().replace("\"","")
         Log.d(plstTag, "parseResult filename: ${filename} pageToken: ${pageToken}")
 
+        // next 가 더 남아 있는 경우 우선 다시 다음 리스트 요청을 해둠
         if ( pageToken != null && !pageToken.equals("null") ) {
             if ( mRequestStatus.containsKey(filename) ) {
                 val num = mRequestStatus.get(filename)?.num
@@ -182,6 +186,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
             GetPlayLists(this, filename, false).execute(mRequestStatus.get(filename)?.playlistId, pageToken)
         }
 
+        // 현재 item 이 요청한 item 인지 비교하여 count 계산
+        // count 가 0 인 상태가 되어야 json file 을 작성함
         if ( mRequestStatus.containsKey(filename) ) {
             val num = mRequestStatus.get(filename)?.num
             val plsId = mRequestStatus.get(filename)?.playlistId
@@ -189,75 +195,43 @@ object YoutubePlaylistUpdater : AsyncCallback {
             mRequestStatus.put(filename, item)
         }
 
+        // parsing 시작
+
         CRLog.d("parseResult [req. ${mRequestStatus.get(filename)?.num}] update title: ${filename}  -  playlistId: ${mRequestStatus.get(filename)?.playlistId}")
 
         var ytbPlsLists: List<YtbPlayListItem> = listOf()
 
         for(i in items.jsonArray.indices) {
             val snippet = Json.parseToJsonElement(items.jsonArray[i].jsonObject["snippet"].toString())
-            val title = snippet.jsonObject["title"].toString()
-            val resId = Json.parseToJsonElement(snippet.jsonObject["resourceId"].toString())
-            val videoId = resId.jsonObject["videoId"].toString()
-//            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
-            if ( title.toString().replace("\"","").equals("Deleted video") ) {
-//                Log.d(plstTag, " > skip Deleted video!")
+            val title = snippet.jsonObject["title"].toString().replace("\"", "")
+            if ( title.equals("Deleted video") || title.equals("Private video") ) {
+//                Log.d(plstTag, " > skip forbidden video!")
                 continue
             }
-            val item = YtbPlayListItem(title.replace("\"", ""), videoId.replace("\"", ""))
+
+            val resId = Json.parseToJsonElement(snippet.jsonObject["resourceId"].toString())
+            val videoId = resId.jsonObject["videoId"].toString().replace("\"", "")
+
+            // standard -> high -> default resolution 순으로 저장
+            val thumbnails = Json.parseToJsonElement(snippet.jsonObject["thumbnails"].toString())
+            var thumbId: kotlinx.serialization.json.JsonElement
+            if ( thumbnails.jsonObject["standard"] != null ) {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["standard"].toString())
+            } else if ( thumbnails.jsonObject["high"] != null ) {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["high"].toString())
+            } else {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["default"].toString())
+            }
+            val thumbnail = thumbId.jsonObject["url"].toString().replace("\"", "")
+
+//            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
+
+            val item = YtbPlayListItem(title, videoId, thumbnail)
             ytbPlsLists += item
         }
 
         return ytbPlsLists
     }
-
-    private fun getYtbPlsListFromFile(list: List<YtbPlayListItem>, update: Boolean): List<YtbPlayListItem> {
-        var l = list
-
-        // add extra from json file
-        val fileobj = File(mDirPath + mTitle + ".json")
-        if ( fileobj.exists() && fileobj.canRead() ) {
-            if ( update ) {
-                Log.d(plstTag, "remove ${mTitle}.json for update")
-                fileobj.delete()
-            } else {
-                val ins: InputStream = fileobj.inputStream()
-                val content = ins.readBytes().toString(Charset.defaultCharset())
-                Log.d(plstTag, " > read content:${content}")
-                val items = Json.parseToJsonElement(content)
-                for (i in items.jsonArray.indices) {
-                    val title =
-                        Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
-                    val videoId =
-                        Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString())
-
-                    // check duplication
-                    var dupl = false
-                    for (k in l.indices) {
-                        if (l.get(k).videoId.equals(videoId.toString().replace("\"", ""))) {
-                            dupl = true
-                            break;
-                        }
-                    }
-
-                    if (dupl) {
-                        Log.d(
-                            plstTag,
-                            "skip update! reason. duplication: v(${videoId}) -  ${title}"
-                        )
-                    } else {
-                        val item = YtbPlayListItem(
-                            title.toString().replace("\"", ""),
-                            videoId.toString().replace("\"", "")
-                        )
-                        l += item
-                    }
-                }
-            }
-        }
-
-        return l
-    }
-
 
     // prev 에 없는 list 의 것만 newList 에 넣어서 mListMap 에 합침
     private fun addWithCheckDupl(filename: String, list: List<YtbPlayListItem>) {
@@ -268,6 +242,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
         for(i in list.indices) {
             val vid = list.get(i).videoId
             val title = list.get(i).title
+            val thumbnailUrl = list.get(i).thumbnail
             var bDupl = false
             for(k in prev.indices) {
                 if ( prev.get(k).videoId.equals(vid) || prev.get(k).title.equals(title) ) {
@@ -278,7 +253,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
             if ( bDupl ) {
 //                Log.d(plstTag, " > skip duplication: videoId: ${vid}    - title: ${title}")
             } else {
-                newList += YtbPlayListItem(title, vid)
+                newList += YtbPlayListItem(title, vid, thumbnailUrl)
             }
         }
 

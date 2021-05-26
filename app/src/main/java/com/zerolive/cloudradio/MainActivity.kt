@@ -16,7 +16,6 @@ import android.content.res.Configuration.ORIENTATION_LANDSCAPE
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationManager
-import android.media.MediaMetadata
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
@@ -69,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         lateinit var tabLayout: TabLayout
         lateinit var viewPager: ViewPager
 
+        @SuppressLint("StaticFieldLeak")
         private var instance: MainActivity? = null
         var locationManager: LocationManager? = null
         @SuppressLint("StaticFieldLeak")
@@ -76,8 +76,6 @@ class MainActivity : AppCompatActivity() {
         var mWindow: Window? = null
         var youtubeView: YouTubePlayerView? = null
         var uiController: PlayerUiController? = null
-
-        var bluetoothHeadset: BluetoothHeadset? = null
 
         var ic_forward: Drawable? = null
         var ic_rewind: Drawable? = null
@@ -343,12 +341,12 @@ class MainActivity : AppCompatActivity() {
             val activityIntent = Intent(mContext, MainActivity::class.java)
             setSessionActivity(PendingIntent.getActivity(mContext, 0, activityIntent, 0))
             isActive = true
-            val metadata = MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
-                .build()
-            setMetadata(metadata)
+//            val metadata = MediaMetadataCompat.Builder()
+//                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
+//                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
+//                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
+//                .build()
+//            setMetadata(metadata)
         }
     }
 
