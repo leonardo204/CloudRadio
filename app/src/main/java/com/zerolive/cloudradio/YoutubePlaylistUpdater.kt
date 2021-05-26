@@ -224,7 +224,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
             }
             val thumbnail = thumbId.jsonObject["url"].toString().replace("\"", "")
 
-//            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}")
+//            Log.d(plstTag, "[${i}] title: ${title}  - videoId: ${videoId}   - thumbnail: ${thumbnail}")
 
             val item = YtbPlayListItem(title, videoId, thumbnail)
             ytbPlsLists += item
@@ -310,8 +310,14 @@ object YoutubePlaylistUpdater : AsyncCallback {
 
         if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)?.num!! < 1 ) {
             // write json file
-            Log.d(plstTag, "writePlayList num: ${mListMap.size}")
+            var cur = mListMap.size
             writePlayList(mListMap.get(filename)!!, filename)
+            mListMap.remove(filename)
+            Log.d(plstTag, "writePlayList size ${cur} -> ${mListMap.size}")
+            if ( mListMap.size == 0 ) {
+                Log.d(plstTag, "YoutubePlayList update is completed")
+                MainActivity.getInstance().makeToast("유튜브 재생 목록 업데이트가 완료되었습니다.")
+            }
         }
 
         // make program list

@@ -1,11 +1,10 @@
 package com.zerolive.cloudradio
 
-import android.annotation.SuppressLint
 import android.os.AsyncTask
 import android.os.Handler
-import android.os.Message
+import android.os.Looper
 import android.util.Log
-import com.zerolive.cloudradio.YoutubeLiveUpdater.updaterTag
+import android.widget.Toast
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
@@ -13,9 +12,11 @@ import kotlinx.serialization.json.jsonObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
+
 object YoutubeLiveUpdater : AsyncCallback{
 
     val updaterTag = "CR_Updater"
+    var mUpdateCount = 0
 
     fun update() {
         Log.d(updaterTag,  "Update")
@@ -35,6 +36,7 @@ object YoutubeLiveUpdater : AsyncCallback{
 
                 // live 인 경우엔 redirection url 을 얻어서 설정해야 함
                 if ( live ) {
+                    mUpdateCount++
                     CheckLiveAddress(this).execute(title, address)
                     continue
                 }
@@ -46,6 +48,7 @@ object YoutubeLiveUpdater : AsyncCallback{
     override fun onTaskDone(vararg arg: String?) {
         val title = arg[0]
         var bUpdate = false
+        mUpdateCount--
         title?.let {
             val finalUrl = arg[1]
             Log.d(updaterTag, "Update Live Channel for ${title}")
@@ -73,6 +76,15 @@ object YoutubeLiveUpdater : AsyncCallback{
         // Update 된 내용으로 favorite list file 을 재작성
         if ( bUpdate ) {
             Program.saveFavList()
+        }
+
+        if ( mUpdateCount == 0 ) {
+            Log.d(updaterTag, "Youtube Live update is completed")
+
+            val handler = Handler(Looper.getMainLooper())
+            handler.postDelayed({
+                MainActivity.getInstance().makeToast("유튜브 라이브 채널 업데이트가 완료되었습니다.")
+            }, 0)
         }
     }
 
