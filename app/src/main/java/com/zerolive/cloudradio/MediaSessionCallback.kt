@@ -25,13 +25,39 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
                 KeyEvent.KEYCODE_MEDIA_STEP_FORWARD-> { requestNext() }
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS,
                 KeyEvent.KEYCODE_MEDIA_REWIND-> { requestPrevious() }
-                KeyEvent.KEYCODE_MEDIA_PAUSE,
-                KeyEvent.KEYCODE_MEDIA_PLAY,
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> { requestPause() }
+                KeyEvent.KEYCODE_MEDIA_PLAY -> { requestPlay() }
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { requestPlayPause() }
             }
         }
 
         return super.onMediaButtonEvent(mediaButtonEvent)
+    }
+    private fun requestNext() {
+        CRLog.d("requestNext()")
+        OnAir.requestPlayNext()
+    }
+    private fun requestPrevious() {
+        CRLog.d("requestPrevious()")
+        OnAir.requestPlayPrevious()
+    }
+    private fun requestPlayPause() {
+        CRLog.d("requestPlayPause()")
+        if ( OnAir.isPlayingRadioService() ) {
+            OnAir.requestStopRadioService()
+        } else {
+            OnAir.requestStartRadioService()
+        }
+    }
+    private fun requestPause() {
+        if ( OnAir.isPlayingRadioService() ) {
+            OnAir.requestStopRadioService()
+        }
+    }
+    private fun requestPlay() {
+        if ( !OnAir.isPlayingRadioService() ) {
+            OnAir.requestStartRadioService()
+        }
     }
 
 //    override fun onPlay() {
@@ -52,20 +78,5 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
 //        MainActivity.mMediaSession?.isActive = false
 //    }
 
-    private fun requestNext() {
-        CRLog.d("requestNext()")
-        OnAir.requestPlayNext()
-    }
-    private fun requestPrevious() {
-        CRLog.d("requestPrevious()")
-        OnAir.requestPlayPrevious()
-    }
-    private fun requestPlayPause() {
-        CRLog.d("requestPlayPause()")
-        if ( OnAir.isPlayingRadioService() ) {
-            OnAir.requestStopRadioService()
-        } else {
-            OnAir.requestStartRadioService()
-        }
-    }
+
 }

@@ -16,6 +16,7 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
     override fun onCurrentSecond(youTubePlayer: YouTubePlayer, second: Float) {
         super.onCurrentSecond(youTubePlayer, second)
         //CRLog.d( "onCurrentSecond: "+second)
+        OnAir.setCurrentSecond(second)
     }
 
     override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
@@ -64,11 +65,10 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
-        if ( OnAir.getThumbnail() != null ) {
-            metadata.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, OnAir.getThumbnail())
-        } else {
-            CRLog.d("Thumbnail is null")
-        }
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, OnAir.getThumbnail())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, OnAir.getThumbnail())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, OnAir.getThumbnail())
+
         MainActivity.mMediaSession?.setMetadata(metadata.build())
     }
 

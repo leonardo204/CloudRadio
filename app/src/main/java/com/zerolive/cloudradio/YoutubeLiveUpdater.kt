@@ -64,7 +64,8 @@ object YoutubeLiveUpdater : AsyncCallback{
                             RadioChannelResources.channelList.get(i).id,
                             filename,
                             RadioChannelResources.channelList.get(i).fileaddress,
-                            finalUrl
+                            finalUrl,
+                            MEDIATYPE.YOUTUBE_LIVE
                         )
                         RadioChannelResources.channelList.removeAt(i)
                         RadioChannelResources.channelList.add(i, map)

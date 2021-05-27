@@ -174,7 +174,7 @@ object Program : Fragment() {
         button.setOnClickListener { onRadioButton(title) }
         program_btnList.put(title, button)
         layout_programs.addView(button)
-        val map = RadioCompletionMap(title, title, RadioChannelResources.channelList.size, title, title, null)
+        val map = RadioCompletionMap(title, title, RadioChannelResources.channelList.size, title, title, null, MEDIATYPE.YOUTUBE_PLAYLIST)
         RadioChannelResources.channelList.add(map)
         RadioChannelResources.channelSize++
         updateProgramButtonText(title, title, true, false)

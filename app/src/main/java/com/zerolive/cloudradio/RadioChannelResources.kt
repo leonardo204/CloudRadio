@@ -28,8 +28,13 @@ data class RadioCompletionMap(
     val id: Int,                      // channel 별 관리 목적의 id (arrayList 의 index 이기도 함)
     val filename: String,             // 실제 저장될 filename
     val fileaddress: String,          // 원본 file 주소
-    val httpAddress: String?           // 스트리밍 file 주소 (MediaPlayer 에 이걸 던진다)
+    val httpAddress: String?,           // 스트리밍 file 주소 (MediaPlayer 에 이걸 던진다)
+    val mediaType: MEDIATYPE          // media type
 )
+
+enum class MEDIATYPE {
+    UNKNOWN, RADIO, YOUTUBE_NORMAL, YOUTUBE_LIVE, YOUTUBE_PLAYLIST
+}
 
 /**
  * Radio Channel 의 Raw resource
@@ -311,7 +316,8 @@ object RadioChannelResources: AsyncCallback {
                     channelList.size,
                     filename,
                     address,
-                    address
+                    address,
+                    MEDIATYPE.YOUTUBE_NORMAL
                 )
                 addChannelList(map)
             }
@@ -338,7 +344,7 @@ object RadioChannelResources: AsyncCallback {
                     .toString()
                     .replace("\"","")
                     .replace("\\","")
-                val map = RadioCompletionMap(title, title, channelList.size, title, title, null)
+                val map = RadioCompletionMap(title, title, channelList.size, title, title, null, MEDIATYPE.YOUTUBE_PLAYLIST)
                 addChannelList(map)
             }
         }
@@ -383,7 +389,8 @@ object RadioChannelResources: AsyncCallback {
                     channelList.size,
                     RadioRawChannels.values()[i].getChannelFilename(),
                     RadioRawChannels.values()[i].getChannelAddress(),
-                    null
+                    null,
+                    MEDIATYPE.RADIO
                 )
                 addChannelList(map)
 
@@ -487,7 +494,7 @@ object RadioChannelResources: AsyncCallback {
                 var map = RadioCompletionMap(
                     RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,
                     RadioRawChannels.values()[i].getChannelFilename(),
-                    RadioRawChannels.values()[i].getChannelAddress(), httpAddress
+                    RadioRawChannels.values()[i].getChannelAddress(), httpAddress, MEDIATYPE.RADIO
                 )
                 addChannelList(map)
                 Log.d(resourceTag, "channel resource add ok - filename(${map.filename}) - channelList.size: " + channelList.size )
@@ -508,6 +515,17 @@ object RadioChannelResources: AsyncCallback {
         }
     }
 
+    fun getMediaType(filename: String): MEDIATYPE {
+        for(i in channelList.indices) {
+            if ( channelList.get(i).filename.equals(filename) ) {
+//                CRLog.d("mediatype: ${channelList.get(i).mediaType}")
+                return channelList.get(i).mediaType
+            }
+        }
+        CRLog.d("mediatype: ${MEDIATYPE.UNKNOWN}")
+        return MEDIATYPE.UNKNOWN
+    }
+
     fun makeChannelList(title: String, url: String) {
         Log.d(resourceTag,  "makeChannelList ${title} : ${url}")
         val videoId = url.substring( url.indexOf("watch?v=")+8)
@@ -516,7 +534,15 @@ object RadioChannelResources: AsyncCallback {
         // title 이 겹치는 channel 이 있는 경우 조사하여 중복 제거
         removeDuplication(title)
 
-        val map = RadioCompletionMap(title, title, channelList.size, filename, url, url)
+        var type: MEDIATYPE
+        if ( title.contains("live") ) {
+            type = MEDIATYPE.YOUTUBE_LIVE
+        } else {
+            type = MEDIATYPE.YOUTUBE_NORMAL
+        }
+        Log.d(resourceTag, "media type: ${type}")
+
+        val map = RadioCompletionMap(title, title, channelList.size, filename, url, url, type)
         addChannelList(map)
         // 즐겨 찾기에 대해 live channel url 업데이트가 있을 수 있으니 확인 후
         // 업데이트가 있어서 filename 이 서로 다를 경우, 여기서 favorite list 를 저장해준다.

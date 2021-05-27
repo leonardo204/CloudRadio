@@ -4,30 +4,30 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.*
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.*
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
-import com.bumptech.glide.Glide
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
+import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
@@ -164,10 +164,15 @@ object OnAir : Fragment() {
     var mCurPlsItems = ArrayList<YTBPLSITEM>()
     var mCurPlsIdx = 0
 
-    // init resource 시점에만 단독으로 부름
-    fun updateFavoriteList() {
+    fun removeFavLoading() {
+        CRLog.d("removeFavLoading")
         val parent = txt_loading.parent as ViewGroup?
         parent?.removeView(txt_loading)
+    }
+
+    // init resource 시점에만 단독으로 부름
+    fun updateFavoriteList() {
+        removeFavLoading()
 
         val fileObj = File(DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON)
         if ( !fileObj.exists() && !fileObj.canRead() ) {
@@ -198,6 +203,17 @@ object OnAir : Fragment() {
         Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
 
         bInitialized = true
+
+        MainActivity.mLastYtbPlsStatus?.let {
+            if ( it.state == PlayerConstants.PlayerState.PLAYING ) {
+                updateOnAirButtonText(it.filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+                mCurrnetPlayFilename = it.filename
+                mVideoId = it.videoId
+                playStopYoutube(it.filename, it.videoId, true)
+            } else if ( it.state == PlayerConstants.PlayerState.PAUSED ) {
+                updateOnAirButtonText(it.filename, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true)
+            }
+        }
     }
 
     private fun loadFavoriteList() {
@@ -505,18 +521,51 @@ object OnAir : Fragment() {
     }
 
     fun getDuration() : Long {
+        CRLog.d("getDuration() for ${mCurrnetPlayFilename}")
+        mCurrnetPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+            if ( type == MEDIATYPE.RADIO || type == MEDIATYPE.YOUTUBE_LIVE ) {
+                CRLog.d("infinite duration")
+                mDuration = -1
+            }
+        }
         CRLog.d("getDuration() ${mDuration}")
         return mDuration
     }
 
     fun getThumbnail() : Bitmap? {
-        CRLog.d("getThumbnail(): ${mThumbnail}")
-        return mThumbnail
+        var type = MEDIATYPE.UNKNOWN
+        mCurrnetPlayFilename?.let {
+            type = RadioChannelResources.getMediaType(it)
+            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
+                CRLog.d("getThumbnail(): ${mThumbnail}")
+                return mThumbnail
+            }
+        }
+       return null
     }
 
     private fun setThumbnail(bitmap: Bitmap) {
         mThumbnail = bitmap
         CRLog.d("setThumbnail(): ${mThumbnail}")
+    }
+
+    fun setCurrentSecond(sec: Float) {
+        mCurrnetPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST || type == MEDIATYPE.YOUTUBE_NORMAL ) {
+//                CRLog.d("setCurrentSecond: ${sec}")
+                val state = PlaybackStateCompat.Builder()
+                    .setState(
+                        PlaybackStateCompat.STATE_PLAYING,
+                        (sec * 1000).toLong(),
+                        1.0f,
+                        SystemClock.elapsedRealtime()
+                    ).build()
+
+                MainActivity.mMediaSession?.setPlaybackState(state)
+            }
+        }
     }
 
     internal class GetBitmapFromUrl(context: Context) : AsyncTask<String?, String?, String?>() {
@@ -526,9 +575,27 @@ object OnAir : Fragment() {
             val url = params[0]
             if ( url != null ) {
                 Log.d(onairTag, "GetBitmapFromUrl: ${url}")
-                setThumbnail( Glide.with(ctx).asBitmap().load(URL(url)).submit().get() )
+//                setThumbnail(Glide.with(ctx).asBitmap().load(URL(url)).submit().get())
+                var bit: Bitmap? = getBitmapFromURL(url)
+                if ( bit != null ) {
+                    setThumbnail(bit)
+                }
             }
             return null
+        }
+
+        private fun getBitmapFromURL(src: String?): Bitmap? {
+            return try {
+                val url = URL(src)
+                val connection: HttpURLConnection = url.openConnection() as HttpURLConnection
+                connection.setDoInput(true)
+                connection.connect()
+                val input: InputStream = connection.getInputStream()
+                BitmapFactory.decodeStream(input)
+            } catch (e: IOException) {
+                // Log exception
+                null
+            }
         }
     }
 
@@ -700,7 +767,7 @@ object OnAir : Fragment() {
         else if (mYoutubeState == PlayerConstants.PlayerState.PAUSED || mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
 
             // stop 시 이전 채널로 요청해야 함
-            playStopYoutube(mCurrnetPlayFilename!!, null, false)
+            mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
 
             // 요청한 채널 저장
             CRLog.d("mCurrnetPlayFilename: " + filename)
@@ -724,7 +791,11 @@ object OnAir : Fragment() {
                 val videoId = getVideoId(filename)
                 CRLog.d("ytbpls videoId: " + videoId)
                 videoId?.let { createYoutubeView(filename, it) }
-                mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
+                mContext?.let {
+                    if ( mCurPlsItems.size > 0 ) {
+                        GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
+                    }
+                }
                 return
             }
             // radio play
@@ -775,9 +846,18 @@ object OnAir : Fragment() {
             val content = ins.readBytes().toString(Charset.defaultCharset())
             val items = Json.parseToJsonElement(content)
             for(i in items.jsonArray.indices) {
-                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace("\"", "")
-                val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString()).toString().replace("\"", "")
-                val thumbnail = Json.parseToJsonElement(items.jsonArray[i].jsonObject["thumbnail"].toString()).toString().replace("\"", "")
+                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace(
+                    "\"",
+                    ""
+                )
+                val vid = Json.parseToJsonElement(items.jsonArray[i].jsonObject["videoId"].toString()).toString().replace(
+                    "\"",
+                    ""
+                )
+                val thumbnail = Json.parseToJsonElement(items.jsonArray[i].jsonObject["thumbnail"].toString()).toString().replace(
+                    "\"",
+                    ""
+                )
                 val map = YTBPLSITEM(title, vid, thumbnail)
                 mCurPlsItems.add(map)
             }
@@ -788,7 +868,13 @@ object OnAir : Fragment() {
                 Collections.shuffle(mCurPlsItems)
             }
             for(i in mCurPlsItems.indices) {
-                CRLog.d("[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${mCurPlsItems.get(i).title}   - thumbnail: ${mCurPlsItems.get(i).thumbnail} ")
+                CRLog.d(
+                    "[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${
+                        mCurPlsItems.get(
+                            i
+                        ).title
+                    }   - thumbnail: ${mCurPlsItems.get(i).thumbnail} "
+                )
             }
             videoId = mCurPlsItems.get(0).videoId
         }
@@ -895,8 +981,8 @@ object OnAir : Fragment() {
         super.onStart()
         CRLog.d("onStart fullScreen(${FullScreenHelper.mFullScreen})")
         if ( bInitialized ) {
-            YoutubeLiveUpdater.update()
-            YoutubePlaylistUpdater.update()
+//            YoutubeLiveUpdater.update()
+//            YoutubePlaylistUpdater.update()
             if ( FullScreenHelper.mFullScreen ) {
                 MainActivity.getInstance().setFullScreen()
             }
@@ -1102,6 +1188,8 @@ object OnAir : Fragment() {
         CRLog.d("stopRadioForegroundService $mContext ${filename}")
 
         mContext?.let {
+            weather_view.visibility = View.VISIBLE
+
             Intent(it, RadioService::class.java).run {
                 if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
                     var intent = Intent(it, RadioService::class.java)
@@ -1136,7 +1224,7 @@ object OnAir : Fragment() {
 
                 // radio playing success 인 경우 metadata 업데이트 해준다.
                 // youtube는 YoutubeHandler 의 onDuration callback 에서 함
-                if ( !filename.contains("youtube") && !filename.startsWith("ytbpls_") ) {
+                if (!filename.contains("youtube") && !filename.startsWith("ytbpls_")) {
                     mDuration = 0L
                     val metadata = MediaMetadataCompat.Builder()
                         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
@@ -1189,10 +1277,14 @@ object OnAir : Fragment() {
                             createYoutubeView(it, videoId)
                         }
                         // youtube playlist
-                        else if ( it.startsWith("ytbpls_") ) {
+                        else if (it.startsWith("ytbpls_")) {
                             val videoId = getVideoId(it)
                             CRLog.d("ytbpls videoId: " + videoId)
-                            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
+                            mContext?.let {
+                                if ( mCurPlsItems.size > 0 ) {
+                                    GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
+                                }
+                            }
                             videoId?.let { createYoutubeView(mCurrnetPlayFilename!!, it) }
                         }
                         // radio play

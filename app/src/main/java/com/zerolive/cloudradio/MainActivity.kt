@@ -37,6 +37,7 @@ import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerFullScreenListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.ui.PlayerUiController
@@ -61,6 +62,12 @@ class WeatherTask: AsyncTask<Location, Void, Void>() {
     }
 }
 
+data class LastYtbPlsStatus(
+    val filename: String,
+    val videoId: String,
+    val state: PlayerConstants.PlayerState,
+)
+
 class MainActivity : AppCompatActivity() {
 
     companion object {
@@ -84,6 +91,9 @@ class MainActivity : AppCompatActivity() {
         val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
 
         var mMediaSession : MediaSessionCompat? = null
+        var mLastYtbPlsStatus: LastYtbPlsStatus? = null
+
+        var bInitialized = false
 
         fun getInstance(): MainActivity =
                 instance ?: synchronized(this) {
@@ -96,7 +106,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        CRLog.d("onCreate")
+        CRLog.d("onCreate ${bInitialized}")
 
         // 앱 자체는 세로모드로 고정시킨다
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -156,6 +166,8 @@ class MainActivity : AppCompatActivity() {
             CRLog.d("skip checking network status. reason: version")
             init()
         }
+
+        bInitialized = true
     }
 
     override fun onDestroy() {
@@ -267,6 +279,10 @@ class MainActivity : AppCompatActivity() {
     private fun init() {
         CRLog.d("MainActivity init")
 
+        if ( bInitialized ) {
+            mLastYtbPlsStatus = LastYtbPlsStatus(OnAir.mCurrnetPlayFilename!!, OnAir.mVideoId!!, OnAir.mYoutubeState!!)
+        }
+
         // 초기화
         RadioChannelResources.clearResources()
         Program.resetAction()
@@ -334,7 +350,7 @@ class MainActivity : AppCompatActivity() {
                 PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP
                         or PlaybackStateCompat.ACTION_FAST_FORWARD or PlaybackStateCompat.ACTION_PAUSE
                         or PlaybackStateCompat.ACTION_REWIND or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                        or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                        or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_PLAY_PAUSE
             )
             setPlaybackState(stateBuilder.build())
             setCallback(MediaSessoinCallback)
