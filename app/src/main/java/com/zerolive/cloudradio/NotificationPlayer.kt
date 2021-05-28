@@ -52,6 +52,10 @@ object NotificationPlayer {
         )
         remoteViews.setImageViewResource(R.id.img_albumart, R.drawable.ic_radio_antenna)
 
+        // prev, next
+        remoteViews.setOnClickPendingIntent(R.drawable.rewind, prevPendingIntent)
+        remoteViews.setOnClickPendingIntent(R.drawable.forward, nextPendingIntent)
+
         // true -> playing
         if ( playPause ) {
             remoteViews.setTextViewText(

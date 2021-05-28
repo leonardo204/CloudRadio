@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothHeadset
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -21,6 +20,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.Surface
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
         CRLog.d("MainActivity init")
 
         if ( bInitialized ) {
-            mLastYtbPlsStatus = LastYtbPlsStatus(OnAir.mCurrnetPlayFilename!!, OnAir.mVideoId!!, OnAir.mYoutubeState!!)
+            mLastYtbPlsStatus = LastYtbPlsStatus(OnAir.mCurrentPlayFilename!!, OnAir.mVideoId!!, OnAir.mYoutubeState!!)
         }
 
         // 초기화
@@ -345,25 +345,20 @@ class MainActivity : AppCompatActivity() {
 
         mMediaSession = MediaSessionCompat(this, "cloudradio").apply {
             setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
-            val stateBuilder = PlaybackStateCompat.Builder().
-            setActions(
-                PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP
-                        or PlaybackStateCompat.ACTION_FAST_FORWARD or PlaybackStateCompat.ACTION_PAUSE
-                        or PlaybackStateCompat.ACTION_REWIND or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                        or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_PLAY_PAUSE
-            )
-            setPlaybackState(stateBuilder.build())
             setCallback(MediaSessoinCallback)
-            val activityIntent = Intent(mContext, MainActivity::class.java)
+            val activityIntent = Intent(mContext, RadioService::class.java)
             setSessionActivity(PendingIntent.getActivity(mContext, 0, activityIntent, 0))
-            isActive = true
-//            val metadata = MediaMetadataCompat.Builder()
-//                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
-//                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
-//                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
-//                .build()
-//            setMetadata(metadata)
         }
+    }
+
+    fun getFullActions() : Long {
+        var actions = PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SEEK_TO
+        return actions
+    }
+
+    fun getRadioActions() : Long {
+        var actions = PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_PLAY_PAUSE
+        return actions
     }
 
     private fun onYoutubeRewFFClick(command: String): OnClickListener {
@@ -433,13 +428,13 @@ class MainActivity : AppCompatActivity() {
         CRLog.d("onRequestPermissionsResult: " + requestCode)
         if (requestCode == locationPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "권한 승인 완료", Toast.LENGTH_LONG).show()
+                makeToast("권한 승인 완료")
                 CRLog.d("Permissions CB: Granted")
                 getGPSInfo()
             }
             else {
                 CRLog.d("Permissions CB: Denied")
-                Toast.makeText(this, "앱을 정상적으로 실행하기 위해\n앱 설정에서 권한을 설정해 주세요.", Toast.LENGTH_LONG).show()
+                makeToast("앱을 정상적으로 실행하기 위해\n앱 설정에서 권한을 설정해 주세요.")
             }
         }
     }

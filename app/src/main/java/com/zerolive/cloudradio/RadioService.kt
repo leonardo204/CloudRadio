@@ -47,7 +47,7 @@ class RadioService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         mFilename = intent?.getStringExtra("name")
-        CRLog.d("RadioService: ${intent?.action} for $mFilename / Onair(${OnAir.mCurrnetPlayFilename})")
+        CRLog.d("RadioService: ${intent?.action} for $mFilename / Onair(${OnAir.mCurrentPlayFilename})")
 
         RadioNotification.init(this)
 
@@ -69,15 +69,15 @@ class RadioService : Service() {
                 OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.UNSTARTED)
             }
             Constants.ACTION.PLAY_ACTION -> {
-                CRLog.d("play action file(${OnAir.mCurrnetPlayFilename})")
-                OnAir.mCurrnetPlayFilename?.let {
+                CRLog.d("play action file(${OnAir.mCurrentPlayFilename})")
+                OnAir.mCurrentPlayFilename?.let {
                     playStopMedia(it, true)
                     RadioNotification.updateNotification(it, true)
                 }
             }
             Constants.ACTION.PAUSE_ACTION -> {
-                CRLog.d("pause action file(${OnAir.mCurrnetPlayFilename})")
-                OnAir.mCurrnetPlayFilename?.let {
+                CRLog.d("pause action file(${OnAir.mCurrentPlayFilename})")
+                OnAir.mCurrentPlayFilename?.let {
                     playStopMedia(it, false)
                     RadioNotification.updateNotification(it, false)
                 }

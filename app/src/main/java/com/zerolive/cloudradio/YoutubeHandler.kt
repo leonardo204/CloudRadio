@@ -61,15 +61,7 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         // metadata
         // onVideoDuration 은 video playing state 이후에 가장 늦게 불림
         // duration 불린 이후 metadata 를 한번에 같이 전송한다.
-        var metadata = MediaMetadataCompat.Builder()
-            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, OnAir.getTitle())
-            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, OnAir.getArtist())
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, OnAir.getDuration())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, OnAir.getThumbnail())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, OnAir.getThumbnail())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, OnAir.getThumbnail())
-
-        MainActivity.mMediaSession?.setMetadata(metadata.build())
+        OnAir.setMetadata()
     }
 
     override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {

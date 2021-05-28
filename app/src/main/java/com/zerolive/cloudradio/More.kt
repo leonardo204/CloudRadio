@@ -240,12 +240,7 @@ object More : Fragment(), AsyncCallback {
         verFilePath?.let { checkVersion(it) }
         sleep(time)
         buttonUpdate(button, buttonText, enable)
-        makeToastMessage(toastMessage)
-    }
-
-    fun makeToastMessage(message: String) {
-        CRLog.d("message: $message")
-        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
+        MainActivity.getInstance().makeToast(toastMessage)
     }
 
     private fun getAppBigger(ver1: String, ver2: String): String? {

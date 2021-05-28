@@ -1,11 +1,13 @@
 package com.zerolive.cloudradio
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.net.Uri
 import android.os.*
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -24,9 +26,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import java.io.File
-import java.io.IOException
-import java.io.InputStream
+import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.Charset
@@ -100,7 +100,7 @@ object OnAir : Fragment() {
     var onair_btnList = HashMap<String, Button>()
 
     // 현재 재생 중인 채널의 filename
-    var mCurrnetPlayFilename: String? = null
+    var mCurrentPlayFilename: String? = null
 
     // 현재 재생 중인 채널의 컨텐츠 제목
     var mCurrnetPlayTitle: String? = null
@@ -111,8 +111,10 @@ object OnAir : Fragment() {
     val data_type = "JSON"
     var mContext: Context? = null
 
+    var mCurrentSecond: Long = 0
     var mDuration: Long = 0
     var mThumbnail: Bitmap? = null
+    var mAlbumUrl: String? = null
 
     lateinit var weather_view: ConstraintLayout
 
@@ -177,7 +179,7 @@ object OnAir : Fragment() {
         val fileObj = File(DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON)
         if ( !fileObj.exists() && !fileObj.canRead() ) {
             CRLog.d("Can't load ${DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON}")
-            Toast.makeText(mContext, "즐겨찾기가 없습니다.", Toast.LENGTH_LONG).show()
+            MainActivity.getInstance().makeToast("즐겨찾기가 없습니다.")
             return
         }
 
@@ -200,14 +202,14 @@ object OnAir : Fragment() {
 
         var realList = updateOnAirPrograms(list)
         Program.updatePrograms(realList)
-        Toast.makeText(mContext, "즐겨찾기 로딩이 성공적으로 완료되었습니다.", Toast.LENGTH_LONG).show()
+        MainActivity.getInstance().makeToast("즐겨찾기 로딩이 성공적으로 완료되었습니다.")
 
         bInitialized = true
 
         MainActivity.mLastYtbPlsStatus?.let {
             if ( it.state == PlayerConstants.PlayerState.PLAYING ) {
                 updateOnAirButtonText(it.filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
-                mCurrnetPlayFilename = it.filename
+                mCurrentPlayFilename = it.filename
                 mVideoId = it.videoId
                 playStopYoutube(it.filename, it.videoId, true)
             } else if ( it.state == PlayerConstants.PlayerState.PAUSED ) {
@@ -266,7 +268,7 @@ object OnAir : Fragment() {
         MainActivity.getInstance().getGPSInfo()
 
         var text = "현재 지역의 날씨 정보를 업데이트합니다.\n잠시만 기다려주십시오."
-        Toast.makeText(mContext, text, Toast.LENGTH_LONG).show()
+        MainActivity.getInstance().makeToast(text)
     }
 
     @SuppressLint("SetTextI18n")
@@ -354,10 +356,11 @@ object OnAir : Fragment() {
         CRLog.d("setYoutubeStateManual $state")
         mYoutubeState = state
 
-        mCurrnetPlayFilename?.let {
+        mCurrentPlayFilename?.let {
             CRLog.d("check content type ${it}")
+            val type = RadioChannelResources.getMediaType(it)
 
-            if ( it.contains("youtube") || it.contains("ytbpls") ) {
+            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST || type == MEDIATYPE.YOUTUBE_NORMAL || type == MEDIATYPE.YOUTUBE_LIVE ) {
                 CRLog.d("youtube content OK")
             } else {
                 CRLog.d("Ignore non-youtube content")
@@ -381,7 +384,7 @@ object OnAir : Fragment() {
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
                     MainActivity.getInstance()
                         .makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
-                    mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
+                    GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 } else if (mVideoId != null) {
                     CRLog.d("Auto re-play")
@@ -390,26 +393,51 @@ object OnAir : Fragment() {
             }
             PlayerConstants.PlayerState.PLAYING -> {
                 CRLog.d("state PLAYING")
-                mCurrnetPlayFilename?.let {
+                mCurrentPlayFilename?.let {
                     updateOnAirButtonText(
                         it,
                         RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
                         true
                     )
+                    setMetadata()
+
+                    val state = PlaybackStateCompat.Builder()
+                        .setActions(MainActivity.getInstance().getFullActions())
+                        .setState(
+                            PlaybackStateCompat.STATE_PLAYING,
+                            mCurrentSecond,
+                            1.0f,
+                            SystemClock.elapsedRealtime()
+                        ).build()
+
+                    MainActivity.mMediaSession?.setPlaybackState(state)
                 }
                 weather_view.visibility = View.GONE
+                mVideoId?.let { GetYoutubeThumbnails().execute(it) }
             }
             PlayerConstants.PlayerState.BUFFERING -> {
                 CRLog.d("state BUFFERING")
             }
             PlayerConstants.PlayerState.PAUSED -> {
                 CRLog.d("state PAUSED")
-                mCurrnetPlayFilename?.let {
+                mCurrentPlayFilename?.let {
                     updateOnAirButtonText(
                         it,
                         RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),
                         true
                     )
+                    setMetadata()
+
+                    val state = PlaybackStateCompat.Builder()
+                        .setActions(MainActivity.getInstance().getFullActions())
+                        .setState(
+                            PlaybackStateCompat.STATE_PAUSED,
+                            mCurrentSecond,
+                            1.0f,
+                            SystemClock.elapsedRealtime()
+                        ).build()
+
+                    MainActivity.mMediaSession?.setPlaybackState(state)
                 }
             }
             PlayerConstants.PlayerState.UNSTARTED -> {
@@ -430,15 +458,15 @@ object OnAir : Fragment() {
     // - view 의 UI 중에 재생 컨트롤은 풀어서 일시정지 가능하도록..
     // - 나중에 view 를 floating 으로 띄우는 방법도 생각해보자.
     private fun createYoutubeView(filename: String, videoId: String) {
-        CRLog.d("createYoutubeView prev($mCurrnetPlayFilename) - cur($filename)  $videoId")
+        CRLog.d("createYoutubeView prev($mCurrentPlayFilename) - cur($filename)  $videoId")
 
         resetAllButtonText(true)
         //stopRadioForegroundService()
 
-        mCurrnetPlayFilename = filename
+        mCurrentPlayFilename = filename
 
         // 이전 유튜브가 재생 중인 경우 우선 유튜브 재생을 중지
-        if ( mCurrnetPlayFilename != null && !filename.equals(mCurrnetPlayFilename) ) {
+        if ( mCurrentPlayFilename != null && !filename.equals(mCurrentPlayFilename) ) {
             CRLog.d("createYoutubeView  ----------------  prev stop!!!!!!!!!!")
 
             playStopYoutube("", null, false)
@@ -498,10 +526,40 @@ object OnAir : Fragment() {
         return false
     }
 
+    fun setMetadata() {
+        val metadata = MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
+                getAlbumArtContentURI()?.toString()
+            )
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
+            .build()
+
+        MainActivity.mMediaSession?.setMetadata(metadata)
+        MainActivity.mMediaSession?.isActive = true
+    }
+
+    fun getAlbumArtContentURI(): Uri? {
+        var uri: Uri? = null
+        mAlbumUrl?.let {
+            uri = Uri.Builder()
+            .scheme(ContentResolver.SCHEME_CONTENT)
+            .authority("com.zerolive.cloudradio")
+            .appendPath(mAlbumUrl)
+            .build()
+        }
+        CRLog.d("getAlbumArtContentURI: ${uri}")
+        return uri
+    }
+
     fun getTitle(): String {
         var ret = "알 수 없음"
-        mCurrnetPlayFilename?.let {
-            if ( it.startsWith("ytbpls_") ) {
+        mCurrentPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+
+            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
                 ret = mCurPlsItems.get(mCurPlsIdx).title
             } else {
                 ret = RadioChannelResources.getDefaultTextByFilename(it)
@@ -513,7 +571,7 @@ object OnAir : Fragment() {
 
     fun getArtist() : String {
         var ret = "알 수 없음"
-        mCurrnetPlayFilename?.let {
+        mCurrentPlayFilename?.let {
             ret = RadioChannelResources.getDefaultTextByFilename(it)
         }
         CRLog.d("getArtist() ${ret}")
@@ -521,8 +579,8 @@ object OnAir : Fragment() {
     }
 
     fun getDuration() : Long {
-        CRLog.d("getDuration() for ${mCurrnetPlayFilename}")
-        mCurrnetPlayFilename?.let {
+        CRLog.d("getDuration() for ${mCurrentPlayFilename}")
+        mCurrentPlayFilename?.let {
             val type = RadioChannelResources.getMediaType(it)
             if ( type == MEDIATYPE.RADIO || type == MEDIATYPE.YOUTUBE_LIVE ) {
                 CRLog.d("infinite duration")
@@ -534,48 +592,49 @@ object OnAir : Fragment() {
     }
 
     fun getThumbnail() : Bitmap? {
-        var type = MEDIATYPE.UNKNOWN
-        mCurrnetPlayFilename?.let {
-            type = RadioChannelResources.getMediaType(it)
-            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
-                CRLog.d("getThumbnail(): ${mThumbnail}")
-                return mThumbnail
-            }
-        }
-       return null
+        CRLog.d("getThumbnail(): ${mThumbnail}")
+        return mThumbnail
     }
 
     private fun setThumbnail(bitmap: Bitmap) {
         mThumbnail = bitmap
         CRLog.d("setThumbnail(): ${mThumbnail}")
+        setMetadata()
     }
 
+    fun getCurrentSecond() : Long {
+        return mCurrentSecond
+    }
     fun setCurrentSecond(sec: Float) {
-        mCurrnetPlayFilename?.let {
-            val type = RadioChannelResources.getMediaType(it)
-            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST || type == MEDIATYPE.YOUTUBE_NORMAL ) {
-//                CRLog.d("setCurrentSecond: ${sec}")
-                val state = PlaybackStateCompat.Builder()
-                    .setState(
-                        PlaybackStateCompat.STATE_PLAYING,
-                        (sec * 1000).toLong(),
-                        1.0f,
-                        SystemClock.elapsedRealtime()
-                    ).build()
-
-                MainActivity.mMediaSession?.setPlaybackState(state)
-            }
-        }
+        mCurrentSecond = (sec*1000).toLong()
     }
 
-    internal class GetBitmapFromUrl(context: Context) : AsyncTask<String?, String?, String?>() {
-        var ctx = context
+    fun parseVideoInfo(info: String) {
+        val element = Json.parseToJsonElement(info)
+        val items = Json.parseToJsonElement(element.jsonObject["items"].toString())
+//        for( i in items.jsonArray.indices ) {
+            val i = 0
+            val snippet = Json.parseToJsonElement(items.jsonArray[i].jsonObject["snippet"].toString())
+            val thumbnails = Json.parseToJsonElement(snippet.jsonObject["thumbnails"].toString())
+            var thumbId: kotlinx.serialization.json.JsonElement
+            if ( thumbnails.jsonObject["standard"] != null ) {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["standard"].toString())
+            } else if ( thumbnails.jsonObject["high"] != null ) {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["high"].toString())
+            } else {
+                thumbId = Json.parseToJsonElement(thumbnails.jsonObject["default"].toString())
+            }
+            val thumbnail = thumbId.jsonObject["url"].toString().replace("\"", "")
+            GetBitmapFromUrl().execute(thumbnail)
+//        }
+    }
 
+    internal class GetBitmapFromUrl() : AsyncTask<String?, String?, String?>() {
         override fun doInBackground(vararg params: String?): String? {
             val url = params[0]
+            mAlbumUrl = url
             if ( url != null ) {
                 Log.d(onairTag, "GetBitmapFromUrl: ${url}")
-//                setThumbnail(Glide.with(ctx).asBitmap().load(URL(url)).submit().get())
                 var bit: Bitmap? = getBitmapFromURL(url)
                 if ( bit != null ) {
                     setThumbnail(bit)
@@ -600,7 +659,7 @@ object OnAir : Fragment() {
     }
 
     fun requestPlayNext() {
-        mCurrnetPlayFilename?.let {
+        mCurrentPlayFilename?.let {
             if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
                 CRLog.d("Ignore forward")
                 return
@@ -611,13 +670,13 @@ object OnAir : Fragment() {
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
             MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
-            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
+            GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
     }
 
     fun requestPlayPrevious() {
-        mCurrnetPlayFilename?.let {
+        mCurrentPlayFilename?.let {
             if ( it.contains("youtube") || RadioPlayer.isPlaying() ) {
                 CRLog.d("Ignore rewind")
                 return
@@ -628,48 +687,49 @@ object OnAir : Fragment() {
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
             MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
-            mContext?.let { GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail) }
+            GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
     }
 
     fun isPlayingRadioService() : Boolean {
-        if ( mCurrnetPlayFilename == null ) {
-            CRLog.d("isPlayingRadioService() false:  mCurrentPlayFilename is null")
-            return false
-        } else {
-            if ( mCurrnetPlayFilename!!.contains("youtube") || mCurrnetPlayFilename!!.startsWith("ytbpls_")) {
-                if (mYoutubeState != PlayerConstants.PlayerState.PLAYING || mVideoId == null) {
-                    CRLog.d("isPlayingRadioService() false: youtube state is not playing or video id is null")
-                    return false
+        mCurrentPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+
+            if ( type == MEDIATYPE.RADIO && type != MEDIATYPE.UNKNOWN) {
+                if (RadioPlayer.isPlaying()) {
+                    CRLog.d("isPlayingRadioService() true:  radio mode")
+                    return true
                 }
-            }
-            else {
-                if (!RadioPlayer.isPlaying()) {
-                    CRLog.d("isPlayingRadioService() false:  RadioPlayer is not playing")
-                    return false
+            } else {
+                if (mYoutubeState == PlayerConstants.PlayerState.PLAYING && mVideoId != null) {
+                    CRLog.d("isPlayingRadioService() true: youtube mode")
+                    return true
                 }
             }
         }
-        CRLog.d("isPlayingRadioService() true")
+        CRLog.d("isPlayingRadioService() false")
 
-        return true
+        return false
     }
 
     fun requestStartRadioService() {
-        Log.d(onairTag, "requestStartRadioService for ${mCurrnetPlayFilename}")
-        mCurrnetPlayFilename?.let {
-            if ( it.contains("youtube") && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null) {
+        Log.d(onairTag, "requestStartRadioService for ${mCurrentPlayFilename}")
+        mCurrentPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+            Log.d(onairTag, "type: ${type}")
+
+            if ( type == MEDIATYPE.YOUTUBE_LIVE && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null) {
                 Log.d(onairTag, "start youtube")
                 playStopYoutube(it, mVideoId, true)
-            } else if ( it.contains("ytbpls_") && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null ) {
+            } else if ( (type == MEDIATYPE.YOUTUBE_NORMAL || type == MEDIATYPE.YOUTUBE_PLAYLIST) && mYoutubeState != PlayerConstants.PlayerState.PLAYING && mVideoId != null ) {
                 Log.d(onairTag, "start youtube playlist state: ${mYoutubeState}")
                 if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED ) {
                     youtubePlayer?.play()
                 } else {
                     playStopYoutube(it, mVideoId, true)
                 }
-            } else if ( !(it.contains("youtube") || it.startsWith("ytbpls_") ) && !RadioPlayer.isPlaying() ) {
+            } else if ( type == MEDIATYPE.RADIO && !RadioPlayer.isPlaying() ) {
                 Log.d(onairTag, "start radio")
                 startRadioForegroundService("radio", it, null)
             } else {
@@ -679,23 +739,24 @@ object OnAir : Fragment() {
     }
 
     fun requestStopRadioService() {
-        Log.d(onairTag, "requestStopRadioService: ${mCurrnetPlayFilename}")
+        Log.d(onairTag, "requestStopRadioService: ${mCurrentPlayFilename}")
         if (RadioPlayer.isPlaying()) {
             Log.d(onairTag, "stop radio")
             weather_view.visibility = View.VISIBLE
-            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
+            mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
         }
         else {
-            mCurrnetPlayFilename?.let {
+            mCurrentPlayFilename?.let {
                 if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
-                    if ( it.startsWith("ytbpls_") ) {
-                        Log.d(onairTag, "pause youtube playlist")
+                    val type = RadioChannelResources.getMediaType(it)
+                    if ( type == MEDIATYPE.YOUTUBE_NORMAL || type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
+                        Log.d(onairTag, "pause youtube")
                         youtubePlayer?.pause()
                     } else {
                         Log.d(onairTag, "stop youtube")
                         weather_view.visibility = View.VISIBLE
                         if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
-                        mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
+                        mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
                     }
                 }
             }
@@ -720,10 +781,12 @@ object OnAir : Fragment() {
         updateOnAirButtonText(filename, "잠시만 기다려주십시오", false)
 
         // 현재 요청한 채널이 이전 채널과 다르면 우선 버튼 텍스트 초기화
-        if (!filename.equals(mCurrnetPlayFilename)) {
+        if (!filename.equals(mCurrentPlayFilename)) {
             resetAllButtonText(true)
             updateOnAirButtonText(filename, "잠시만 기다려주십시오", false)
         }
+
+        val type = RadioChannelResources.getMediaType(filename)
 
         // 재생 중인 경우 callback 을 받아서 처리한다.
         //  1. 서비스 중지
@@ -735,15 +798,15 @@ object OnAir : Fragment() {
         if (RadioPlayer.isPlaying()) {
             // 중지 후 처리 시작
             CRLog.d("stop previous service")
-            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
+            mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
 
             // 요청한 채널 저장
             CRLog.d("mCurrnetPlayFilename: " + filename)
-            mCurrnetPlayFilename = filename
+            mCurrentPlayFilename = filename
         }
-        // youtube playlist 재생 중인 경우에는 stop 대신 그냥 pause 를 함
-        else if (filename.startsWith("ytbpls_") && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(
-                mCurrnetPlayFilename
+        // youtube playlist/normal 재생 중인 경우에는 stop 대신 그냥 pause 를 함
+        else if ( (type == MEDIATYPE.YOUTUBE_PLAYLIST || type == MEDIATYPE.YOUTUBE_NORMAL) && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(
+                mCurrentPlayFilename
             ) ) {
             youtubePlayer?.pause()
             mRadioStatus = RADIO_STATUS.PAUSED
@@ -751,27 +814,27 @@ object OnAir : Fragment() {
         }
         // youtube pause 상태인 경우 + 같은 파일 요청이면 pause 파일 resume
         else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(
-                mCurrnetPlayFilename
+                mCurrentPlayFilename
             ) ) {
-            CRLog.d("play resume: $mCurrnetPlayFilename")
+            CRLog.d("play resume: $mCurrentPlayFilename")
             youtubePlayer?.play()
             updateOnAirButtonText(
-                mCurrnetPlayFilename!!,
+                mCurrentPlayFilename!!,
                 RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
                 true
             )
-            RadioNotification.updateNotification(mCurrnetPlayFilename!!, true)
+            RadioNotification.updateNotification(mCurrentPlayFilename!!, true)
         }
         // youtube 실행/PAUSE 중 + 다른 파일 요청인 경우 youtube 중지
         // onDestroy callback 불려짐
         else if (mYoutubeState == PlayerConstants.PlayerState.PAUSED || mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
 
             // stop 시 이전 채널로 요청해야 함
-            mCurrnetPlayFilename?.let { playStopYoutube(it, null, false) }
+            mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
 
             // 요청한 채널 저장
             CRLog.d("mCurrnetPlayFilename: " + filename)
-            mCurrnetPlayFilename = filename
+            mCurrentPlayFilename = filename
 
             clearYoutubePlayListItem()
         }
@@ -793,7 +856,7 @@ object OnAir : Fragment() {
                 videoId?.let { createYoutubeView(filename, it) }
                 mContext?.let {
                     if ( mCurPlsItems.size > 0 ) {
-                        GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
+                        GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
                     }
                 }
                 return
@@ -867,15 +930,15 @@ object OnAir : Fragment() {
             if ( checkDoRandom(filename) ) {
                 Collections.shuffle(mCurPlsItems)
             }
-            for(i in mCurPlsItems.indices) {
-                CRLog.d(
-                    "[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${
-                        mCurPlsItems.get(
-                            i
-                        ).title
-                    }   - thumbnail: ${mCurPlsItems.get(i).thumbnail} "
-                )
-            }
+//            for(i in mCurPlsItems.indices) {
+//                CRLog.d(
+//                    "[${i}] videoId: ${mCurPlsItems.get(i).videoId}    - title: ${
+//                        mCurPlsItems.get(
+//                            i
+//                        ).title
+//                    }   - thumbnail: ${mCurPlsItems.get(i).thumbnail} "
+//                )
+//            }
             videoId = mCurPlsItems.get(0).videoId
         }
 
@@ -981,8 +1044,8 @@ object OnAir : Fragment() {
         super.onStart()
         CRLog.d("onStart fullScreen(${FullScreenHelper.mFullScreen})")
         if ( bInitialized ) {
-//            YoutubeLiveUpdater.update()
-//            YoutubePlaylistUpdater.update()
+            YoutubeLiveUpdater.update()
+            YoutubePlaylistUpdater.update()
             if ( FullScreenHelper.mFullScreen ) {
                 MainActivity.getInstance().setFullScreen()
             }
@@ -1026,7 +1089,7 @@ object OnAir : Fragment() {
     fun resetAll() {
         CRLog.d("resetAll")
         bInitialized = false
-        mCurrnetPlayFilename = null
+        mCurrentPlayFilename = null
         mContext = null
 
         program_layout = null
@@ -1212,7 +1275,7 @@ object OnAir : Fragment() {
     //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
     fun notifyRadioServiceStatus(filename: String, result: RESULT) {
         CRLog.d(
-            "notifyRadioServiceStatus: " + result + ", filename: " + filename + " - mCurrnetPlayFilename: $mCurrnetPlayFilename"
+            "notifyRadioServiceStatus: " + result + ", filename: " + filename + " - mCurrnetPlayFilename: $mCurrentPlayFilename"
         )
 
         when(result) {
@@ -1220,18 +1283,23 @@ object OnAir : Fragment() {
                 resetAllButtonText(true)
                 updateOnAirButtonText(filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
                 CRLog.d("mCurrnetPlayFilename: $filename")
-                mCurrnetPlayFilename = filename
+                mCurrentPlayFilename = filename
 
                 // radio playing success 인 경우 metadata 업데이트 해준다.
                 // youtube는 YoutubeHandler 의 onDuration callback 에서 함
-                if (!filename.contains("youtube") && !filename.startsWith("ytbpls_")) {
-                    mDuration = 0L
-                    val metadata = MediaMetadataCompat.Builder()
-                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
-                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
-                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
+                val type = RadioChannelResources.getMediaType(filename)
+                CRLog.d("type: ${type}")
+                if (type == MEDIATYPE.RADIO) {
+                    // 2021-05.28 현재 라디오는 모두 기본 썸네일을 사용하도록 함
+                    GetBitmapFromUrl().execute(RadioThumbnails.DEFAULT.getUrl())
+
+                    setMetadata()
+
+                    val state = PlaybackStateCompat.Builder()
+                        .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f, SystemClock.elapsedRealtime())
+                        .setActions(MainActivity.getInstance().getFullActions())
                         .build()
-                    MainActivity.mMediaSession?.setMetadata(metadata)
+                    MainActivity.mMediaSession?.setPlaybackState(state)
                 }
             }
             RESULT.PLAY_FAILED -> {
@@ -1247,10 +1315,10 @@ object OnAir : Fragment() {
                     }
                 }
                 // 우선 이전 채널에 대해서 초기화 (없으면 null 체크하여 실행 x)
-                mCurrnetPlayFilename?.let {
+                mCurrentPlayFilename?.let {
                     updateOnAirButtonText(
                         it, RadioChannelResources.getDefaultTextByFilename(
-                            mCurrnetPlayFilename!!
+                            mCurrentPlayFilename!!
                         ), true
                     )
                 }
@@ -1258,34 +1326,34 @@ object OnAir : Fragment() {
                 // 요청된 채널은 실패, disable 처리 -> updateResource callback 으로 초기화됨
                 resetAllButtonText(false)
                 updateOnAirButtonText(filename, RADIO_BUTTON.FAILED_MESSAGE.getMessage(), false)
-                mCurrnetPlayFilename = filename
+                mCurrentPlayFilename = filename
             }
             RESULT.DESTROYED -> {
                 // 중지된 filename 과 요청된 filename 이 같으면 button text 만 update
-                if (filename.equals(mCurrnetPlayFilename)) {
+                if (filename.equals(mCurrentPlayFilename)) {
                     resetAllButtonText(true)
                     updateOnAirButtonText(filename, RADIO_BUTTON.STOPPED_MESSAGE.getMessage(), true)
                     setYoutubeStateManual(PlayerConstants.PlayerState.UNSTARTED)
                 }
                 // 서로 filename 이 다르면 요청된 filename 서비스 시작
-                else if (mCurrnetPlayFilename != null) {
-                    CRLog.d("start to service for $mCurrnetPlayFilename")
-                    mCurrnetPlayFilename?.let {
-                        if (it.contains("youtube")) {
-                            var videoId = it.substring(it.indexOf("youtube_") + 8)
+                else if (mCurrentPlayFilename != null) {
+                    CRLog.d("start to service for $mCurrentPlayFilename")
+                    mCurrentPlayFilename?.let {
+                        val type = RadioChannelResources.getMediaType(it)
+
+                        if ( type == MEDIATYPE.YOUTUBE_LIVE || type == MEDIATYPE.YOUTUBE_NORMAL ) {
+                            val videoId = it.substring(it.indexOf("youtube_") + 8)
                             CRLog.d("videoId: " + videoId)
                             createYoutubeView(it, videoId)
                         }
                         // youtube playlist
-                        else if (it.startsWith("ytbpls_")) {
+                        else if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
                             val videoId = getVideoId(it)
                             CRLog.d("ytbpls videoId: " + videoId)
-                            mContext?.let {
-                                if ( mCurPlsItems.size > 0 ) {
-                                    GetBitmapFromUrl(it).execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
-                                }
+                            if ( mCurPlsItems.size > 0 ) {
+                                GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
                             }
-                            videoId?.let { createYoutubeView(mCurrnetPlayFilename!!, it) }
+                            videoId?.let { createYoutubeView(mCurrentPlayFilename!!, it) }
                         }
                         // radio play
                         else {
@@ -1302,9 +1370,9 @@ object OnAir : Fragment() {
         CRLog.d("resource update result: " + result + ", filename: " + filename)
         when(result) {
             RadioResource.SUCCESS -> {
-                var msg = handler.obtainMessage()
+                val msg = handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
-                    var bundle = Bundle()
+                    val bundle = Bundle()
                     bundle.putString("command", "RadioResource.SUCCESS")
                     msg.data = bundle
                     handler.sendMessage(msg)
@@ -1318,9 +1386,9 @@ object OnAir : Fragment() {
                 }
 
                 CRLog.d("timer ~")
-                var msg = handler.obtainMessage()
+                val msg = handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
-                    var bundle = Bundle()
+                    val bundle = Bundle()
                     bundle.putString("command", "RadioResource.FAILED")
                     msg.data = bundle
                     handler.sendMessage(msg)
@@ -1328,5 +1396,43 @@ object OnAir : Fragment() {
                 }
             }
         }
+    }
+}
+
+
+class GetYoutubeThumbnails() : AsyncTask<String, String, String>() {
+    val API_KEY = "AIzaSyC-8Ut8ITfm9KKHE-8-5pre5CzeStgUC-w"
+
+    override fun doInBackground(vararg param: String?): String? {
+        val videoId = param[0]
+
+        var apiurl = "https://www.googleapis.com/youtube/v3/videos"
+        apiurl += "?key=${API_KEY}"
+        apiurl += "&part=snippet"
+        apiurl += "&id=${videoId}"
+        apiurl += "&maxResults=50"
+
+        Log.d(onairTag, "GetYoutubeThumbnails(). Req url: ${apiurl}")
+
+        try {
+            val url = URL(apiurl)
+            val con: HttpURLConnection = url.openConnection() as HttpURLConnection
+            con.setRequestMethod("GET")
+            val br = BufferedReader(InputStreamReader(con.getInputStream(), "UTF-8"))
+            var inputLine: String?
+            val response = StringBuffer()
+            while (br.readLine().also { inputLine = it } != null) {
+                response.append(inputLine)
+            }
+            br.close()
+            Log.d(onairTag, "length: ${response.length}")
+            Log.d(onairTag, "result: ${response}")
+            OnAir.parseVideoInfo( response.toString() )
+
+        } catch (e: Exception) {
+            Log.d(onairTag,"GetPlayLists Error: " + e.message)
+        }
+
+        return "success";
     }
 }

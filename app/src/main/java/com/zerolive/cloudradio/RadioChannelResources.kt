@@ -36,6 +36,13 @@ enum class MEDIATYPE {
     UNKNOWN, RADIO, YOUTUBE_NORMAL, YOUTUBE_LIVE, YOUTUBE_PLAYLIST
 }
 
+enum class RadioThumbnails {
+    DEFAULT {
+        override fun getUrl(): String = "http://zerolive7.iptime.org:9093/api/public/dl/alnc5NXH/01_project/cloudradio/cloudradio_thumbnail.png"
+    };
+    abstract fun getUrl(): String
+}
+
 /**
  * Radio Channel 의 Raw resource
  */

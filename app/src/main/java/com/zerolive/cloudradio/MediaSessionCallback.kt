@@ -3,7 +3,9 @@ package com.zerolive.cloudradio
 import android.content.Intent
 import android.os.Bundle
 import android.os.ResultReceiver
+import android.os.SystemClock
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 
 object MediaSessoinCallback : MediaSessionCompat.Callback() {
@@ -13,7 +15,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     }
 
     override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
-        var keyEvent = mediaButtonEvent?.extras?.get(Intent.EXTRA_KEY_EVENT) as KeyEvent
+        val keyEvent = mediaButtonEvent?.extras?.get(Intent.EXTRA_KEY_EVENT) as KeyEvent
         CRLog.d("onMediaButtonEvent() action:${mediaButtonEvent.action} keyEvent: ${keyEvent}")
         if ( keyEvent.action == KeyEvent.ACTION_DOWN && mediaButtonEvent.action == Intent.ACTION_MEDIA_BUTTON ) {
             CRLog.d("media key: ${keyEvent.keyCode}")
@@ -45,38 +47,70 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
         CRLog.d("requestPlayPause()")
         if ( OnAir.isPlayingRadioService() ) {
             OnAir.requestStopRadioService()
+            setStatePaused()
         } else {
             OnAir.requestStartRadioService()
+            setStatePlaying()
         }
     }
     private fun requestPause() {
         if ( OnAir.isPlayingRadioService() ) {
             OnAir.requestStopRadioService()
+            setStatePaused()
         }
     }
     private fun requestPlay() {
         if ( !OnAir.isPlayingRadioService() ) {
             OnAir.requestStartRadioService()
+            setStatePlaying()
         }
     }
 
-//    override fun onPlay() {
-//        super.onPlay()
-//        CRLog.d("onPlay()")
-//        MainActivity.mMediaSession?.isActive = true
-//    }
-//
-//    override fun onPause() {
-//        super.onPause()
-//        CRLog.d("onPause()")
-//        MainActivity.mMediaSession?.isActive = false
-//    }
-//
-//    override fun onStop() {
-//        super.onStop()
-//        CRLog.d("onStop()")
-//        MainActivity.mMediaSession?.isActive = false
-//    }
+    private fun setStatePaused() {
+        OnAir.setMetadata()
 
+        val state = PlaybackStateCompat.Builder()
+            .setState(
+                PlaybackStateCompat.STATE_PAUSED,
+                OnAir.getCurrentSecond(),
+                1.0f,
+                SystemClock.elapsedRealtime()
+            )
+            .setActions(MainActivity.getInstance().getFullActions())
+            .build()
 
+        MainActivity.mMediaSession?.setPlaybackState(state)
+    }
+
+    private fun setStatePlaying() {
+        OnAir.setMetadata()
+
+        val state = PlaybackStateCompat.Builder()
+            .setState(
+                PlaybackStateCompat.STATE_PLAYING,
+                OnAir.getCurrentSecond(),
+                1.0f,
+                SystemClock.elapsedRealtime()
+
+            )
+            .setActions(MainActivity.getInstance().getFullActions())
+            .build()
+
+        MainActivity.mMediaSession?.setPlaybackState(state)
+    }
+
+    override fun onPlay() {
+        super.onPlay()
+        CRLog.d("onPlay()")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        CRLog.d("onPause()")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        CRLog.d("onStop()")
+    }
 }
