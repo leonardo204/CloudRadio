@@ -1,6 +1,7 @@
 package com.zerolive.cloudradio
 
-import android.support.v4.media.MediaMetadataCompat
+import android.os.SystemClock
+import android.support.v4.media.session.PlaybackStateCompat
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
@@ -17,6 +18,17 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         super.onCurrentSecond(youTubePlayer, second)
         //CRLog.d( "onCurrentSecond: "+second)
         OnAir.setCurrentSecond(second)
+        val state = PlaybackStateCompat.Builder()
+            .setState(
+                PlaybackStateCompat.STATE_PLAYING,
+                OnAir.getCurrentSecond(),
+                1.0f,
+                SystemClock.elapsedRealtime()
+
+            )
+            .setActions(MainActivity.getInstance().getFullActions())
+            .build()
+        MainActivity.mMediaSession?.setPlaybackState(state)
     }
 
     override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {

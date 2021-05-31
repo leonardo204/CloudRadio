@@ -531,9 +531,12 @@ object OnAir : Fragment() {
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
-            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
-                getAlbumArtContentURI()?.toString()
-            )
+//            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
+//                getAlbumArtContentURI()?.toString()
+//            )
+//            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, getThumbnail())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
             .build()
 
@@ -560,12 +563,12 @@ object OnAir : Fragment() {
             val type = RadioChannelResources.getMediaType(it)
 
             if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
-                ret = mCurPlsItems.get(mCurPlsIdx).title
+                ret = "[${mCurPlsIdx+1}/${mCurPlsItems.size}] " + mCurPlsItems.get(mCurPlsIdx).title
             } else {
                 ret = RadioChannelResources.getDefaultTextByFilename(it)
             }
         }
-        CRLog.d("getTitle() ${ret}")
+        CRLog.d("getTitle() ${ret}   [ ${mCurPlsIdx+1} / ${mCurPlsItems.size} ]")
         return ret
     }
 
