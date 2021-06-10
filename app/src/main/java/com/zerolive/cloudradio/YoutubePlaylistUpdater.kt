@@ -317,6 +317,10 @@ object YoutubePlaylistUpdater : AsyncCallback {
             if ( mListMap.size == 0 ) {
                 Log.d(plstTag, "YoutubePlayList update is completed")
                 MainActivity.getInstance().makeToast("유튜브 재생 목록 업데이트가 완료되었습니다.")
+                if ( OnAir.mYoutubePlaylistPlaybackFailed ) {
+                    OnAir.resetAllButtonText(true)
+                    OnAir.mYoutubePlaylistPlaybackFailed = false
+                }
             }
         }
 

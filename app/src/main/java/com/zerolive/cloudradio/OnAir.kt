@@ -1,14 +1,17 @@
 package com.zerolive.cloudradio
 
 import android.annotation.SuppressLint
-import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.*
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.TextUtils
@@ -19,6 +22,7 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.fragment.app.Fragment
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
@@ -55,7 +59,7 @@ object : Handler() {
         when(command) {
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
-                YoutubeLiveUpdater.update()
+//                YoutubeLiveUpdater.update()
 //                YoutubePlaylistUpdater.update()
             }
         }
@@ -105,6 +109,8 @@ object OnAir : Fragment() {
     // 현재 재생 중인 채널의 컨텐츠 제목
     var mCurrnetPlayTitle: String? = null
 
+    var mYoutubePlaylistPlaybackFailed = false
+
     // request wether (fixed)
     val num_of_rows = 10
     val page_no = 1
@@ -115,6 +121,9 @@ object OnAir : Fragment() {
     var mDuration: Long = 0
     var mThumbnail: Bitmap? = null
     var mAlbumUrl: String? = null
+    var bThumbnailChanged = false
+    var mAlbumUri: Uri? = null
+    var mAlbumRealPath: String? = null
 
     lateinit var weather_view: ConstraintLayout
 
@@ -382,8 +391,8 @@ object OnAir : Fragment() {
                         mCurPlsIdx = 0
                     }
                     mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-                    MainActivity.getInstance()
-                        .makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+//                    MainActivity.getInstance()
+//                        .makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
                     GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
                     youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
                 } else if (mVideoId != null) {
@@ -399,7 +408,7 @@ object OnAir : Fragment() {
                         RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
                         true
                     )
-                    setMetadata()
+//                    setMetadata()
 
                     val state = PlaybackStateCompat.Builder()
                         .setActions(MainActivity.getInstance().getFullActions())
@@ -426,7 +435,7 @@ object OnAir : Fragment() {
                         RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),
                         true
                     )
-                    setMetadata()
+//                    setMetadata()
 
                     val state = PlaybackStateCompat.Builder()
                         .setActions(MainActivity.getInstance().getFullActions())
@@ -531,30 +540,17 @@ object OnAir : Fragment() {
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
-//            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI,
-//                getAlbumArtContentURI()?.toString()
-//            )
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mAlbumUri.toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, mAlbumUri.toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, mAlbumUri.toString())
 //            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
+//            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, getThumbnail())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
+//            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
             .build()
 
         MainActivity.mMediaSession?.setMetadata(metadata)
         MainActivity.mMediaSession?.isActive = true
-    }
-
-    fun getAlbumArtContentURI(): Uri? {
-        var uri: Uri? = null
-        mAlbumUrl?.let {
-            uri = Uri.Builder()
-            .scheme(ContentResolver.SCHEME_CONTENT)
-            .authority("com.zerolive.cloudradio")
-            .appendPath(mAlbumUrl)
-            .build()
-        }
-        CRLog.d("getAlbumArtContentURI: ${uri}")
-        return uri
     }
 
     fun getTitle(): String {
@@ -568,7 +564,7 @@ object OnAir : Fragment() {
                 ret = RadioChannelResources.getDefaultTextByFilename(it)
             }
         }
-        CRLog.d("getTitle() ${ret}   [ ${mCurPlsIdx+1} / ${mCurPlsItems.size} ]")
+        CRLog.d("getTitle() ${ret}")
         return ret
     }
 
@@ -599,10 +595,14 @@ object OnAir : Fragment() {
         return mThumbnail
     }
 
-    private fun setThumbnail(bitmap: Bitmap) {
+    private fun setThumbnail(bitmap: Bitmap, uri: Uri?) {
         mThumbnail = bitmap
-        CRLog.d("setThumbnail(): ${mThumbnail}")
-        setMetadata()
+        mAlbumUri = uri
+        CRLog.d("setThumbnail(${bThumbnailChanged}): URL=${mThumbnail}  /  URI=${mAlbumUri}")
+        if ( bThumbnailChanged ) {
+            setMetadata()
+            bThumbnailChanged = false
+        }
     }
 
     fun getCurrentSecond() : Long {
@@ -632,16 +632,140 @@ object OnAir : Fragment() {
 //        }
     }
 
+
+    fun getImageUri(inContext: Context, inImage: Bitmap): Uri? {
+        val bytes = ByteArrayOutputStream()
+        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
+        val path = MediaStore.Images.Media.insertImage(inContext.contentResolver, inImage, "CRIMG-"+getTitle(), null)
+        return Uri.parse(path)
+    }
+
+    fun getRealPathFromURI(context: Context, uri: Uri?): String? {
+
+        // DocumentProvider
+        if (DocumentsContract.isDocumentUri(context, uri)) {
+
+            // ExternalStorageProvider
+            if (isExternalStorageDocument(uri!!)) {
+                val docId = DocumentsContract.getDocumentId(uri)
+                val split: Array<String?> = docId.split(":".toRegex()).toTypedArray()
+                val type = split[0]
+                return if ("primary".equals(type, ignoreCase = true)) {
+                    (Environment.getExternalStorageDirectory().toString() + "/"
+                            + split[1])
+                } else {
+                    val SDcardpath = getRemovableSDCardPath(context)?.split("/Android".toRegex())!!.toTypedArray()[0]
+                    SDcardpath + "/" + split[1]
+                }
+            } else if (isDownloadsDocument(uri!!)) {
+                val id = DocumentsContract.getDocumentId(uri)
+                val contentUri = ContentUris.withAppendedId(
+                    Uri.parse("content://downloads/public_downloads"),
+                    java.lang.Long.valueOf(id))
+                return getDataColumn(context, contentUri, null, null)
+            } else if (isMediaDocument(uri!!)) {
+                val docId = DocumentsContract.getDocumentId(uri)
+                val split: Array<String?> = docId.split(":".toRegex()).toTypedArray()
+                val type = split[0]
+                var contentUri: Uri? = null
+                if ("image" == type) {
+                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                } else if ("video" == type) {
+                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                } else if ("audio" == type) {
+                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                }
+                val selection = "_id=?"
+                val selectionArgs = arrayOf(split[1])
+                return getDataColumn(context, contentUri, selection,
+                    selectionArgs)
+            }
+        } else if (uri != null) {
+            if ("content".equals(uri.getScheme(), ignoreCase = true)) {
+                // Return the remote address
+                return if (isGooglePhotosUri(uri)) uri.getLastPathSegment() else getDataColumn(context, uri, null, null)
+            } else if ("file".equals(uri.getScheme(), ignoreCase = true)) {
+                return uri.getPath()
+            }
+        }
+        return null
+    }
+
+    fun getRemovableSDCardPath(context: Context): String? {
+        val storages = ContextCompat.getExternalFilesDirs(context, null)
+        return if (storages.size > 1 && storages[0] != null && storages[1] != null) storages[1].toString() else ""
+    }
+
+    fun getDataColumn(
+        context: Context, uri: Uri?,
+        selection: String?, selectionArgs: Array<String?>?
+    ): String? {
+        var cursor: Cursor? = null
+        val column = "_data"
+        val projection = arrayOf(column)
+        try {
+            cursor = context.contentResolver.query(
+                uri, projection,
+                selection, selectionArgs, null
+            )
+            if (cursor != null && cursor.moveToFirst()) {
+                val index: Int = cursor.getColumnIndexOrThrow(column)
+                return cursor.getString(index)
+            }
+        } finally {
+            if (cursor != null) cursor.close()
+        }
+        return null
+    }
+
+    fun isExternalStorageDocument(uri: Uri): Boolean {
+        return "com.android.externalstorage.documents" == uri
+            .authority
+    }
+
+    fun isDownloadsDocument(uri: Uri): Boolean {
+        return "com.android.providers.downloads.documents" == uri
+            .authority
+    }
+
+    fun isMediaDocument(uri: Uri): Boolean {
+        return "com.android.providers.media.documents" == uri
+            .authority
+    }
+
+    fun isGooglePhotosUri(uri: Uri): Boolean {
+        return "com.google.android.apps.photos.content" == uri
+            .authority
+    }
+
     internal class GetBitmapFromUrl() : AsyncTask<String?, String?, String?>() {
         override fun doInBackground(vararg params: String?): String? {
             val url = params[0]
-            mAlbumUrl = url
-            if ( url != null ) {
-                Log.d(onairTag, "GetBitmapFromUrl: ${url}")
-                var bit: Bitmap? = getBitmapFromURL(url)
-                if ( bit != null ) {
-                    setThumbnail(bit)
+            Log.d(onairTag, "1) GetBitmapFromUrl. recv_url:${url}  cur_url:${mAlbumUrl}  uri: ${mAlbumUri}")
+
+            if ( url != mAlbumUrl && url != null ) {
+
+                // remove preivous album thumbnail file
+                if ( mAlbumUri != null ) {
+                    Log.d(onairTag, "REMOVE: ${mAlbumUri} of ${mAlbumRealPath}")
+                    mContext?.contentResolver?.delete(mAlbumUri!!, null, null)
                 }
+
+                mAlbumUrl = url
+                val bit: Bitmap? = getBitmapFromURL(url)
+                if ( bit != null ) {
+                    bThumbnailChanged = true
+                    val uri: Uri? = mContext?.let{ getImageUri(it, bit) }
+                    mAlbumRealPath = mContext?.let { getRealPathFromURI(it, uri) }
+                    Log.d(onairTag, "GetBitmapFromUrl: url=${url}")
+                    Log.d(onairTag, "GetBitmapFromUrl: uri=${uri}")
+                    Log.d(onairTag, "GetBitmapFromUrl: path=${mAlbumRealPath}")
+                    setThumbnail(bit, uri)
+                } else {
+                    Log.d(onairTag, "GetBitmapFromUrl FAILED!!!")
+                }
+            } else {
+                Log.d(onairTag, "Ignore!!! GetBitmapFromUrl. recv:${url}  cur:${mAlbumUrl}")
             }
             return null
         }
@@ -672,7 +796,7 @@ object OnAir : Fragment() {
                 mCurPlsIdx = 0
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-            MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+//            MainActivity.getInstance().makeToast("다음 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
             GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
@@ -689,7 +813,7 @@ object OnAir : Fragment() {
                 mCurPlsIdx = 0
             }
             mVideoId = mCurPlsItems.get(mCurPlsIdx).videoId
-            MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
+//            MainActivity.getInstance().makeToast("이전 재생: ${mCurPlsItems.get(mCurPlsIdx).title}")
             GetBitmapFromUrl().execute(mCurPlsItems.get(mCurPlsIdx).thumbnail)
             youtubePlayer?.loadVideo(mVideoId!!, 0.0f)
         }
@@ -946,13 +1070,16 @@ object OnAir : Fragment() {
         }
 
         if ( videoId == null ) {
-            updateOnAirButtonText(
-                filename,
-                RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
-                true
-            )
+//            updateOnAirButtonText(
+//                filename,
+//                RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
+//                true
+//            )
+            updateOnAirButtonText(filename, RADIO_BUTTON.FAILED_MESSAGE.getMessage(), false)
+
             MainActivity.getInstance().makeToast("비디오 목록을 가져올 수 없습니다. 목록을 업데이트 합니다. 잠시만 기다려 주십시오.")
             YoutubePlaylistUpdater.update()
+            mYoutubePlaylistPlaybackFailed = true
         }
 
         return videoId
@@ -1296,7 +1423,7 @@ object OnAir : Fragment() {
                     // 2021-05.28 현재 라디오는 모두 기본 썸네일을 사용하도록 함
                     GetBitmapFromUrl().execute(RadioThumbnails.DEFAULT.getUrl())
 
-                    setMetadata()
+//                    setMetadata()
 
                     val state = PlaybackStateCompat.Builder()
                         .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f, SystemClock.elapsedRealtime())

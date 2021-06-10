@@ -86,6 +86,7 @@ object NotificationPlayer {
             .setContentIntent(pendingIntent)
             .setContent(remoteViews)
             .setNotificationSilent()
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         // Oreo 부터는 Notification Channel을 만들어야 함

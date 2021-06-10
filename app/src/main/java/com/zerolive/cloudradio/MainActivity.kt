@@ -328,10 +328,10 @@ class MainActivity : AppCompatActivity() {
             it.showDuration(false)
             it.showUi(true)
             it.showYouTubeButton(false)
-            it.setCustomAction1(ic_rewind!!, onYoutubeRewFFClick("rewind"));
-            it.setCustomAction2(ic_forward!!, onYoutubeRewFFClick("forward"));
-            it.showCustomAction1(true);
-            it.showCustomAction2(true);
+            it.setCustomAction1(ic_rewind!!, onYoutubeRewFFClick("rewind"))
+            it.setCustomAction2(ic_forward!!, onYoutubeRewFFClick("forward"))
+            it.showCustomAction1(true)
+            it.showCustomAction2(true)
         }
 
         // bluetooth

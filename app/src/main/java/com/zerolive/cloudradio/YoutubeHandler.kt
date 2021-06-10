@@ -73,7 +73,7 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         // metadata
         // onVideoDuration 은 video playing state 이후에 가장 늦게 불림
         // duration 불린 이후 metadata 를 한번에 같이 전송한다.
-        OnAir.setMetadata()
+//        OnAir.setMetadata()
     }
 
     override fun onVideoId(youTubePlayer: YouTubePlayer, videoId: String) {

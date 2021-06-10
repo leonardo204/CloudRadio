@@ -67,7 +67,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     }
 
     private fun setStatePaused() {
-        OnAir.setMetadata()
+//        OnAir.setMetadata()
 
         val state = PlaybackStateCompat.Builder()
             .setState(
@@ -83,7 +83,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     }
 
     private fun setStatePlaying() {
-        OnAir.setMetadata()
+//        OnAir.setMetadata()
 
         val state = PlaybackStateCompat.Builder()
             .setState(
