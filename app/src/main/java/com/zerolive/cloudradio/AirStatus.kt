@@ -209,7 +209,10 @@ object AirStatus {
         MainActivity.getInstance().makeToast("날씨 정보가 업데이트 되었습니다.")
 
         if (OnAir.bUpdateReady) {
+            CRLog.d("update for ytb live")
             YoutubeLiveUpdater.update()
+
+            CRLog.d("update for ytb playlist")
             YoutubePlaylistUpdater.update()
         }
     }

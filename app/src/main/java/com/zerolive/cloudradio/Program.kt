@@ -15,6 +15,7 @@ import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -164,7 +165,7 @@ object Program : Fragment() {
     fun addProgramButtons(title: String, url: String, random: String) {
         Log.d(programTag, "addProgramButtons: ${title} - random: ${random} - ${url}")
 
-        if ( program_btnList.containsKey(title) ) {
+        if (program_btnList.containsKey(title)) {
             Log.d(programTag, "skip title: ${title}   reason. duplication")
             return
         }
@@ -174,9 +175,20 @@ object Program : Fragment() {
         button.setOnClickListener { onRadioButton(title) }
         program_btnList.put(title, button)
         layout_programs.addView(button)
-        val map = RadioCompletionMap(title, title, RadioChannelResources.channelList.size, title, title, null, MEDIATYPE.YOUTUBE_PLAYLIST)
-        RadioChannelResources.channelList.add(map)
-        RadioChannelResources.channelSize++
+        val map = RadioCompletionMap(
+            title,
+            title,
+            RadioChannelResources.channelList.size,
+            title,
+            title,
+            null,
+            MEDIATYPE.YOUTUBE_PLAYLIST
+        )
+        synchronized(RadioChannelResources.mContext) {
+            RadioChannelResources.channelList.add(map)
+            CRLog.d( "channelSize ${RadioChannelResources.channelSize} -> ${RadioChannelResources.channelSize +1}")
+            RadioChannelResources.channelSize++
+        }
         updateProgramButtonText(title, title, true, false)
 
         // write json

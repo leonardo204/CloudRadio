@@ -334,6 +334,20 @@ object WeatherStatus {
         updateRainProperty(humidity, rainPercent)
     }
 
+    fun getCurrentDatetime(): String {
+        var curdate: String
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        {
+            val current: LocalDateTime = LocalDateTime.now()
+            val formatter1 = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+            curdate = current.format(formatter1).toString()
+        } else {
+            val sdf = SimpleDateFormat("yyyyMMdd_HHmmss")
+            curdate = sdf.format(Date())
+        }
+        return curdate
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location

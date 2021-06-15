@@ -196,6 +196,13 @@ class MainActivity : AppCompatActivity() {
         System.exit(0)
     }
 
+    fun systmeDestroy() {
+        CRLog.d("System Destroy called")
+        sleep(100)
+        finishAffinity()
+        System.exit(0)
+    }
+
     @RequiresApi(Build.VERSION_CODES.M)
     fun checkNetworkStatus(): Boolean {
         if ( NetworkStatus.getConnectivityStatus(applicationContext) == NetworkStatus.TYPE_NOT_CONNECTED) {

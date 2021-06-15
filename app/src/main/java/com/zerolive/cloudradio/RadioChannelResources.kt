@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.*
 import android.util.Log
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
@@ -96,16 +98,28 @@ enum class RadioRawChannels {
         override fun getDefaultButtonText(): String = "KBS 1 라디오"
     },
     AFN_THE_EAGLE {
-        override fun getChannelTitle(): String = "AFNP_DGU_SC"
-        override fun getChannelFilename(): String = "AFNP_DGU.pls"
-        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFNP_DGU.pls"
-        override fun getDefaultButtonText(): String = "AFN The Eagle (음악위주)"
+        override fun getChannelTitle(): String = "AFNP_OSN_SC"
+        override fun getChannelFilename(): String = "AFNP_OSN.pls"
+        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFNP_OSN.pls"
+        override fun getDefaultButtonText(): String = "AFN The Eagle"
     },
     AFN_THE_VOICE {
         override fun getChannelTitle(): String = "AFN_VCE_SC"
         override fun getChannelFilename(): String = "AFN_VCE.pls"
         override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFN_VCE.pls"
-        override fun getDefaultButtonText(): String = "AFN The Voice (뉴스위주)"
+        override fun getDefaultButtonText(): String = "AFN The Voice"
+    },
+    AFN_JOE_RADIO {
+        override fun getChannelTitle(): String = "AFN_JOEP_SC"
+        override fun getChannelFilename(): String = "AFN_JOEP.pls"
+        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFN_JOEP.pls"
+        override fun getDefaultButtonText(): String = "AFN JOE Radio"
+    },
+    AFN_LEGACY {
+        override fun getChannelTitle(): String = "AFN_LGYP_SC"
+        override fun getChannelFilename(): String = "AFN_LGYP.pls"
+        override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFN_LGYP.pls"
+        override fun getDefaultButtonText(): String = "AFN Legacy"
     };
     abstract fun getChannelAddress(): String
     abstract fun getChannelFilename(): String
@@ -130,12 +144,14 @@ object : Handler() {
 @SuppressLint("StaticFieldLeak")
 object RadioChannelResources: AsyncCallback {
 
-    private lateinit var mContext: Context
+    lateinit var mContext: Context
     lateinit var DEFAULT_FILE_PATH: String
     var bInitCompleted: Boolean = false
     var channelSize = 0
 
     var channelList = ArrayList<RadioCompletionMap>()
+
+    val mRadioCHResLock = Mutex()
 
     private fun getRadioChannelHttpAddress(filename: String): String? {
         for(i in RadioRawChannels.values().indices) {
@@ -298,7 +314,10 @@ object RadioChannelResources: AsyncCallback {
         // version check end
         element?.let {
             var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
-            channelSize += data.jsonArray.size
+            synchronized(mContext) {
+                CRLog.d( "channelSize ${channelSize} -> ${channelSize+data.jsonArray.size}")
+                channelSize += data.jsonArray.size
+            }
             for (i in data.jsonArray.indices) {
                 Log.d(resourceTag,  "-    [$i]   -")
                 Log.d(resourceTag,  "${data.jsonArray[i]}")
@@ -333,8 +352,10 @@ object RadioChannelResources: AsyncCallback {
 
     fun clearResources() {
         Log.d(resourceTag,  "clearResources")
-        channelSize = 0
-        channelList.clear()
+        synchronized(this) {
+            channelSize = 0
+            channelList.clear()
+        }
     }
 
     private fun addYtbPlaylist(): Int {
@@ -367,12 +388,18 @@ object RadioChannelResources: AsyncCallback {
 
         // for youtube playlist
         val num = addYtbPlaylist()
-        channelSize += num
+        synchronized(mContext) {
+            CRLog.d("channelSize ${channelSize} -> ${channelSize+num}")
+            channelSize += num
+        }
 
         // for youtube
         addFromDataFile()
 
-        channelSize += RadioRawChannels.values().size
+        synchronized(mContext) {
+            CRLog.d("channelSize ${channelSize} -> ${channelSize+RadioRawChannels.values().size}")
+            channelSize += RadioRawChannels.values().size
+        }
 
         // for radio
         for(i in RadioRawChannels.values().indices) {
@@ -388,6 +415,7 @@ object RadioChannelResources: AsyncCallback {
                 readChannelFile(fileobj)
             } else {
                 Log.d(resourceTag,  "File don't exist")
+
                 // 파일이 없더라도 일단 빈 상태로 채널 맵을 채워둔다
                 // 다운로드 완료 되어 파일 읽는데 성공하면, 이것 지우고 새것으로 대체됨
                 var map =  RadioCompletionMap(
@@ -412,11 +440,17 @@ object RadioChannelResources: AsyncCallback {
     }
 
     private fun addChannelList(map: RadioCompletionMap) {
-        channelList.add(map)
-        Log.d(resourceTag,  "addChannelList filename ${map.filename} size: ${channelList.size}")
+        synchronized(mContext) {
+            channelList.add(map)
+        }
+
+        Log.d(resourceTag,  "addChannelList filename ${map.filename} channelList size: ${channelList.size} / channelSize: ${channelSize}")
 
         if ( channelList.size == channelSize ) {
             initResourceComplete()
+
+            // 모든 채널 리소스 업데이트가 완료된 이후 AFN 주소들만 바꿔줌
+            AFNRadioResource.init()
         }
     }
 
@@ -614,7 +648,10 @@ object RadioChannelResources: AsyncCallback {
                     msg.data = bundle
                     res_handler.sendMessage(msg)
                 } else {
-                    channelSize--
+                    synchronized(mContext) {
+                        CRLog.d( "channelSize ${channelSize} -> ${channelSize-1}")
+                        channelSize--
+                    }
                     Log.d(resourceTag,  "ParseUrl failed: title=${title} url=${url} cur/channelSize: ${channelList.size}/${channelSize}")
                     if ( channelList.size == channelSize ) {
                         initResourceComplete()
@@ -630,7 +667,10 @@ object RadioChannelResources: AsyncCallback {
                         arg[3]
                     )        // fileaddress , filename
                     "ParseUrl" -> {
-                        channelSize--
+                        synchronized(mContext) {
+                            CRLog.d( "channelSize ${channelSize} -> ${channelSize-1}")
+                            channelSize--
+                        }
                         Log.d(resourceTag,  "ParseUrl Failed to get Channel url: ${arg[2]} cur/channelSize: ${channelList.size}/${channelSize}")
                         if ( channelList.size == channelSize ) {
                             initResourceComplete()

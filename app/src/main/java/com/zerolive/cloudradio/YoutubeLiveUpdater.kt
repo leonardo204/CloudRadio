@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
@@ -25,6 +26,7 @@ object YoutubeLiveUpdater : AsyncCallback{
         // version check end
         element?.let {
             var data = Json.parseToJsonElement(element.jsonObject["data"].toString())
+            Log.d(resourceTag, "channelSize ${RadioChannelResources.channelSize} -> ${RadioChannelResources.channelSize +data.jsonArray.size}")
             RadioChannelResources.channelSize += data.jsonArray.size
             for (i in data.jsonArray.indices) {
                 Log.d(updaterTag,  "-    [$i]   -")
@@ -67,8 +69,10 @@ object YoutubeLiveUpdater : AsyncCallback{
                             finalUrl,
                             MEDIATYPE.YOUTUBE_LIVE
                         )
-                        RadioChannelResources.channelList.removeAt(i)
-                        RadioChannelResources.channelList.add(i, map)
+                        synchronized(RadioChannelResources.mContext) {
+                            RadioChannelResources.channelList.removeAt(i)
+                            RadioChannelResources.channelList.add(i, map)
+                        }
                         bUpdate = true
                     }
                 }

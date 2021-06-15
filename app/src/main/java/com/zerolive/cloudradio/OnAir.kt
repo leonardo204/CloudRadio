@@ -48,7 +48,7 @@ var onairTag = "CR_OnAir"
 val handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
     override fun handleMessage(msg: Message) {
-        Log.d(onairTag, "handler handleMessage: " + msg)
+        Log.d(onairTag, "handler handleMessage: " + msg.data)
 
         //OnAir.stopRadioForegroundService()
         OnAir.resetAllButtonText(true)
@@ -57,6 +57,7 @@ object : Handler() {
         val command = bundle.getString("command")
 
         when(command) {
+//            "RadioResource.FAILED" -> OnAir.updateFavoriteList()
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
 //                YoutubeLiveUpdater.update()
@@ -122,7 +123,7 @@ object OnAir : Fragment() {
     var mThumbnail: Bitmap? = null
     var mAlbumUrl: String? = null
     var bThumbnailChanged = false
-    var mAlbumUri: Uri? = null
+    var mAlbumUri = arrayListOf<Uri>()
     var mAlbumRealPath: String? = null
 
     lateinit var weather_view: ConstraintLayout
@@ -146,7 +147,6 @@ object OnAir : Fragment() {
 
     var program_layout: LinearLayout? = null
     var youtube_layout: LinearLayout? = null
-
 
     var youtubePlayer: YouTubePlayer? = null
     var mYoutubeState: PlayerConstants.PlayerState? = PlayerConstants.PlayerState.UNKNOWN
@@ -257,6 +257,38 @@ object OnAir : Fragment() {
                 true
             )
         }
+
+        // init 시점이 아닌 재생/정지/일시정지 타이밍에 불리면, 버튼을 복구해준다
+        mCurrentPlayFilename?.let {
+            if ( RadioPlayer.isPlaying() ) {
+                updateOnAirButtonText(
+                    it,
+                    RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
+                    true
+                )
+            } else {
+                if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED ) {
+                    updateOnAirButtonText(
+                        it,
+                        RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),
+                        true
+                    )
+                } else if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
+                    updateOnAirButtonText(
+                        it,
+                        RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
+                        true
+                    )
+                } else {
+                    updateOnAirButtonText(
+                        it,
+                        RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
+                        true
+                    )
+                }
+            }
+        }
+
         return list
     }
 
@@ -536,17 +568,18 @@ object OnAir : Fragment() {
     }
 
     fun setMetadata() {
+        val lastIdx = mAlbumUri.size - 1
         val metadata = MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
-            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mAlbumUri.toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, mAlbumUri.toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, mAlbumUri.toString())
-//            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
-//            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mAlbumUri.get(lastIdx).toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, mAlbumUri.get(lastIdx).toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, mAlbumUri.get(lastIdx).toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, mAlbumUri.get(lastIdx).toString())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, getThumbnail())
-//            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
             .build()
 
         MainActivity.mMediaSession?.setMetadata(metadata)
@@ -597,8 +630,9 @@ object OnAir : Fragment() {
 
     private fun setThumbnail(bitmap: Bitmap, uri: Uri?) {
         mThumbnail = bitmap
-        mAlbumUri = uri
-        CRLog.d("setThumbnail(${bThumbnailChanged}): URL=${mThumbnail}  /  URI=${mAlbumUri}")
+        uri?.let { mAlbumUri.add(it) }
+        val lastIdx = mAlbumUri.size - 1
+        CRLog.d("setThumbnail(${bThumbnailChanged}): URL=${mThumbnail}  /  URI=${mAlbumUri.get(lastIdx)}")
         if ( bThumbnailChanged ) {
             setMetadata()
             bThumbnailChanged = false
@@ -636,7 +670,7 @@ object OnAir : Fragment() {
     fun getImageUri(inContext: Context, inImage: Bitmap): Uri? {
         val bytes = ByteArrayOutputStream()
         inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
-        val path = MediaStore.Images.Media.insertImage(inContext.contentResolver, inImage, "CRIMG-"+getTitle(), null)
+        val path = MediaStore.Images.Media.insertImage(inContext.contentResolver, inImage, "CRIMG-"+getTitle() /*+"_"+WeatherStatus.getCurrentDatetime() */, null)
         return Uri.parse(path)
     }
 
@@ -746,9 +780,8 @@ object OnAir : Fragment() {
             if ( url != mAlbumUrl && url != null ) {
 
                 // remove preivous album thumbnail file
-                if ( mAlbumUri != null ) {
-                    Log.d(onairTag, "REMOVE: ${mAlbumUri} of ${mAlbumRealPath}")
-                    mContext?.contentResolver?.delete(mAlbumUri!!, null, null)
+                if ( mAlbumUri.size > 0 ) {
+                    removeThumbnails()
                 }
 
                 mAlbumUrl = url
@@ -861,6 +894,25 @@ object OnAir : Fragment() {
                 startRadioForegroundService("radio", it, null)
             } else {
                 Log.d(onairTag, "start nothing")
+            }
+        }
+    }
+
+    fun requestDestroyRadioService() {
+        Log.d(onairTag, "requestDestroyRadioService: ${mCurrentPlayFilename}")
+        if (RadioPlayer.isPlaying()) {
+            Log.d(onairTag, "stop radio")
+            weather_view.visibility = View.VISIBLE
+            mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
+        }
+        else {
+            mCurrentPlayFilename?.let {
+                if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
+                    Log.d(onairTag, "stop youtube")
+                    weather_view.visibility = View.VISIBLE
+                    if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
+                    mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
+                }
             }
         }
     }
@@ -1214,6 +1266,50 @@ object OnAir : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         CRLog.d("onDestroyView")
+
+        requestDestroyRadioService()
+
+        removeThumbnails()
+
+        MainActivity.getInstance().systmeDestroy()
+    }
+
+    private fun removeThumbnails() {
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME
+        )
+        var displayName: String? = null
+        var contentUri: Uri? = null
+        mContext?.contentResolver?.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            val displayNameColumn =
+                cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                displayName = cursor.getString(displayNameColumn)
+                if ( !displayName?.contains("CRIMG-")!!) {
+                    continue
+                }
+                contentUri = Uri.withAppendedPath(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    id.toString()
+                )
+            }
+        }
+
+        // 찾은 Uri를 MediaStore에서 삭제
+        contentUri?.let{
+            mContext?.contentResolver?.delete(it, null, null)
+            mAlbumUri.remove(it)
+            Log.d(onairTag, "Removed $displayName from MediaStore: $it  ( remains uri num: ${mAlbumUri.size} )")
+        }
     }
 
     fun resetAll() {
