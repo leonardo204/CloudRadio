@@ -27,8 +27,21 @@ object RadioPlayer {
         try {
             mMediaPlayer?.let {
                 it.setDataSource(channelString)
-                it.prepare()
-                it.start()
+                it.prepareAsync()
+//                it.start()
+                it.setOnPreparedListener(object: MediaPlayer.OnPreparedListener {
+                    override fun onPrepared(mp: MediaPlayer?) {
+                        CRLog.d("onPrepared. ${mp}")
+                        mp?.start()
+                    }
+                })
+                it.setOnErrorListener(object: MediaPlayer.OnErrorListener {
+                    override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
+                        CRLog.d("onError ${what} ${extra}")
+                        OnAir.mCurrentPlayFilename?.let { OnAir.notifyRadioServiceStatus(it, RESULT.PLAY_FAILED) }
+                        return false
+                    }
+                })
                 ret = true
             }
         } catch (e: IOException) {
@@ -62,20 +75,4 @@ object RadioPlayer {
         }
         return false
     }
-
-//    fun resume() {
-//        if ( !mMediaPlayer.isPlaying ) {
-//            CRLog.d( "RadioPlayer resume")
-//            mMediaPlayer.seekTo(mPosition)
-//            mMediaPlayer.start()
-//        }
-//    }
-//
-//    fun pause() {
-//        if ( mMediaPlayer.isPlaying ) {
-//            CRLog.d( "RadioPlayer paused")
-//            mMediaPlayer.pause()
-//            mPosition = mMediaPlayer.currentPosition
-//        }
-//    }
 }

@@ -87,6 +87,7 @@ object AFNRadioResource : AsyncCallback{
             var bShoutcast_v1 = false
             var bShoutcast_v2 = false
             var bIp = false
+            var mountpoint = 0
 
             var ip: String = "unknown"
             var mount: String = "unknown"
@@ -104,6 +105,13 @@ object AFNRadioResource : AsyncCallback{
                 while( parser.eventType != XmlPullParser.END_DOCUMENT ) {
                     //파싱한 데이터의 타입 변수를 저장한다. 시작태그, 텍스트태그, 종료태그를 구분한다.
                     var type = parser.getEventType()
+                    val attrName = parser.name
+
+                    if ( attrName != null && attrName.equals("mountpoint") ) {
+                        Log.d(afnTag, "FOUND mountpoint name: ${parser.name}")
+                        mountpoint++
+                    }
+
                     if ( bMount && mount.equals("unknown") ) {
                         Log.d(afnTag, "mount: ${parser.text}")
                         bMount = false
@@ -126,12 +134,15 @@ object AFNRadioResource : AsyncCallback{
                         ip = parser.text
                     }
 
-                    if ( type == XmlPullParser.START_TAG ) {
-                        when( parser.name ) {
-                            "mount" -> bMount = true
-                            "shoutcast-v1" -> bShoutcast_v1 = true
-                            "shoutcast-v2" -> bShoutcast_v2 = true
-                            "ip" -> bIp = true
+                    // 첫번째를 그냥 써야.. 2번째는 로딩이 너무 오래 걸림
+                    if ( mountpoint > 0 ) {
+                        if (type == XmlPullParser.START_TAG) {
+                            when (parser.name) {
+                                "mount" -> bMount = true
+                                "shoutcast-v1" -> bShoutcast_v1 = true
+                                "shoutcast-v2" -> bShoutcast_v2 = true
+                                "ip" -> bIp = true
+                            }
                         }
                     }
 

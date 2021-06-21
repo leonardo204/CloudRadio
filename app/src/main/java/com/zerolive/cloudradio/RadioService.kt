@@ -210,6 +210,8 @@ class RadioService : Service() {
             }
             SERVICE_TYPE.RADIO -> {
                 mAddress = intent?.getStringExtra("address")
+                CRLog.d("start service filename: " + mFilename)
+                CRLog.d("start service httpAddress: " + mAddress)
 
                 // address 가 null 이어서 실패
                 // 실패되는 정보에 대한 channel map 을 임의로 생성하여 callback 에 담아 보낸다
@@ -217,9 +219,6 @@ class RadioService : Service() {
                     mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_FAILED) }
                     return START_STICKY
                 }
-
-                CRLog.d("start service filename: " + mFilename)
-                CRLog.d("start service httpAddress: " + mAddress)
 
                 // address 가 valid 하지만 재생 실패되는 경우
                 // 이 경우도 실패에 대한 callback 을 전달한다.

@@ -236,9 +236,10 @@ object OnAir : Fragment() {
     fun updateOnAirPrograms(favList: ArrayList<String>): ArrayList<String> {
         resetPrograms()
 
-        var list = ArrayList<String>()
+        val list = ArrayList<String>()
+        favList.sort()
 
-        var iter = favList.iterator()
+        val iter = favList.iterator()
         while( iter.hasNext() ) {
             var title = iter.next()
             CRLog.d("updateOnAirPrograms:" + title)
@@ -251,9 +252,16 @@ object OnAir : Fragment() {
             onair_btnList.put(title, btn)
             btn.setOnClickListener { onRadioButton(title, CLICK_TYPE.CLICK) }
             program_layout?.addView(btn)
+
+            val prefix = "ytbpls_"
+            var defaultText = RadioChannelResources.getDefaultTextByTitle(title)
+            if ( defaultText.startsWith(prefix) ) {
+                defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
+            }
+
             updateOnAirButtonText(
                 RadioChannelResources.getFilenameByTitle(title),
-                RadioChannelResources.getDefaultTextByTitle(title),
+                defaultText,
                 true
             )
         }
@@ -316,6 +324,12 @@ object OnAir : Fragment() {
     fun updateOnAirButtonText(filename: String, text: String, enable: Boolean) {
         //CRLog.d( "updateOnAirButtonText $filename  $text  $enable")
 
+        val prefix = "ytbpls_"
+        var defaultText = RadioChannelResources.getDefaultTextByFilename(filename)
+        if ( defaultText.startsWith(prefix) ) {
+            defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
+        }
+
         val iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
             val obj = iter.next()
@@ -329,36 +343,35 @@ object OnAir : Fragment() {
                     RADIO_BUTTON.PLAYING_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.CYAN)
                         if (mCurPlsItems.size == 0) {
-                            button.setText(
-                                RadioChannelResources.getDefaultButtonTextByFilename(
-                                    filename
-                                ) + " : " + text
-                            )
+                            button.setText( defaultText + " : " + text )
                         } else {
                             button.ellipsize = TextUtils.TruncateAt.MARQUEE
                             button.marqueeRepeatLimit = -1
                             button.setSingleLine()
                             button.isSelected = true
-                            button.setText(
-                                mCurPlsItems.get(mCurPlsIdx).title + " : " + text
-                            )
+                            button.setText( mCurPlsItems.get(mCurPlsIdx).title + " : " + text )
                         }
                     }
                     RADIO_BUTTON.STOPPED_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.YELLOW)
-                        button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
+                        button.setText(defaultText + " : " + text)
                     }
                     RADIO_BUTTON.FAILED_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.RED)
-                        button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
+                        button.setText(defaultText + " : " + text)
                     }
                     RADIO_BUTTON.PAUSED_MESSAGE.getMessage() -> {
                         button.setBackgroundColor(Color.MAGENTA)
-                        button.setText(RadioChannelResources.getDefaultButtonTextByFilename(filename) + " : " + text)
+                        button.setText(defaultText + " : " + text)
                     }
                     else -> {
+                        defaultText = text
+                        if ( defaultText.startsWith(prefix) ) {
+                            defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
+                        }
+
                         button.setBackgroundColor(Color.WHITE)
-                        button.setText(text)
+                        button.setText(defaultText)
                     }
                 }
 
@@ -568,6 +581,26 @@ object OnAir : Fragment() {
     }
 
     fun setMetadata() {
+        if ( getThumbnail() == null ) {
+            CRLog.d("Ignore setMetadata until settting thumbnail")
+            return
+        }
+
+        // duration 이 아직 설정되지 않은 경우 skip
+        mCurrentPlayFilename?.let {
+            val type = RadioChannelResources.getMediaType(it)
+            if ( type == MEDIATYPE.RADIO || type == MEDIATYPE.YOUTUBE_LIVE ) {
+                CRLog.d("duration don't care")
+            } else {
+                if ( mDuration <= 0 ) {
+                    CRLog.d("Ignore setMetadata until setting duration (cur: ${mDuration})")
+                    return
+                }
+            }
+        }
+
+        CRLog.d("setMetadata!")
+
         val lastIdx = mAlbumUri.size - 1
         val metadata = MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
@@ -975,6 +1008,8 @@ object OnAir : Fragment() {
         //     - 같으면 => 그냥 있음
         //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
         if (RadioPlayer.isPlaying()) {
+            clearYoutubePlayListItem()
+
             // 중지 후 처리 시작
             CRLog.d("stop previous service")
             mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
@@ -1052,6 +1087,8 @@ object OnAir : Fragment() {
         mCurPlsItems.clear()
         mCurPlsIdx = 0
         mThumbnail = null
+        mDuration = 0
+        mAlbumUrl = null
     }
 
     private fun checkDoRandom(title: String): Boolean {
@@ -1519,7 +1556,7 @@ object OnAir : Fragment() {
                     // 2021-05.28 현재 라디오는 모두 기본 썸네일을 사용하도록 함
                     GetBitmapFromUrl().execute(RadioThumbnails.DEFAULT.getUrl())
 
-//                    setMetadata()
+                    setMetadata()
 
                     val state = PlaybackStateCompat.Builder()
                         .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f, SystemClock.elapsedRealtime())

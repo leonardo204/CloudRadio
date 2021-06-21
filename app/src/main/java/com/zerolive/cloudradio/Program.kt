@@ -2,26 +2,25 @@ package com.zerolive.cloudradio
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.LinearLayout
+import android.view.*
+import android.widget.*
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.*
 import java.nio.charset.Charset
-import java.util.HashMap
+import java.util.*
+import kotlin.collections.ArrayList
+
 
 var programTag = "CR_Program"
 
@@ -39,27 +38,129 @@ data class YtbListItem(
 
 
 @SuppressLint("StaticFieldLeak")
-object Program : Fragment() {
+object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
 
     var bInitilized = false
     lateinit var mContext: Context
-    var program_btnList = HashMap<String, Button>()
-    var ytbpls_btnList = HashMap<String, Button>()
+    var program_btnList = HashMap<String, ListViewItem>()
 
     // program 버튼을 누른 순서대로 favList 에 title 으로 저장
     // 먼저 들어간 program 이 1순위가 된다.
     var mCurFavList = ArrayList<String>()
     var mBackFavList = ArrayList<String>()
 
+    lateinit var favListView: ListView
+    lateinit var listViewAdaptor: ListViewAdaptor
+
     lateinit var btn_save_setting: Button
     lateinit var btn_reset_setting: Button
-
-    lateinit var layout_programs: LinearLayout
 
     var DEFAULT_FILE_PATH: String? = null
     var FAVORITE_CHANNEL_JSON = "savedFavoriteChannels.json"
 
     var mNumOfPlsFiles = 0
+
+    var prefixFavoriteText = "< 즐겨찾기 추가! > "
+
+    lateinit var popupMenu: PopupMenu
+
+    override fun onListBtnClick(position: Int, view: View?) {
+        var listViewitem = listViewAdaptor.getItem(position) as ListViewItem
+        CRLog.d("onListBtnClick(idx: ${position}): ${listViewitem.defaultText}")
+        popupMenu = PopupMenu(mContext, view)
+        var inflater = MenuInflater(mContext)
+        inflater.inflate(R.menu.fav_delete_popup, popupMenu.menu)
+        popupMenu.setOnMenuItemClickListener ( object: PopupMenu.OnMenuItemClickListener {
+            override fun onMenuItemClick(item: MenuItem?): Boolean {
+                removePlayList(listViewitem)
+                return false
+            }
+        })
+        popupMenu.show()
+    }
+
+    private fun removePlayList(item: ListViewItem) {
+        val title = RadioChannelResources.getTitleByDefaultText("ytbpls_" + item.defaultText)
+
+        CRLog.d("removePlayList [ title: ${title} defaultText: ${item.defaultText} ]")
+        var bRemoved = false
+
+        if ( mCurFavList.contains(title) ) {
+            CRLog.d("remove mCurFavList  [ ${title} ]")
+            mCurFavList.remove(title)
+            bRemoved = true
+        }
+        if ( mBackFavList.contains(title) ) {
+            CRLog.d("remove mBackFavList  [ ${title} ]")
+            mBackFavList.remove(title)
+            bRemoved = true
+        }
+        // program_btnList 는 ytbpls_ 를 빼고 관리 -_-;;
+        if ( program_btnList.containsKey(item.defaultText) ) {
+            CRLog.d("remove program_btnList  [ ${item.defaultText} ]")
+            program_btnList.remove(item.defaultText)
+            bRemoved = true
+        }
+
+        if ( bRemoved ) {
+            resetAllButtonText()
+
+            for(i in mCurFavList.indices) {
+                val title2 = mCurFavList.get(i)
+                val filename = RadioChannelResources.getFilenameByTitle(title2)
+                CRLog.d("update ready [ title: ${title2} filename: ${filename} ]")
+
+                updateProgramButtonText(filename, true)
+            }
+
+            var iter = RadioChannelResources.channelList.iterator()
+            while( iter.hasNext() ) {
+                val item2 = iter.next()
+                if (item2.title == title) {
+                    CRLog.d("remove RadioChannelResources.channelList  [ ${title} ]")
+
+                    synchronized(RadioChannelResources.mContext) {
+                        RadioChannelResources.channelList.remove(item2)
+                        RadioChannelResources.channelSize--
+                    }
+                    break
+                }
+            }
+
+            saveAction()
+
+            listViewAdaptor.removeItem(item.defaultText)
+            listViewAdaptor.notifyDataSetChanged()
+
+            // write json
+            var list: List<YtbListItem> = listOf()
+            val fileobj = File(OnAir.DEFAULT_FILE_PATH + "ytbpls.json")
+            if ( fileobj.exists() && fileobj.canRead() ) {
+                val ins: InputStream = fileobj.inputStream()
+                val content = ins.readBytes().toString(Charset.defaultCharset())
+                val items = Json.parseToJsonElement(content)
+                for(i in items.jsonArray.indices) {
+                    val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace("\"", "")
+                    val uu = Json.parseToJsonElement(items.jsonArray[i].jsonObject["url"].toString()).toString().replace("\"", "")
+                    val rr = Json.parseToJsonElement(items.jsonArray[i].jsonObject["random"].toString()).toString().replace("\"","")
+                    if ( tt.contains(title) || tt.contains(item.defaultText) ) {
+                        CRLog.d("skip remove item - title: ${tt}")
+                        continue
+                    }
+                    CRLog.d("save item - title: ${tt}, random: ${rr}, url: ${uu}")
+                    var oriItem = YtbListItem(tt+".json", tt, uu, rr)
+                    list += oriItem
+                }
+            }
+
+            val gson = GsonBuilder().disableHtmlEscaping().create()
+            val listType: TypeToken<List<YtbListItem>> = object : TypeToken<List<YtbListItem>>() {}
+            val arr = gson.toJson(list, listType.type)
+
+            Log.d(programTag, "write json: ${arr}")
+            WriteFile().execute(DEFAULT_FILE_PATH + "ytbpls.json", arr.toString())
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -74,14 +175,23 @@ object Program : Fragment() {
         }
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
 
-        layout_programs = view.findViewById(R.id.layout_grid_programs)
         btn_save_setting = view.findViewById(R.id.btn_save_setting)
         btn_reset_setting = view.findViewById(R.id.btn_reset_setting)
         btn_save_setting.isEnabled = false
-        btn_save_setting.setOnClickListener { onRadioButton("SAVE") }
-        btn_reset_setting.setOnClickListener { onRadioButton("RESET") }
+        btn_save_setting.setOnClickListener { onRadioButton("SAVE", null) }
+        btn_reset_setting.setOnClickListener { onRadioButton("RESET", null) }
 
-//        readPlsFileCount()
+        listViewAdaptor = ListViewAdaptor()
+        listViewAdaptor.setListener(Program)
+        favListView = view.findViewById(R.id.listview_favorite)
+        favListView.adapter = listViewAdaptor
+        favListView.setOnItemClickListener { parent, view, position, id ->
+            val item = parent.getItemAtPosition(position) as ListViewItem
+            CRLog.d("clicked item  ${item.defaultText}")
+            onRadioButton(item.defaultText, item.type)
+        }
+
+        setHasOptionsMenu(true)
 
         initProgramButtons()
 
@@ -99,16 +209,8 @@ object Program : Fragment() {
 
     fun resetProgramButtons() {
         CRLog.d("resetProgramButtons")
-//        var iter = program_btnList.iterator()
-//        while( iter.hasNext() ) {
-//            var filename = iter.next()
-//            CRLog.d( "remove: ${filename}")
-//            var button = program_btnList.get(filename)
-//            var parent = button?.parent as ViewGroup?
-//            button?.let { parent?.removeView(it) }
-//            program_btnList.remove(filename)
-//        }
-        layout_programs.removeAllViews()
+
+        listViewAdaptor.removeAll()
 
         program_btnList.clear()
     }
@@ -170,13 +272,16 @@ object Program : Fragment() {
             return
         }
 
-        val button = Button(mContext)
-        button.setText(title)
-        button.setOnClickListener { onRadioButton(title) }
-        program_btnList.put(title, button)
-        layout_programs.addView(button)
+        val prefix = "ytbpls_"
+        var defaultText = title
+        if ( defaultText.startsWith(prefix) ) {
+            defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
+        }
+
+        addFavoriteItem(MEDIATYPE.YOUTUBE_PLAYLIST, defaultText)
+
         val map = RadioCompletionMap(
-            title,
+            defaultText,
             title,
             RadioChannelResources.channelList.size,
             title,
@@ -189,7 +294,7 @@ object Program : Fragment() {
             CRLog.d( "channelSize ${RadioChannelResources.channelSize} -> ${RadioChannelResources.channelSize +1}")
             RadioChannelResources.channelSize++
         }
-        updateProgramButtonText(title, title, true, false)
+        updateProgramButtonText(RadioChannelResources.getTitleByFilename(title),  false)
 
         // write json
         val list = getYtbPlsListFromFile(title, url, random)
@@ -210,55 +315,51 @@ object Program : Fragment() {
             while ( idx <= max ) {
                 val filename = RadioChannelResources.channelList.get(idx).filename
                 val title = RadioChannelResources.channelList.get(idx).title
-                CRLog.d("make program buttons for [${idx}] ${title} ${filename}")
-                val button = Button(mContext)
-                button.setText(RadioChannelResources.channelList.get(idx).defaultButtonText)
-                button.setOnClickListener { onRadioButton(title) }
-                program_btnList.put(title, button)
-                layout_programs.addView(button)
+                CRLog.d("make program buttons for [${idx}] title:${title}   default: ${RadioChannelResources.channelList.get(idx).defaultButtonText}   filename:${filename}")
 
-                var message = RadioChannelResources.getDefaultTextByFilename(filename)
-                updateProgramButtonText(filename, message, true, false)
+                val prefix = "ytbpls_"
+                var defaultText = RadioChannelResources.channelList.get(idx).defaultButtonText
+                if ( defaultText.startsWith(prefix) ) {
+                    defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
+                }
+
+                addFavoriteItem(RadioChannelResources.channelList.get(idx).mediaType, defaultText)
+
+                updateProgramButtonText(RadioChannelResources.channelList.get(idx).filename,   false)
                 idx++
             }
         }
         if ( mCurFavList.size > 0 ) {
             for(i in mCurFavList.indices) {
-                updateProgramButtonText(
-                    RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)), RadioChannelResources.getDefaultTextByTitle(
-                        mCurFavList.get(i)), true, true)
+                updateProgramButtonText( RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)),  true)
             }
         }
         CRLog.d("2 updateProgramButtons() btnList: " + program_btnList.size)
     }
 
     private fun initProgramButtons() {
-        layout_programs.removeAllViews()
+        listViewAdaptor.removeAll()
         program_btnList.clear()
 
         CRLog.d("initProgramButtons channel size: ${RadioChannelResources.channelList.size}")
         for(i in RadioChannelResources.channelList.indices) {
             val title = RadioChannelResources.channelList.get(i).title
             CRLog.d("make program buttons for [${i}] ${title}")
-            val button = Button(mContext)
-            button.setText( RadioChannelResources.channelList.get(i).defaultButtonText )
-            button.setOnClickListener { onRadioButton(title) }
-            program_btnList.put(title, button)
-//            var layoutParams: GridLayout.LayoutParams =  GridLayout.LayoutParams()
-//            layoutParams.setGravity(Gravity.FILL_HORIZONTAL)
-//            layout_grid_programs.addView(button, layoutParams)
-            layout_programs.addView(button)
 
-            val filename = RadioChannelResources.getFilenameByTitle(title)
-            var message = RadioChannelResources.getDefaultTextByTitle(title)
-            updateProgramButtonText(filename, message, true, false)
+            val prefix = "ytbpls_"
+            var defaultText = RadioChannelResources.channelList.get(i).defaultButtonText
+            if ( defaultText.startsWith(prefix) ) {
+                defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
+            }
+
+            addFavoriteItem(RadioChannelResources.channelList.get(i).mediaType, defaultText)
+
+            updateProgramButtonText(RadioChannelResources.channelList.get(i).filename,   false)
         }
 
         if ( mCurFavList.size > 0 ) {
             for(i in mCurFavList.indices) {
-                updateProgramButtonText(
-                    RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)), RadioChannelResources.getDefaultTextByFilename(
-                        mCurFavList.get(i)), true, true)
+                updateProgramButtonText( RadioChannelResources.getFilenameByTitle(mCurFavList.get(i)),  true)
             }
         }
         CRLog.d("initProgramButtons() btnList: " + program_btnList.size)
@@ -271,24 +372,37 @@ object Program : Fragment() {
     // 선호채널 상태가 아니라면
     //   - 선호채널 리스트 등록
     //   - 선호채널 색상 표시
-    fun onRadioButton(title: String) {
-        when(title) {
+    fun onRadioButton(defaultText: String, type: String?) {
+        CRLog.d("onRadioButton type:${type}  text:${defaultText}")
+        var text = defaultText
+        var title = RadioChannelResources.getTitleByDefaultText(text)
+        var filename = RadioChannelResources.getFilenameByTitle(title)
+
+        when(text) {
             "SAVE" -> saveAction()
             "RESET" -> {
                 btn_save_setting.isEnabled = true
                 resetAction()
             }
             else -> {
+                type?.let {
+                    if ( type.equals(MEDIATYPE.YOUTUBE_PLAYLIST.toString()) ) {
+                        text = "ytbpls_" + defaultText
+                    }
+                    title = RadioChannelResources.getTitleByDefaultText(text)
+                    filename = RadioChannelResources.getFilenameByTitle(title)
+                }
+
                 if ( mCurFavList.contains(title) ) {
                     CRLog.d("remove favList: ${title}")
                     mCurFavList.remove(title)
                     btn_save_setting.isEnabled = !isSameFavoriteList()
-                    updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), RadioChannelResources.getDefaultTextByTitle(title), true, false)
+                    updateProgramButtonText(filename,   false)
                 } else {
                     CRLog.d("add favList: ${title}")
                     mCurFavList.add(title)
                     btn_save_setting.isEnabled = !isSameFavoriteList()
-                    updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
+                    updateProgramButtonText(filename,  true)
                 }
             }
         }
@@ -299,7 +413,7 @@ object Program : Fragment() {
         var idx = 0
         CRLog.d(" - dumpFavList - ")
         while( iter.hasNext() ) {
-            var title = iter.next()
+            val title = iter.next()
             CRLog.d("[${idx++}] ${title}")
         }
         CRLog.d(" ")
@@ -336,7 +450,7 @@ object Program : Fragment() {
             saveFavList()
             cloneFavroiteList()
         } else {
-            removeFavList()
+            resetAction()
         }
         btn_save_setting.isEnabled = false
     }
@@ -349,40 +463,71 @@ object Program : Fragment() {
         dumpFavList()
     }
 
-    fun resetAllButtonText() {
-        CRLog.d("resetButtons()")
-        val iter = program_btnList.iterator()
-        while( iter.hasNext() ) {
-            val obj = iter.next()
-            val title = obj.key
-            val message = RadioChannelResources.getDefaultTextByTitle(title)
-            val filename = RadioChannelResources.getFilenameByTitle(title)
-            updateProgramButtonText(filename, message, true, false)
+    private fun addFavoriteItem(type: MEDIATYPE, title: String) {
+        CRLog.d("addFavoriteItem. title: ${title}")
+        if ( !program_btnList.containsKey(title) ) {
+            var ic_type: Drawable? = null
+            var ic_delete: Drawable? = null
+            when(type) {
+                MEDIATYPE.UNKNOWN,
+                MEDIATYPE.RADIO -> ic_type = ResourcesCompat.getDrawable(resources, R.drawable.ic_fav_radio, null)!!
+                MEDIATYPE.YOUTUBE_LIVE -> ic_type = ResourcesCompat.getDrawable(resources, R.drawable.ic_fav_live, null)!!
+                MEDIATYPE.YOUTUBE_NORMAL -> ic_type = ResourcesCompat.getDrawable(resources, R.drawable.ic_fav_youtube, null)!!
+                MEDIATYPE.YOUTUBE_PLAYLIST -> {
+                    ic_type = ResourcesCompat.getDrawable(resources, R.drawable.ic_fav_playlist, null)!!
+                    ic_delete = ResourcesCompat.getDrawable(resources, R.drawable.ic_fav_delete, null)!!
+                }
+            }
+
+            val item = ListViewItem(null, type.toString(), ic_type, title, ic_delete)
+            program_btnList.put(title, item)
+            listViewAdaptor.addItem(item)
+            listViewAdaptor.notifyDataSetChanged()
         }
     }
 
-    @SuppressLint("SetTextI18n")
-    fun updateProgramButtonText(filename: String, text: String, enable: Boolean, bFavorite: Boolean) {
-        //CRLog.d( "updateProgramButtonText $filename  $text  $enable")
-
+    fun resetAllButtonText() {
+        CRLog.d("resetAllButtonText()")
         val iter = program_btnList.iterator()
         while( iter.hasNext() ) {
             val obj = iter.next()
             val title = obj.key
-            //CRLog.d( "updateButtonText title: ${title} - ${filename}" )
-            if ( RadioChannelResources.getFilenameByTitle(title).equals(filename) ) {
-                val button = obj.value
-                if (bFavorite) {
-                    button.setBackgroundColor(Color.CYAN)
-                } else {
-                    button.setBackgroundColor(Color.WHITE)
+            CRLog.d("resetAllButtonText() title: ${title}")
+            var filename = RadioChannelResources.getFilenameByTitle(title)
+            if ( filename.equals("Unknown Filename") ) {
+                CRLog.d("resetAllButtonText() title: ${title} retry defaultText")
+                filename = RadioChannelResources.getFilenameByDefaultText(title)
+                if ( filename.equals("Unknown Filename") ) {
+                    CRLog.d("resetAllButtonText() title: ${title} retry ytbpls")
+                    filename = RadioChannelResources.getFilenameByTitle("ytbpls_"+title)
                 }
-
-                button.isEnabled = enable
-                button.setText(text)
-                break
             }
+            updateProgramButtonText(filename,   false)
         }
+    }
+
+    private fun updateProgramButtonText(filename: String, bFavorite: Boolean) {
+        CRLog.d( "updateProgramButtonText($bFavorite)  filename: ${filename} ")
+
+        val prefix = "ytbpls_"
+        var defaultText = RadioChannelResources.getDefaultTextByFilename(filename)
+        if ( defaultText.startsWith(prefix) ) {
+            defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
+        }
+
+        val ic_fav = ResourcesCompat.getDrawable(resources, R.drawable.ic_star, null)!!
+        val item = listViewAdaptor.getItem(defaultText)
+
+        item?.let {
+            if (bFavorite) {
+                it.iconFavorite = ic_fav
+            } else {
+                it.iconFavorite = null
+            }
+            CRLog.d( "updateProgramButtonText make title to: ${it.defaultText} ")
+        }
+
+        listViewAdaptor.notifyDataSetChanged()
     }
 
     private fun removeFavList() {
@@ -430,7 +575,7 @@ object Program : Fragment() {
             val title = iter.next()
             CRLog.d("updatePrograms ${title}")
             mCurFavList.add(title)
-            updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title), "즐겨찾기 추가, "+ RadioChannelResources.getDefaultTextByTitle(title), true, true)
+            updateProgramButtonText(RadioChannelResources.getFilenameByTitle(title),  true)
         }
         // favoriate list 파일 재작성
         saveFavList()
@@ -454,12 +599,12 @@ object Program : Fragment() {
             try {
                 var fileObj = File(filename)
                 if ( fileObj.exists() ) {
-                    CRLog.d("remove previous savedChannel.json")
+                    CRLog.d("remove previous ${fileObj}")
                     fileObj.delete()
                 }
 
                 if (data != null) {
-                    CRLog.d("write savedChannel.json")
+                    CRLog.d("write ${data}")
                     fileObj.writeText(data, Charset.defaultCharset())
                 }
             } catch (e: IOException) {

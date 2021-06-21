@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent"
+    android:orientation="horizontal"
+    android:minWidth="0dp"
+    android:minHeight="0dp"
+    android:id="@+id/fav_item_parent"
+    android:descendantFocusability="blocksDescendants"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <ImageView
+        android:layout_width="0sp"
+        android:layout_height="match_parent"
+        android:id="@+id/fav_item_checked"
+        android:src="@drawable/ic_star"
+        android:layout_marginStart="10sp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"/>
+
+    <ImageView
+        android:layout_width="0sp"
+        android:layout_height="wrap_content"
+        android:id="@+id/fav_item_icon"
+        android:src="@drawable/ic_fav_radio"
+        android:layout_marginStart="10sp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"/>
+
+    <TextView
+        android:layout_width="0sp"
+        android:layout_height="match_parent"
+        android:id="@+id/fav_item_btn"
+        android:text="테스트 라디오 프로그램"
+        android:textColor="@color/black"
+        android:gravity="center_vertical"
+        android:layout_marginStart="10sp"
+        android:layout_weight="10"
+        android:background="@android:color/transparent"/>
+
+    <ImageButton
+        android:id="@+id/fav_item_delete"
+        android:src="@drawable/ic_fav_delete"
+        android:layout_width="40sp"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:layout_weight="1" />
+</LinearLayout>

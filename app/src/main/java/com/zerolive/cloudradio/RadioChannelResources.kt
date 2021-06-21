@@ -135,7 +135,8 @@ object : Handler() {
         val bundle = msg.data
         val title = bundle.getString("title")
         val url = bundle.getString("url")
-        RadioChannelResources.makeChannelList(title, url)
+        val type = bundle.getString("type")
+        RadioChannelResources.makeChannelList(type, title, url)
         if (Program.bInitilized) Program.updateProgramButtons()
     }
 }
@@ -165,11 +166,11 @@ object RadioChannelResources: AsyncCallback {
     fun getTitleByFilename(filename: String): String {
         for(i in channelList.indices) {
             if ( channelList.get(i).filename.equals(filename) ) {
-                Log.d(
-                    resourceTag,
-                    
-                    "getTitleByFilename: ${filename} -> ${channelList.get(i).title}"
-                )
+//                Log.d(
+//                    resourceTag,
+//
+//                    "getTitleByFilename: ${filename} -> ${channelList.get(i).title}"
+//                )
                 return channelList.get(i).title
             }
         }
@@ -227,11 +228,32 @@ object RadioChannelResources: AsyncCallback {
 
         for(i in channelList.indices) {
 //            CRLog.d( " channelList.get(i).filename: ${channelList.get(i).filename} - $filename")
-            if ( channelList.get(i).title.equals(title) ) {
+            if ( channelList.get(i).title.equals(title)  ) {
                 return channelList.get(i).filename
             }
         }
         return "Unknown Filename"
+    }
+
+    fun getFilenameByDefaultText(defaultText: String): String {
+
+        for(i in channelList.indices) {
+//            CRLog.d( " channelList.get(i).filename: ${channelList.get(i).filename} - $filename")
+            if ( channelList.get(i).defaultButtonText.equals(defaultText)  ) {
+                return channelList.get(i).filename
+            }
+        }
+        return "Unknown Filename"
+    }
+
+    fun getTitleByDefaultText(defaultText: String): String {
+
+        for(i in channelList.indices) {
+            if ( channelList.get(i).defaultButtonText.equals(defaultText) ) {
+                return channelList.get(i).title
+            }
+        }
+        return "Unknown Text"
     }
 
     fun requestUpdateResource(filename: String) {
@@ -567,7 +589,7 @@ object RadioChannelResources: AsyncCallback {
         return MEDIATYPE.UNKNOWN
     }
 
-    fun makeChannelList(title: String, url: String) {
+    fun makeChannelList(argType: String, title: String, url: String) {
         Log.d(resourceTag,  "makeChannelList ${title} : ${url}")
         val videoId = url.substring( url.indexOf("watch?v=")+8)
         val filename = "youtube_" + videoId
@@ -576,7 +598,7 @@ object RadioChannelResources: AsyncCallback {
         removeDuplication(title)
 
         var type: MEDIATYPE
-        if ( title.contains("live") ) {
+        if ( argType.equals( MEDIATYPE.YOUTUBE_LIVE.toString() ) ) {
             type = MEDIATYPE.YOUTUBE_LIVE
         } else {
             type = MEDIATYPE.YOUTUBE_NORMAL
@@ -639,11 +661,13 @@ object RadioChannelResources: AsyncCallback {
                 val bundle = Bundle()
                 val title = arg[1]
                 val url = arg[2]
+                val type = arg[3]
 
                 if ( title != null && url != null ) {
 
                     bundle.putString("title", title)
                     bundle.putString("url", url)
+                    bundle.putString("type", type)
 
                     msg.data = bundle
                     res_handler.sendMessage(msg)
@@ -767,7 +791,7 @@ object RadioChannelResources: AsyncCallback {
                 return null
             }
 
-            callback.onTaskDone("ParseUrl", title, finalUrl)
+            callback.onTaskDone("ParseUrl", title, finalUrl, MEDIATYPE.YOUTUBE_LIVE.toString())
 
             return null
         }

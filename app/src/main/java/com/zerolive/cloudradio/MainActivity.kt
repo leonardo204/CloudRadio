@@ -352,9 +352,14 @@ class MainActivity : AppCompatActivity() {
 
         mMediaSession = MediaSessionCompat(this, "cloudradio").apply {
             setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            val state = PlaybackStateCompat.Builder()
+                .setActions(getFullActions())
+                .build()
+            setPlaybackState(state)
             setCallback(MediaSessoinCallback)
             val activityIntent = Intent(mContext, RadioService::class.java)
             setSessionActivity(PendingIntent.getActivity(mContext, 0, activityIntent, 0))
+            isActive = true
         }
     }
 
