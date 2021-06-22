@@ -188,6 +188,12 @@ class MainActivity : AppCompatActivity() {
         mMediaSession?.isActive = true
     }
 
+    override fun onBackPressed() {
+        CRLog.d("MainAcitivity onBackPressed")
+        moveTaskToBack(true)
+//        super.onBackPressed()
+    }
+
     fun systemRestart() {
         sleep(5000)
         finishAffinity()
