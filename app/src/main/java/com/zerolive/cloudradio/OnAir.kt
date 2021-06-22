@@ -1110,7 +1110,8 @@ object OnAir : Fragment() {
 
         CRLog.d("getVideoId from file: ${filename}")
 
-        val fileobj = File(DEFAULT_FILE_PATH + filename + ".json")
+        val fileobj = File(DEFAULT_FILE_PATH + filename)
+        val title = RadioChannelResources.getTitleByFilename(filename)
 
         if ( fileobj.exists() && fileobj.canRead() ) {
             clearYoutubePlayListItem()
@@ -1119,7 +1120,7 @@ object OnAir : Fragment() {
             val content = ins.readBytes().toString(Charset.defaultCharset())
             val items = Json.parseToJsonElement(content)
             for(i in items.jsonArray.indices) {
-                val title = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace(
+                val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace(
                     "\"",
                     ""
                 )
@@ -1131,13 +1132,13 @@ object OnAir : Fragment() {
                     "\"",
                     ""
                 )
-                val map = YTBPLSITEM(title, vid, thumbnail)
+                val map = YTBPLSITEM(tt, vid, thumbnail)
                 mCurPlsItems.add(map)
             }
         }
 
         if ( mCurPlsItems.size > 0 ) {
-            if ( checkDoRandom(filename) ) {
+            if ( checkDoRandom(title) ) {
                 Collections.shuffle(mCurPlsItems)
             }
 //            for(i in mCurPlsItems.indices) {
