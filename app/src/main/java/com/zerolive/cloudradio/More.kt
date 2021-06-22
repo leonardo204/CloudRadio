@@ -287,13 +287,10 @@ object More : Fragment(), AsyncCallback {
             val nAppVer = element.jsonObject["version_cloudradio"].toString().replace("\"", "")
             val nChVer = element.jsonObject["version_channel"].toString().replace("\"", "")
 
-            CRLog.d(
+            CRLog.d("get version ( $mAppVersion vs $nAppVer  -  $mChannelVersion vs $nChVer )")
 
-                "get version ( $mAppVersion vs $nAppVer  -  $mChannelVersion vs $nChVer )"
-            )
-
-            var needAppUpdate: Boolean = false
-            var needChannelUpdate: Boolean = false
+            var needAppUpdate = false
+            var needChannelUpdate = false
             if ( !mAppVersion.equals(nAppVer) ) {
                 var bigger = getAppBigger(mAppVersion, nAppVer)
                 if ( nAppVer.equals(bigger) ) {
@@ -633,7 +630,6 @@ object More : Fragment(), AsyncCallback {
             else -> return "unknown"
         }
     }
-
 
     private fun onButtonClick(command: String) {
         CRLog.d("onButtonClick: $command")

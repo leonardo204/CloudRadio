@@ -200,6 +200,7 @@ class RadioService : Service() {
                 mVideoId = intent?.getStringExtra("videoId")
                 CRLog.d("onStartCommand: ($mVideoId) ")
 
+                // youtube background play
                 MainActivity.youtubeView?.enableBackgroundPlayback(true)
                 mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
                 mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }

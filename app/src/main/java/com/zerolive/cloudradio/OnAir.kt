@@ -600,16 +600,18 @@ object OnAir : Fragment() {
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getTitle())
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getArtist())
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration())
-            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mAlbumUri.get(lastIdx).toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, mAlbumUri.get(lastIdx).toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, mAlbumUri.get(lastIdx).toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, mAlbumUri.get(lastIdx).toString())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, getThumbnail())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, getThumbnail())
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, getThumbnail())
-            .build()
 
-        MainActivity.mMediaSession?.setMetadata(metadata)
+        if ( lastIdx >= 0 ) {
+            metadata.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mAlbumUri.get(lastIdx).toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, mAlbumUri.get(lastIdx).toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, mAlbumUri.get(lastIdx).toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, mAlbumUri.get(lastIdx).toString())
+        }
+
+        MainActivity.mMediaSession?.setMetadata(metadata.build())
         MainActivity.mMediaSession?.isActive = true
     }
 
