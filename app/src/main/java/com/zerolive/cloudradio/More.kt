@@ -11,7 +11,8 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.fragment.app.Fragment
-import com.zerolive.cloudradio.R
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import java.io.*
@@ -170,6 +171,10 @@ object SeekBarHandler : SeekBar.OnSeekBarChangeListener {
     }
 }
 
+data class SettingsItem(
+    val autoplay: String
+)
+
 
 @SuppressLint("StaticFieldLeak")
 object More : Fragment(), AsyncCallback {
@@ -210,6 +215,9 @@ object More : Fragment(), AsyncCallback {
     lateinit var btn_ytb_ok: Button
     lateinit var btn_ytb_cancel: Button
     lateinit var btn_check_random: CheckBox
+
+    // autoplay
+    lateinit var btn_autoplay: CheckBox
 
     var bInitialized = false
 
@@ -452,9 +460,59 @@ object More : Fragment(), AsyncCallback {
         btn_ytb_cancel.setOnClickListener { onYoutubeButtonHandler("cancel") }
         btn_check_random = view.findViewById(R.id.btn_random_check)
 
+        // autoplay
+        btn_autoplay = view.findViewById(R.id.btn_autoplay_check)
+        btn_autoplay.setOnClickListener { onAutoPlayCheckClicked() }
+
+        loadSettings()
+
         bInitialized = true
 
         return view
+    }
+
+    fun getAutoPlay(): Boolean {
+        if ( bInitialized ) {
+            return btn_autoplay.isChecked
+        } else {
+            return false
+        }
+    }
+
+    private fun onAutoPlayCheckClicked() {
+        var item: SettingsItem
+        if ( btn_autoplay.isChecked ) {
+            CRLog.d("set autoplay")
+            item = SettingsItem("true")
+        } else {
+            CRLog.d("cancel autoplay")
+            item = SettingsItem("false")
+        }
+
+        saveSettings(item)
+    }
+
+    private fun saveSettings(item: SettingsItem) {
+        val gson = GsonBuilder().disableHtmlEscaping().create()
+        val itemType: TypeToken<SettingsItem> = object : TypeToken<SettingsItem>() {}
+        val jstr = gson.toJson(item, itemType.type)
+
+        CRLog.d("saveSettings json: ${jstr}")
+        Program.WriteFile().execute(Program.DEFAULT_FILE_PATH + "settings.json", jstr.toString())
+    }
+
+    private fun loadSettings() {
+        val fileobj = File(Program.DEFAULT_FILE_PATH + "settings.json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            CRLog.d("loadSetting dump: ${content} ]")
+
+            val settingJson = Json.parseToJsonElement(content)
+            val autoplay = settingJson.jsonObject["autoplay"].toString().replace("\"","").toBoolean()
+            btn_autoplay.isChecked = autoplay
+            CRLog.d("loadSetting.......... [ autoplay: ${autoplay} ]")
+        }
     }
 
     private fun clearYtbText() {

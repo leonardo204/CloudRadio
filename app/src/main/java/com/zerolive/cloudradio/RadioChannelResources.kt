@@ -394,7 +394,8 @@ object RadioChannelResources: AsyncCallback {
                     .toString()
                     .replace("\"","")
                     .replace("\\","")
-                val map = RadioCompletionMap(title, title, channelList.size, title, title, null, MEDIATYPE.YOUTUBE_PLAYLIST)
+                val map = RadioCompletionMap(title, title, channelList.size, title+".json", title+".json", null, MEDIATYPE.YOUTUBE_PLAYLIST)
+
                 addChannelList(map)
             }
         }
@@ -407,6 +408,9 @@ object RadioChannelResources: AsyncCallback {
     fun initResources(context: Context) {
         mContext = context
         DEFAULT_FILE_PATH = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/"
+
+        YoutubePlaylistUpdater.replaceYtbplsJson(DEFAULT_FILE_PATH)
+
 
         // for youtube playlist
         val num = addYtbPlaylist()

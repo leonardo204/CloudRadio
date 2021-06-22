@@ -31,7 +31,8 @@ object HeadSetConnectReceiver : BroadcastReceiver()
     }
 
     private fun doStart() {
-        OnAir.requestStartRadioService()
+        CRLog.d("autoplay: ${More.getAutoPlay()}")
+        if ( More.getAutoPlay() ) OnAir.requestStartRadioService()
     }
 
     private fun doStop() {

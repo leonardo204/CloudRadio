@@ -61,7 +61,7 @@ object : Handler() {
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
 //                YoutubeLiveUpdater.update()
-//                YoutubePlaylistUpdater.update()
+                //YoutubePlaylistUpdater.update()
             }
         }
     }
@@ -254,10 +254,7 @@ object OnAir : Fragment() {
             program_layout?.addView(btn)
 
             val prefix = "ytbpls_"
-            var defaultText = RadioChannelResources.getDefaultTextByTitle(title)
-            if ( defaultText.startsWith(prefix) ) {
-                defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
-            }
+            var defaultText = RadioChannelResources.getDefaultTextByTitle(title).replace(prefix, "")
 
             updateOnAirButtonText(
                 RadioChannelResources.getFilenameByTitle(title),
@@ -325,10 +322,7 @@ object OnAir : Fragment() {
         //CRLog.d( "updateOnAirButtonText $filename  $text  $enable")
 
         val prefix = "ytbpls_"
-        var defaultText = RadioChannelResources.getDefaultTextByFilename(filename)
-        if ( defaultText.startsWith(prefix) ) {
-            defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
-        }
+        var defaultText = RadioChannelResources.getDefaultTextByFilename(filename).replace(prefix, "")
 
         val iter = onair_btnList.iterator()
         while( iter.hasNext() ) {
@@ -1057,14 +1051,14 @@ object OnAir : Fragment() {
             clearYoutubePlayListItem()
 
             // youtube play
-            if ( filename.contains("youtube") ) {
+            if ( type == MEDIATYPE.YOUTUBE_LIVE || type == MEDIATYPE.YOUTUBE_NORMAL ) {
                 val videoId = filename.substring(filename.indexOf("youtube_") + 8)
                 CRLog.d("youtube videoId: " + videoId)
                 createYoutubeView(filename, videoId)
                 return
             }
             // youtube playlist
-            else if ( filename.startsWith("ytbpls_") ) {
+            else if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
                 val videoId = getVideoId(filename)
                 CRLog.d("ytbpls videoId: " + videoId)
                 videoId?.let { createYoutubeView(filename, it) }

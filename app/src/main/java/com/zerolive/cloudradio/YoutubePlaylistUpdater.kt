@@ -54,8 +54,6 @@ object : Handler() {
     }
 }
 
-// TODO
-// 4. 추가한 playlist 제거 필요 (ui 로 할 수 있게)
 object YoutubePlaylistUpdater : AsyncCallback {
 
     var mPlayListId: String? = null
@@ -120,12 +118,40 @@ object YoutubePlaylistUpdater : AsyncCallback {
             mDirPath = path
             mUrl = url
             mRandom = random
-            mTitle = "ytbpls_" + title.replace(" ", "_")
+            mTitle = title.replace(" ", "_")
             val item = CurPlsUpdateItem(mTitle!!, it, 1)
             mRequestStatus.put(mTitle!!, item)
             CRLog.d("[req. ${mRequestStatus.get(mTitle)}] update title: ${mTitle}  -  playlistId: ${it}")
             GetPlayLists(this, mTitle, false).execute(it)
+            More.btn_check_random.isChecked = false
         }
+    }
+
+    fun replaceYtbplsJson(path: String) {
+        // write json
+        var list: List<YtbListItem> = listOf()
+        val fileobj = File(path + "ytbpls.json")
+        if ( fileobj.exists() && fileobj.canRead() ) {
+            val ins: InputStream = fileobj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val items = Json.parseToJsonElement(content)
+            for(i in items.jsonArray.indices) {
+                val tt = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString()).toString().replace("\"", "").replace("ytbpls_","")
+                val uu = Json.parseToJsonElement(items.jsonArray[i].jsonObject["url"].toString()).toString().replace("\"", "")
+                val rr = Json.parseToJsonElement(items.jsonArray[i].jsonObject["random"].toString()).toString().replace("\"","")
+
+                CRLog.d("[replaceYtbplsJson] save item - filename: ${tt}.json  title: ${tt}, random: ${rr}, url: ${uu}")
+                var oriItem = YtbListItem(tt+".json", tt, uu, rr)
+                list += oriItem
+            }
+        }
+
+        val gson = GsonBuilder().disableHtmlEscaping().create()
+        val listType: TypeToken<List<YtbListItem>> = object : TypeToken<List<YtbListItem>>() {}
+        val arr = gson.toJson(list, listType.type)
+
+        CRLog.d("[replaceYtbplsJson] write json: ${arr}")
+        Program.WriteFile().execute(path + "ytbpls.json", arr.toString())
     }
 
     // 처음 playlist 요청하는 시점
@@ -150,7 +176,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
                 val jTitle = Json.parseToJsonElement(items.jsonArray[i].jsonObject["title"].toString())
                 val jUrl = Json.parseToJsonElement(items.jsonArray[i].jsonObject["url"].toString())
                 mPlayListId = jUrl.toString().replace("\"","").substring(jUrl.toString().replace("\"","").indexOf("playlist?list=") + 14)
-                mTitle = jTitle.toString().replace(" ", "_").replace("\"","")
+                // ytbpls_ prefix 제거
+                mTitle = jTitle.toString().replace(" ", "_").replace("\"","").replace("ytbpls_","")
                 if ( mRequestStatus.containsKey(mTitle!!) ) {
                     val num = mRequestStatus.get(mTitle)?.num
                     val item = CurPlsUpdateItem(mTitle!!, mPlayListId, num!!+1)
@@ -278,7 +305,7 @@ object YoutubePlaylistUpdater : AsyncCallback {
     }
 
     // 각 재생목록에 대한 video id 들을 작성
-    // ex) ytbpls_케이팝.json
+    // ex) 제이플라커버.json
     private fun writePlayList(list: List<YtbPlayListItem>, filename: String) {
         val gson = GsonBuilder().disableHtmlEscaping().create()
         val listType: TypeToken<List<YtbPlayListItem>> = object: TypeToken<List<YtbPlayListItem>>() {}
@@ -311,7 +338,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
         if ( mRequestStatus.containsKey(filename) && mRequestStatus.get(filename)?.num!! < 1 ) {
             // write json file
             var cur = mListMap.size
-            writePlayList(mListMap.get(filename)!!, filename)
+            // remove ytbpls_ prefix
+            writePlayList(mListMap.get(filename)!!, filename.replace("ytbpls_",""))
             mListMap.remove(filename)
             Log.d(plstTag, "writePlayList size ${cur} -> ${mListMap.size}")
             if ( mListMap.size == 0 ) {

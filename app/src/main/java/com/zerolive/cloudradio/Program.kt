@@ -80,7 +80,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
     }
 
     private fun removePlayList(item: ListViewItem) {
-        val title = RadioChannelResources.getTitleByDefaultText("ytbpls_" + item.defaultText)
+        val title = RadioChannelResources.getTitleByDefaultText(item.defaultText)
 
         CRLog.d("removePlayList [ title: ${title} defaultText: ${item.defaultText} ]")
         var bRemoved = false
@@ -96,9 +96,9 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
             bRemoved = true
         }
         // program_btnList 는 ytbpls_ 를 빼고 관리 -_-;;
-        if ( program_btnList.containsKey(item.defaultText) ) {
-            CRLog.d("remove program_btnList  [ ${item.defaultText} ]")
-            program_btnList.remove(item.defaultText)
+        if ( program_btnList.containsKey(title) ) {
+            CRLog.d("remove program_btnList  [ ${title} ]")
+            program_btnList.remove(title)
             bRemoved = true
         }
 
@@ -273,10 +273,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         }
 
         val prefix = "ytbpls_"
-        var defaultText = title
-        if ( defaultText.startsWith(prefix) ) {
-            defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
-        }
+        var defaultText = title.replace(prefix, "")
 
         addFavoriteItem(MEDIATYPE.YOUTUBE_PLAYLIST, defaultText)
 
@@ -318,10 +315,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
                 CRLog.d("make program buttons for [${idx}] title:${title}   default: ${RadioChannelResources.channelList.get(idx).defaultButtonText}   filename:${filename}")
 
                 val prefix = "ytbpls_"
-                var defaultText = RadioChannelResources.channelList.get(idx).defaultButtonText
-                if ( defaultText.startsWith(prefix) ) {
-                    defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
-                }
+                var defaultText = RadioChannelResources.channelList.get(idx).defaultButtonText.replace(prefix, "")
 
                 addFavoriteItem(RadioChannelResources.channelList.get(idx).mediaType, defaultText)
 
@@ -347,10 +341,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
             CRLog.d("make program buttons for [${i}] ${title}")
 
             val prefix = "ytbpls_"
-            var defaultText = RadioChannelResources.channelList.get(i).defaultButtonText
-            if ( defaultText.startsWith(prefix) ) {
-                defaultText = title.substring(defaultText.indexOf(prefix) + prefix.length)
-            }
+            var defaultText = RadioChannelResources.channelList.get(i).defaultButtonText.replace(prefix, "")
 
             addFavoriteItem(RadioChannelResources.channelList.get(i).mediaType, defaultText)
 
@@ -386,9 +377,6 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
             }
             else -> {
                 type?.let {
-                    if ( type.equals(MEDIATYPE.YOUTUBE_PLAYLIST.toString()) ) {
-                        text = "ytbpls_" + defaultText
-                    }
                     title = RadioChannelResources.getTitleByDefaultText(text)
                     filename = RadioChannelResources.getFilenameByTitle(title)
                 }
@@ -493,15 +481,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
             val obj = iter.next()
             val title = obj.key
             CRLog.d("resetAllButtonText() title: ${title}")
-            var filename = RadioChannelResources.getFilenameByTitle(title)
-            if ( filename.equals("Unknown Filename") ) {
-                CRLog.d("resetAllButtonText() title: ${title} retry defaultText")
-                filename = RadioChannelResources.getFilenameByDefaultText(title)
-                if ( filename.equals("Unknown Filename") ) {
-                    CRLog.d("resetAllButtonText() title: ${title} retry ytbpls")
-                    filename = RadioChannelResources.getFilenameByTitle("ytbpls_"+title)
-                }
-            }
+            val filename = RadioChannelResources.getFilenameByTitle(title)
             updateProgramButtonText(filename,   false)
         }
     }
@@ -592,9 +572,10 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         }
 
         override fun doInBackground(vararg param: String?): String? {
-            CRLog.d("WriteFile.doInBackground")
             var filename = param[0]
             var data = param[1]
+            CRLog.d("WriteFile.doInBackground ${filename}")
+
 
             try {
                 var fileObj = File(filename)

@@ -5,6 +5,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -12,6 +14,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.File
+import java.io.InputStream
+import java.nio.charset.Charset
 
 
 object YoutubeLiveUpdater : AsyncCallback{
@@ -21,6 +26,7 @@ object YoutubeLiveUpdater : AsyncCallback{
 
     fun update() {
         Log.d(updaterTag,  "Update")
+
         var element: JsonElement? = RadioChannelResources.getResourceElement()
 
         // version check end
@@ -46,6 +52,8 @@ object YoutubeLiveUpdater : AsyncCallback{
         }
         MainActivity.getInstance().makeToast("유튜브 라이브 채널 업데이트 요청 완료")
     }
+
+
 
     override fun onTaskDone(vararg arg: String?) {
         val title = arg[0]

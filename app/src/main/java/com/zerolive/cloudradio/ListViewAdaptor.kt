@@ -89,13 +89,13 @@ class ListViewAdaptor : BaseAdapter(), View.OnClickListener {
     }
 
     fun removeItem(title: String) {
-        CRLog.d("Adaptor removeItem (Cur: ${count} title:${title}")
+        CRLog.d("Adaptor removeItem (Cur: ${count}) title:${title}")
 
         for ( i in listViewItemList.indices ) {
             val targetTitle = listViewItemList.get(i).defaultText
             if ( targetTitle.equals(title) ) {
                 listViewItemList.removeAt(i)
-                CRLog.d("Adaptor removeItem  success ! (Cur: ${count} title:${title}")
+                CRLog.d("Adaptor removeItem  success ! (Cur: ${count}) title:${title}")
                 break
             }
         }
