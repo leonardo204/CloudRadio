@@ -92,6 +92,10 @@ class RadioService : Service() {
                     RadioNotification.updateNotification(it, false)
                 }
             }
+            else -> {
+                CRLog.d("action type: ${intent?.action}")
+                MainActivity.getInstance().moveToFront()
+            }
         }
         return START_NOT_STICKY
     }
@@ -201,7 +205,10 @@ class RadioService : Service() {
                 CRLog.d("onStartCommand: ($mVideoId) ")
 
                 // youtube background play
-                MainActivity.youtubeView?.enableBackgroundPlayback(true)
+                // 백그라운드 재생은 private release 에서만 가능하도록 처리
+                if ( ReleaseType.TYPE.value == RELEASEMODE.PRIVATE || More.getLockPlay() == true ) {
+                    MainActivity.youtubeView?.enableBackgroundPlayback(true)
+                }
                 mVideoId?.let { OnAir.youtubePlayer?.loadVideo(it, 0.0f) }
                 mFilename?.let { it1 -> sendCallback(it1, RESULT.PLAY_SUCCESS) }
                 OnAir.setYoutubeStateManual(PlayerConstants.PlayerState.PLAYING)

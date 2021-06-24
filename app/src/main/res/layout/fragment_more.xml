@@ -26,107 +26,107 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 >
 
-                <TextView
-                    android:id="@+id/txt_dpi"
-                    android:layout_marginLeft="10sp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="해상도"
-                    />
+<!--                <TextView-->
+<!--                    android:id="@+id/txt_dpi"-->
+<!--                    android:layout_marginLeft="10sp"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="해상도"-->
+<!--                    />-->
 
-                <LinearLayout xmlns:tools="http://schemas.android.com/tools"
-                    android:layout_marginTop="20sp"
-                    android:layout_marginLeft="5sp"
-                    android:layout_marginRight="5sp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:background="@drawable/version_layout"
-                    xmlns:android="http://schemas.android.com/apk/res/android">
+<!--                <LinearLayout xmlns:tools="http://schemas.android.com/tools"-->
+<!--                    android:layout_marginTop="20sp"-->
+<!--                    android:layout_marginLeft="5sp"-->
+<!--                    android:layout_marginRight="5sp"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:orientation="vertical"-->
+<!--                    android:background="@drawable/version_layout"-->
+<!--                    xmlns:android="http://schemas.android.com/apk/res/android">-->
 
-                    <androidx.constraintlayout.widget.ConstraintLayout
-                        android:layout_marginTop="5sp"
-                        android:layout_marginLeft="20sp"
-                        android:layout_marginRight="20sp"
-                        android:layout_marginBottom="5dp"
-                        android:id="@+id/layout_app_version_check"
-                        android:layout_height="wrap_content"
-                        android:layout_width="match_parent"
-                        xmlns:app="http://schemas.android.com/apk/res-auto"
-                        app:layout_constraintTop_toTopOf="parent"
-                        android:background="@color/white">
+<!--                    <androidx.constraintlayout.widget.ConstraintLayout-->
+<!--                        android:layout_marginTop="5sp"-->
+<!--                        android:layout_marginLeft="20sp"-->
+<!--                        android:layout_marginRight="20sp"-->
+<!--                        android:layout_marginBottom="5dp"-->
+<!--                        android:id="@+id/layout_app_version_check"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        xmlns:app="http://schemas.android.com/apk/res-auto"-->
+<!--                        app:layout_constraintTop_toTopOf="parent"-->
+<!--                        android:background="@color/white">-->
 
-                        <TextView
-                            android:id="@+id/txt_app_version"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="현재 버전: vx.x.x (CH. 20210406)"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textAlignment="gravity"
-                            android:layout_marginStart="5dp"
-                            android:layout_marginBottom="5dp"
-                            app:layout_constraintTop_toTopOf="parent"
-                            app:layout_constraintLeft_toLeftOf="parent"
-                            />
+<!--                        <TextView-->
+<!--                            android:id="@+id/txt_app_version"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="현재 버전: vx.x.x (CH. 20210406)"-->
+<!--                            android:textSize="15sp"-->
+<!--                            android:textStyle="bold"-->
+<!--                            android:textAlignment="gravity"-->
+<!--                            android:layout_marginStart="5dp"-->
+<!--                            android:layout_marginBottom="5dp"-->
+<!--                            app:layout_constraintTop_toTopOf="parent"-->
+<!--                            app:layout_constraintLeft_toLeftOf="parent"-->
+<!--                            />-->
 
-                        <TextView
-                            android:id="@+id/txt_app_version_result"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="최신 버전 입니다."
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textAlignment="gravity"
-                            android:layout_marginStart="10dp"
-                            android:layout_marginBottom="5dp"
-                            app:layout_constraintTop_toTopOf="parent"
-                            app:layout_constraintRight_toRightOf="parent"
-                            />
+<!--                        <TextView-->
+<!--                            android:id="@+id/txt_app_version_result"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="최신 버전 입니다."-->
+<!--                            android:textSize="15sp"-->
+<!--                            android:textStyle="bold"-->
+<!--                            android:textAlignment="gravity"-->
+<!--                            android:layout_marginStart="10dp"-->
+<!--                            android:layout_marginBottom="5dp"-->
+<!--                            app:layout_constraintTop_toTopOf="parent"-->
+<!--                            app:layout_constraintRight_toRightOf="parent"-->
+<!--                            />-->
 
-                        <Button
-                            android:id="@+id/btn_app_version_check"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="20sp"
-                            android:text="업데이트 확인"
-                            android:autoSizeTextType="uniform"
-                            app:layout_constraintTop_toTopOf="parent"
-                            />
+<!--                        <Button-->
+<!--                            android:id="@+id/btn_app_version_check"-->
+<!--                            android:layout_width="match_parent"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:layout_marginTop="20sp"-->
+<!--                            android:text="업데이트 확인"-->
+<!--                            android:autoSizeTextType="uniform"-->
+<!--                            app:layout_constraintTop_toTopOf="parent"-->
+<!--                            />-->
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="50sp"
-                            android:orientation="horizontal"
-                            app:layout_constraintTop_toBottomOf="@id/btn_app_version_check"
-                            >
-                            <Button
-                                android:id="@+id/btn_app_download"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:layout_gravity="center_horizontal"
-                                android:textAlignment="gravity"
-                                android:autoSizeTextType="uniform"
-                                android:layout_weight="1"
-                                android:layout_marginRight="5sp"
-                                android:text="앱 다운로드"/>
+<!--                        <LinearLayout-->
+<!--                            android:layout_width="match_parent"-->
+<!--                            android:layout_height="50sp"-->
+<!--                            android:orientation="horizontal"-->
+<!--                            app:layout_constraintTop_toBottomOf="@id/btn_app_version_check"-->
+<!--                            >-->
+<!--                            <Button-->
+<!--                                android:id="@+id/btn_app_download"-->
+<!--                                android:layout_width="match_parent"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:layout_gravity="center_horizontal"-->
+<!--                                android:textAlignment="gravity"-->
+<!--                                android:autoSizeTextType="uniform"-->
+<!--                                android:layout_weight="1"-->
+<!--                                android:layout_marginRight="5sp"-->
+<!--                                android:text="앱 다운로드"/>-->
 
-                            <Button
-                                android:id="@+id/btn_channel_update"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:gravity="center_horizontal"
-                                android:textAlignment="gravity"
-                                android:autoSizeTextType="uniform"
-                                android:layout_marginLeft="5sp"
-                                android:layout_weight="1"
-                                android:text="채널 업데이트" />
-                        </LinearLayout>
+<!--                            <Button-->
+<!--                                android:id="@+id/btn_channel_update"-->
+<!--                                android:layout_width="match_parent"-->
+<!--                                android:layout_height="match_parent"-->
+<!--                                android:gravity="center_horizontal"-->
+<!--                                android:textAlignment="gravity"-->
+<!--                                android:autoSizeTextType="uniform"-->
+<!--                                android:layout_marginLeft="5sp"-->
+<!--                                android:layout_weight="1"-->
+<!--                                android:text="채널 업데이트" />-->
+<!--                        </LinearLayout>-->
 
 
-                    </androidx.constraintlayout.widget.ConstraintLayout>
+<!--                    </androidx.constraintlayout.widget.ConstraintLayout>-->
 
-                </LinearLayout>
+<!--                </LinearLayout>-->
 
                 <LinearLayout
                     android:layout_width="match_parent"

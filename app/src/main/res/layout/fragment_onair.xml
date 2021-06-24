@@ -35,10 +35,11 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageView
+        <ImageButton
             android:id="@+id/image_airStatus"
             android:layout_width="15dp"
             android:layout_height="15dp"
+            android:background="@drawable/airstatus_bg"
             app:layout_constraintVertical_bias="0.07"
             app:layout_constraintHorizontal_bias="0.05"
             app:layout_constraintBottom_toBottomOf="@+id/image_empty_weather"
@@ -228,56 +229,10 @@
         android:layout_marginTop="8sp"
         >
         <LinearLayout
+            android:id="@+id/layout_radio_linear"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical" >
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/layout_radio"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="start"
-                android:layout_marginTop="16dp" >
-
-                <RelativeLayout
-                    android:id="@+id/layout_loading"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toTopOf="parent"
-                    >
-                    <TextView
-                        android:id="@+id/txt_loading"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="  로딩 중입니다."
-                        android:drawableStart="@drawable/ic_radio_antenna"
-                        android:gravity="fill_vertical"
-                        android:textStyle="bold"
-                        android:textSize="20sp"
-                        android:layout_centerInParent="true"
-                        />
-                </RelativeLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    app:layout_constraintTop_toBottomOf="@+id/layout_loading"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    >
-
-                    <LinearLayout
-                        android:id="@+id/layout_radio_linear"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
         </LinearLayout>
     </ScrollView>
 

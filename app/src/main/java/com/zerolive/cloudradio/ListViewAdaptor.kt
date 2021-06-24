@@ -12,6 +12,7 @@ data class ListViewItem (
     var type: String,
     var iconType: Drawable,
     var defaultText: String,
+    var title: String,
     var iconDelete: Drawable? = null
 )
 
@@ -46,9 +47,9 @@ class ListViewAdaptor : BaseAdapter(), View.OnClickListener {
         return position.toLong()
     }
 
-    fun getItem(title: String): ListViewItem? {
+    fun getItem(titleParam: String): ListViewItem? {
         for ( i in listViewItemList.indices ) {
-            if ( listViewItemList.get(i).defaultText.contains(title) ) {
+            if ( listViewItemList.get(i).title.equals(titleParam) ) {
                 return listViewItemList.get(i)
             }
         }
@@ -83,7 +84,7 @@ class ListViewAdaptor : BaseAdapter(), View.OnClickListener {
     }
 
     fun addItem(item: ListViewItem) {
-        CRLog.d("Adaptor addItem (Cur: ${count}) type:${item.type}   title:${item.defaultText}    delete: ${item.iconDelete}")
+        CRLog.d("Adaptor addItem (Cur: ${count}) type:${item.type}   title:${item.title}    delete: ${item.iconDelete}")
         listViewItemList.add(item)
         listViewItemList.sortBy { item -> item.type }
     }

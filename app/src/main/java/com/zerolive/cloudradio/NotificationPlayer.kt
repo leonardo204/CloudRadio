@@ -19,15 +19,15 @@ object NotificationPlayer {
     fun createNotification(context: Context, filename: String, manager: NotificationManager, playPause: Boolean): Notification {
 
         // 알림 클릭시 OnAir 이동됨
-        val notificationIntent = Intent(context, OnAir::class.java)
-        notificationIntent.action = Constants.ACTION.MAIN_ACTION
-        notificationIntent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP //or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            notificationIntent,
-            FLAG_UPDATE_CURRENT
-        )
+//        val notificationIntent = Intent(context, OnAir::class.java)
+//        notificationIntent.action = Constants.ACTION.MAIN_ACTION
+//        notificationIntent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP //or Intent.FLAG_ACTIVITY_CLEAR_TASK
+//        val pendingIntent = PendingIntent.getActivity(
+//            context,
+//            0,
+//            notificationIntent,
+//            FLAG_UPDATE_CURRENT
+//        )
 
         // 각 버튼들에 관한 Intent
         val playIntent = Intent(context, RadioService::class.java)
@@ -46,6 +46,11 @@ object NotificationPlayer {
         nextIntent.action = Constants.ACTION.NEXT_ACTION
         val nextPendingIntent = PendingIntent.getService(context, 0, nextIntent, 0)
 
+        val mainIntent = Intent(context, RadioService::class.java)
+        mainIntent.action = Constants.ACTION.MAIN_ACTION
+        mainIntent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+        val mainPendingIntent = PendingIntent.getService(context, 0, mainIntent, 0)
+
         // custom view
         val remoteViews = RemoteViews(getPackageName(OnAir::class.java),
             R.layout.notificatoin_player
@@ -55,6 +60,9 @@ object NotificationPlayer {
         // prev, next
         remoteViews.setOnClickPendingIntent(R.drawable.rewind, prevPendingIntent)
         remoteViews.setOnClickPendingIntent(R.drawable.forward, nextPendingIntent)
+
+        // main
+        remoteViews.setOnClickPendingIntent(R.id.txt_title, mainPendingIntent)
 
         // true -> playing
         if ( playPause ) {
@@ -80,13 +88,14 @@ object NotificationPlayer {
         // 알림
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("CloudRadio")
-            .setContentText("라디오가 재생중입니다.")
+//            .setContentText("라디오가 재생중입니다.")
             .setSmallIcon(R.drawable.ic_radio_antenna)
-            .setOngoing(true) // true 일경우 알림 리스트에서 클릭하거나 좌우로 드래그해도 사라지지 않음
-            .setContentIntent(pendingIntent)
+//            .setOngoing(true) // true 일경우 알림 리스트에서 클릭하거나 좌우로 드래그해도 사라지지 않음
+//            .setContentIntent(pendingIntent)
+            .setContentIntent(mainPendingIntent)
             .setContent(remoteViews)
             .setNotificationSilent()
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+//            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         // Oreo 부터는 Notification Channel을 만들어야 함

@@ -65,18 +65,22 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
     lateinit var popupMenu: PopupMenu
 
     override fun onListBtnClick(position: Int, view: View?) {
-        var listViewitem = listViewAdaptor.getItem(position) as ListViewItem
-        CRLog.d("onListBtnClick(idx: ${position}): ${listViewitem.defaultText}")
-        popupMenu = PopupMenu(mContext, view)
-        var inflater = MenuInflater(mContext)
-        inflater.inflate(R.menu.fav_delete_popup, popupMenu.menu)
-        popupMenu.setOnMenuItemClickListener ( object: PopupMenu.OnMenuItemClickListener {
-            override fun onMenuItemClick(item: MenuItem?): Boolean {
-                removePlayList(listViewitem)
-                return false
-            }
-        })
-        popupMenu.show()
+        val listViewitem = listViewAdaptor.getItem(position) as ListViewItem
+        val type = listViewitem.type
+        CRLog.d("onListBtnClick(idx: ${position}): ${listViewitem.defaultText}  type: ${type}")
+
+        if ( type == MEDIATYPE.YOUTUBE_PLAYLIST.toString() ) {
+            popupMenu = PopupMenu(mContext, view)
+            var inflater = MenuInflater(mContext)
+            inflater.inflate(R.menu.fav_delete_popup, popupMenu.menu)
+            popupMenu.setOnMenuItemClickListener(object : PopupMenu.OnMenuItemClickListener {
+                override fun onMenuItemClick(item: MenuItem?): Boolean {
+                    removePlayList(listViewitem)
+                    return false
+                }
+            })
+            popupMenu.show()
+        }
     }
 
     private fun removePlayList(item: ListViewItem) {
@@ -180,6 +184,7 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         btn_save_setting.isEnabled = false
         btn_save_setting.setOnClickListener { onRadioButton("SAVE", null) }
         btn_reset_setting.setOnClickListener { onRadioButton("RESET", null) }
+        btn_reset_setting.isEnabled = false
 
         listViewAdaptor = ListViewAdaptor()
         listViewAdaptor.setListener(Program)
@@ -187,8 +192,8 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         favListView.adapter = listViewAdaptor
         favListView.setOnItemClickListener { parent, view, position, id ->
             val item = parent.getItemAtPosition(position) as ListViewItem
-            CRLog.d("clicked item  ${item.defaultText}")
-            onRadioButton(item.defaultText, item.type)
+            CRLog.d("clicked item  ${item.title}")
+            onRadioButton(item.title, item.type)
         }
 
         setHasOptionsMenu(true)
@@ -275,22 +280,24 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         val prefix = "ytbpls_"
         var defaultText = title.replace(prefix, "")
 
-        addFavoriteItem(MEDIATYPE.YOUTUBE_PLAYLIST, defaultText)
-
         val map = RadioCompletionMap(
             defaultText,
             title,
             RadioChannelResources.channelList.size,
-            title,
-            title,
+            title + ".json",
+            title + ".json",
             null,
             MEDIATYPE.YOUTUBE_PLAYLIST
         )
+
         synchronized(RadioChannelResources.mContext) {
             RadioChannelResources.channelList.add(map)
             CRLog.d( "channelSize ${RadioChannelResources.channelSize} -> ${RadioChannelResources.channelSize +1}")
             RadioChannelResources.channelSize++
         }
+
+        addProgramItem(MEDIATYPE.YOUTUBE_PLAYLIST, title)
+
         updateProgramButtonText(RadioChannelResources.getTitleByFilename(title),  false)
 
         // write json
@@ -314,10 +321,10 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
                 val title = RadioChannelResources.channelList.get(idx).title
                 CRLog.d("make program buttons for [${idx}] title:${title}   default: ${RadioChannelResources.channelList.get(idx).defaultButtonText}   filename:${filename}")
 
-                val prefix = "ytbpls_"
-                var defaultText = RadioChannelResources.channelList.get(idx).defaultButtonText.replace(prefix, "")
+//                val prefix = "ytbpls_"
+//                var defaultText = RadioChannelResources.channelList.get(idx).defaultButtonText.replace(prefix, "")
 
-                addFavoriteItem(RadioChannelResources.channelList.get(idx).mediaType, defaultText)
+                addProgramItem(RadioChannelResources.channelList.get(idx).mediaType, title)
 
                 updateProgramButtonText(RadioChannelResources.channelList.get(idx).filename,   false)
                 idx++
@@ -340,10 +347,10 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
             val title = RadioChannelResources.channelList.get(i).title
             CRLog.d("make program buttons for [${i}] ${title}")
 
-            val prefix = "ytbpls_"
-            var defaultText = RadioChannelResources.channelList.get(i).defaultButtonText.replace(prefix, "")
+//            val prefix = "ytbpls_"
+//            var defaultText = RadioChannelResources.channelList.get(i).defaultButtonText.replace(prefix, "")
 
-            addFavoriteItem(RadioChannelResources.channelList.get(i).mediaType, defaultText)
+            addProgramItem(RadioChannelResources.channelList.get(i).mediaType, title)
 
             updateProgramButtonText(RadioChannelResources.channelList.get(i).filename,   false)
         }
@@ -363,21 +370,22 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
     // 선호채널 상태가 아니라면
     //   - 선호채널 리스트 등록
     //   - 선호채널 색상 표시
-    fun onRadioButton(defaultText: String, type: String?) {
-        CRLog.d("onRadioButton type:${type}  text:${defaultText}")
-        var text = defaultText
-        var title = RadioChannelResources.getTitleByDefaultText(text)
-        var filename = RadioChannelResources.getFilenameByTitle(title)
+    fun onRadioButton(title: String, type: String?) {
+        val bDiffer = !isSameFavoriteList()
 
-        when(text) {
+        CRLog.d("onRadioButton type:${type}  text:${title} ")
+//        var text = defaultText
+//        var title = RadioChannelResources.getTitleByDefaultText(text)
+        var filename = RadioChannelResources.getFilenameByTitle(title)
+        when(title) {
             "SAVE" -> saveAction()
             "RESET" -> {
-                btn_save_setting.isEnabled = true
-                resetAction()
+//                btn_save_setting.isEnabled = true
+                if ( bDiffer ) resetSelectionAction()
             }
             else -> {
                 type?.let {
-                    title = RadioChannelResources.getTitleByDefaultText(text)
+//                    title = RadioChannelResources.getTitleByDefaultText(text)
                     filename = RadioChannelResources.getFilenameByTitle(title)
                 }
 
@@ -385,11 +393,13 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
                     CRLog.d("remove favList: ${title}")
                     mCurFavList.remove(title)
                     btn_save_setting.isEnabled = !isSameFavoriteList()
+                    btn_reset_setting.isEnabled = !isSameFavoriteList()
                     updateProgramButtonText(filename,   false)
                 } else {
                     CRLog.d("add favList: ${title}")
                     mCurFavList.add(title)
                     btn_save_setting.isEnabled = !isSameFavoriteList()
+                    btn_reset_setting.isEnabled = !isSameFavoriteList()
                     updateProgramButtonText(filename,  true)
                 }
             }
@@ -431,16 +441,35 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         return false
     }
 
+    private fun restoreFavroiteList() {
+        mCurFavList.clear()
+        for(i in mBackFavList.indices) {
+            val title = mBackFavList.get(i)
+            val filename = RadioChannelResources.getFilenameByTitle(title)
+            mCurFavList.add(title)
+            updateProgramButtonText(filename,  true)
+        }
+        CRLog.d("restoreFavroiteList size: ${mCurFavList.size}")
+    }
+
     private fun saveAction() {
         if ( mCurFavList.size > 0 ) {
             dumpFavList()
             OnAir.updateOnAirPrograms(mCurFavList)
-            saveFavList()
             cloneFavroiteList()
         } else {
             resetAction()
         }
+        saveFavList()
         btn_save_setting.isEnabled = false
+        btn_reset_setting.isEnabled = false
+    }
+
+    fun resetSelectionAction() {
+        resetAllButtonText()
+        restoreFavroiteList()
+        btn_save_setting.isEnabled = false
+        btn_reset_setting.isEnabled = false
     }
 
     fun resetAction() {
@@ -451,8 +480,8 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
         dumpFavList()
     }
 
-    private fun addFavoriteItem(type: MEDIATYPE, title: String) {
-        CRLog.d("addFavoriteItem. title: ${title}")
+    private fun addProgramItem(type: MEDIATYPE, title: String) {
+        CRLog.d("addProgramItem. title: ${title}")
         if ( !program_btnList.containsKey(title) ) {
             var ic_type: Drawable? = null
             var ic_delete: Drawable? = null
@@ -467,7 +496,9 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
                 }
             }
 
-            val item = ListViewItem(null, type.toString(), ic_type, title, ic_delete)
+            val defaultText = RadioChannelResources.getDefaultTextByTitle(title)
+
+            val item = ListViewItem(null, type.toString(), ic_type, defaultText, title, ic_delete)
             program_btnList.put(title, item)
             listViewAdaptor.addItem(item)
             listViewAdaptor.notifyDataSetChanged()
@@ -489,14 +520,10 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
     private fun updateProgramButtonText(filename: String, bFavorite: Boolean) {
         CRLog.d( "updateProgramButtonText($bFavorite)  filename: ${filename} ")
 
-        val prefix = "ytbpls_"
-        var defaultText = RadioChannelResources.getDefaultTextByFilename(filename)
-        if ( defaultText.startsWith(prefix) ) {
-            defaultText = defaultText.substring(defaultText.indexOf(prefix) + prefix.length)
-        }
+        val title = RadioChannelResources.getTitleByFilename(filename)
 
         val ic_fav = ResourcesCompat.getDrawable(resources, R.drawable.ic_star, null)!!
-        val item = listViewAdaptor.getItem(defaultText)
+        val item = listViewAdaptor.getItem(title)
 
         item?.let {
             if (bFavorite) {

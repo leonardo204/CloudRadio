@@ -28,7 +28,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:background="@color/white"
+        android:background="@drawable/fav_top_layout"
         android:orientation="horizontal">
 
         <Button
@@ -36,14 +36,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="설정 저장" />
+            style="?android:attr/borderlessButtonStyle"
+            android:text="선택 저장" />
 
         <Button
             android:id="@+id/btn_reset_setting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="설정 초기화" />
+            style="?android:attr/borderlessButtonStyle"
+            android:text="선택 초기화" />
 
     </LinearLayout>
 

@@ -44,12 +44,12 @@ object : Handler() {
 
         message?.let {
             Log.d(plstTag, "ytbpls_handler call updatePlayLists: ${it}")
-            YoutubePlaylistUpdater.updatePlayLists(it, filename, update)
+            YoutubePlaylistUpdater.updatePlayLists(it, filename!!, update)
         }
 
         title?.let {
             Log.d(plstTag, "ytbpls_handler title: ${it}, random: ${random}, url: ${url}")
-            Program.addProgramButtons(it, url, random)
+            Program.addProgramButtons(it, url!!, random!!)
         }
     }
 }

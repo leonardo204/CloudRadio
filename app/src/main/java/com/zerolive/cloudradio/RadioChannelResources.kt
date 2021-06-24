@@ -136,7 +136,7 @@ object : Handler() {
         val title = bundle.getString("title")
         val url = bundle.getString("url")
         val type = bundle.getString("type")
-        RadioChannelResources.makeChannelList(type, title, url)
+        RadioChannelResources.makeChannelList(type!!, title!!, url!!)
         if (Program.bInitilized) Program.updateProgramButtons()
     }
 }

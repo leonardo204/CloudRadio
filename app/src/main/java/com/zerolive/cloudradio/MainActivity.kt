@@ -2,6 +2,8 @@ package com.zerolive.cloudradio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -12,6 +14,7 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationManager
@@ -19,13 +22,12 @@ import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock.sleep
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.Surface
 import android.view.View
 import android.view.View.OnClickListener
+import android.view.ViewGroup
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -101,12 +103,17 @@ class MainActivity : AppCompatActivity() {
                         instance = it
                     }
                 }
+
+        var customProgressDialog: ProgressDialog? = null
     }
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         CRLog.d("onCreate ${bInitialized}")
+        CRLog.d("ReleaseType: ${ReleaseType.TYPE.value}")
 
         // 앱 자체는 세로모드로 고정시킨다
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -116,6 +123,13 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
         title = "CloudRadio"
+
+        // progress dialog
+        customProgressDialog = ProgressDialog(this)
+        customProgressDialog?.let {
+            it.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            it.show()
+        }
 
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
@@ -170,6 +184,11 @@ class MainActivity : AppCompatActivity() {
         bInitialized = true
     }
 
+    fun removeLoading() {
+        CRLog.d("removeLoading")
+        customProgressDialog?.hide()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         CRLog.d("MainAcitivity onDestroyed")
@@ -192,6 +211,22 @@ class MainActivity : AppCompatActivity() {
         CRLog.d("MainAcitivity onBackPressed")
         moveTaskToBack(true)
 //        super.onBackPressed()
+    }
+
+    fun moveToFront() {
+        val am = mContext?.getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val tasks = am.getRunningTasks(Int.MAX_VALUE)
+        if (!tasks.isEmpty()) {
+            val tasksSize = tasks.size
+            for (i in 0 until tasksSize) {
+                val taskinfo = tasks[i]
+                CRLog.d("task: ${taskinfo.topActivity?.packageName}")
+                if (taskinfo.topActivity?.packageName == mContext?.applicationContext?.packageName) {
+                    am.moveTaskToFront(taskinfo.id, 0)
+                    break
+                }
+            }
+        }
     }
 
     fun systemRestart() {
@@ -306,7 +341,7 @@ class MainActivity : AppCompatActivity() {
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 
-        checkPermissions()
+//        checkPermissions()
 
         RadioPlayer.init()
 
@@ -405,8 +440,8 @@ class MainActivity : AppCompatActivity() {
     fun checkPermissions() {
         CRLog.d("checkPermissions")
 
-        val finePerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[0])
-        val coastPerm = ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSIONS[1])
+        val finePerm = mContext?.let{ ContextCompat.checkSelfPermission(it, REQUIRED_PERMISSIONS[0]) }
+        val coastPerm = mContext?.let{ ContextCompat.checkSelfPermission(it, REQUIRED_PERMISSIONS[1]) }
 
         if ( finePerm == PackageManager.PERMISSION_GRANTED
                 && coastPerm == PackageManager.PERMISSION_GRANTED )
@@ -415,25 +450,15 @@ class MainActivity : AppCompatActivity() {
             getGPSInfo()
         }
         else {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0])
-                    || ActivityCompat.shouldShowRequestPermissionRationale(
-                    this,
-                    REQUIRED_PERMISSIONS[1]
-                )) {
+            val activity = mContext?.let { it as Activity }
+            if (activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, REQUIRED_PERMISSIONS[0]) } == true
+                    || activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, REQUIRED_PERMISSIONS[1]) } == true) {
 
                 CRLog.d("Permissions are requested 1")
-                ActivityCompat.requestPermissions(
-                    this,
-                    REQUIRED_PERMISSIONS,
-                    locationPermissionCode
-                )
+                activity?.let { ActivityCompat.requestPermissions(it, REQUIRED_PERMISSIONS, locationPermissionCode) }
             } else {
                 CRLog.d("Permissions are requested 2")
-                ActivityCompat.requestPermissions(
-                    this,
-                    REQUIRED_PERMISSIONS,
-                    locationPermissionCode
-                )
+                activity?.let { ActivityCompat.requestPermissions(it, REQUIRED_PERMISSIONS, locationPermissionCode) }
             }
         }
     }
@@ -479,44 +504,6 @@ class MainActivity : AppCompatActivity() {
     fun removeGPSTracking() {
         CRLog.d("removeGPSTracking()")
         locationManager?.removeUpdates(CRLocationListener)
-    }
-
-    @SuppressLint("RestrictedApi")
-    fun installApp(path: String) {
-        CRLog.d("install: $path")
-        val toInstall = File(path)
-        CRLog.d("install2: $toInstall")
-        val intent: Intent
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-//            val apkUri = FileProvider.getUriForFile(
-//                this,
-//                BuildConfig.APPLICATION_ID,// + ".fileprovider",
-//                toInstall
-//            )
-//            intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-//            intent.data = apkUri
-//            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-//        }
-//        else
-//        {
-//            val apkUri = Uri.fromFile(toInstall)
-//            intent = Intent(Intent.ACTION_VIEW)
-//            intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
-//            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-//        }
-
-
-            val apkUri = FileProvider.getUriForFile(
-                mContext!!,
-                BuildConfig.APPLICATION_ID,// + ".fileprovider",
-                toInstall
-            )
-            intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
-            intent.data = apkUri
-            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-        CRLog.d("this: $this")
-        CRLog.d("context: $mContext")
-        mContext!!.startActivity(intent)
     }
 
     fun makeToast(message: String) {

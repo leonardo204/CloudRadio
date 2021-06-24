@@ -38,7 +38,7 @@ object : Handler() {
         Log.d(moreTag, "more_handler handleMessage: ${command} - ${value}")
 
 
-        if ( value.contains("cloudradio.apk") ) {
+        if (value?.contains("cloudradio.apk") == true) {
             when (command) {
                 "success" -> {
                     More.buttonUpdate(More.btn_app_download, "앱 다운로드 완료", false)
@@ -63,7 +63,7 @@ object : Handler() {
                     )
                 }
             }
-        } else if ( value.contains("channels.json") ) {
+        } else if (value?.contains("channels.json") == true) {
             when (command) {
                 "success" -> {
                     More.buttonUpdate(More.btn_channel_update, "채널 업데이트 완료", false)
@@ -96,7 +96,7 @@ object : Handler() {
                     )
                 }
             }
-        } else if ( value.contains("app_version.json") ) {
+        } else if (value?.contains("app_version.json") == true) {
             when(command) {
                 "success" -> {
                     More.buttonUpdate(More.btn_version_check, "업데이트 확인 완료", false)
@@ -121,8 +121,8 @@ object : Handler() {
                     )
                 }
             }
-        } else if ( value.contains("Timer") ) {
-            Log.d(moreTag, "timer button update")
+        } else if (value?.contains("Timer") == true) {
+            Log.d(moreTag, "timer button update ${command}")
             when(command) {
                 "updateTimer" -> {
                     More.btn_timer_start.setText("${More.mTimeMin} 분  ${More.mTimeSecond} 초")
@@ -160,19 +160,21 @@ object SeekBarHandler : SeekBar.OnSeekBarChangeListener {
     }
 
     private fun drawTimeText() {
+        More.mInitialTimeValue = mProgress
+
         if ( mProgress == 0 ) {
             More.txt_selected_time.setText("(아래를 움직여서 시간 설정)")
             More.btn_timer_start.isEnabled = false
         } else {
             More.txt_selected_time.setText("$mProgress 분")
-            More.mInitialTimeValue = mProgress
             More.btn_timer_start.isEnabled = true
         }
     }
 }
 
 data class SettingsItem(
-    val autoplay: String
+    var autoplay: String,
+    var lockplay: String
 )
 
 
@@ -218,6 +220,7 @@ object More : Fragment(), AsyncCallback {
 
     // autoplay
     lateinit var btn_autoplay: CheckBox
+    var mSettings: SettingsItem? = null
 
     var bInitialized = false
 
@@ -225,10 +228,6 @@ object More : Fragment(), AsyncCallback {
     var APP_VERSION_URL = "http://zerolive7.iptime.org:9093/api/public/dl/3I4X2Lnj/01_project/cloudradio/app_version.json"
     var APK_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
     var CHANNEL_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/z0Qmcjjq/01_project/cloudradio/channels.json"
-
-    fun install(path: String) {
-        MainActivity.getInstance().installApp(path)
-    }
 
     fun buttonUpdate(button: Button, text: String, enable: Boolean) {
         Log.d(moreTag,"buttonUpdate: $text ($enable)")
@@ -393,33 +392,27 @@ object More : Fragment(), AsyncCallback {
         val builder = VmPolicy.Builder()
         StrictMode.setVmPolicy(builder.build())
 
-//        CRLog.d("canReadWriteExternal(): ${canReadWriteExternal()}")
-//        if ( !canReadWriteExternal() ) {
-//            requestPermission()
-//        }
-
-
         // version check
         var res = mContext?.resources
-        txt_version = view.findViewById(R.id.txt_app_version)
-        mAppVersion = res?.getString(R.string.version_cloudradio).toString()
-        txt_version.setText(mAppVersion + " (" + getChannelVersion() + ")")
+//        txt_version = view.findViewById(R.id.txt_app_version)
+//        mAppVersion = res?.getString(R.string.version_cloudradio).toString()
+//        txt_version.setText(mAppVersion + " (" + getChannelVersion() + ")")
 
-        txt_version_result = view.findViewById(R.id.txt_app_version_result)
-        txt_version_result.setText("")
+//        txt_version_result = view.findViewById(R.id.txt_app_version_result)
+//        txt_version_result.setText("")
 
-        btn_version_check = view.findViewById(R.id.btn_app_version_check)
-        btn_version_check.setOnClickListener { onButtonClick("VERSION CHECK") }
+//        btn_version_check = view.findViewById(R.id.btn_app_version_check)
+//        btn_version_check.setOnClickListener { onButtonClick("VERSION CHECK") }
 
         // app update
-        btn_app_download = view.findViewById(R.id.btn_app_download)
-        btn_app_download.setOnClickListener { onButtonClick("APP UPDATE") }
-        btn_app_download.isEnabled = false
+//        btn_app_download = view.findViewById(R.id.btn_app_download)
+//        btn_app_download.setOnClickListener { onButtonClick("APP UPDATE") }
+//        btn_app_download.isEnabled = false
 
         // channel update
-        btn_channel_update = view.findViewById(R.id.btn_channel_update)
-        btn_channel_update.setOnClickListener { onButtonClick("CHANNEL UPDATE") }
-        btn_channel_update.isEnabled = false
+//        btn_channel_update = view.findViewById(R.id.btn_channel_update)
+//        btn_channel_update.setOnClickListener { onButtonClick("CHANNEL UPDATE") }
+//        btn_channel_update.isEnabled = false
 
         /*
             0.75 - ldpi
@@ -429,10 +422,10 @@ object More : Fragment(), AsyncCallback {
             3.0 - xxhdpi
             4.0 - xxxhdpi
          */
-        txt_dpi = view.findViewById(R.id.txt_dpi)
-        val metrics = mContext?.resources?.displayMetrics
-        CRLog.d("device dpi => " + metrics?.density)
-        txt_dpi.setText("해상도 DPI: ${metrics?.density?.let { getDPIText(it) }}")
+//        txt_dpi = view.findViewById(R.id.txt_dpi)
+//        val metrics = mContext?.resources?.displayMetrics
+//        CRLog.d("device dpi => " + metrics?.density)
+//        txt_dpi.setText("해상도 DPI: ${metrics?.density?.let { getDPIText(it) }}")
 
         // timer
         seekbar = view.findViewById(R.id.seekbar_timer)
@@ -461,7 +454,7 @@ object More : Fragment(), AsyncCallback {
         btn_autoplay = view.findViewById(R.id.btn_autoplay_check)
         btn_autoplay.setOnClickListener { onAutoPlayCheckClicked() }
 
-        loadSettings()
+        mSettings = loadSettings()
 
         bInitialized = true
 
@@ -469,47 +462,68 @@ object More : Fragment(), AsyncCallback {
     }
 
     fun getAutoPlay(): Boolean {
-        if ( bInitialized ) {
-            return btn_autoplay.isChecked
-        } else {
-            return false
+        mSettings?.let {
+            CRLog.d("getAutoPlay: ${it.autoplay.toBoolean()}")
+            return it.autoplay.toBoolean()
         }
+        return false
+    }
+
+    fun getLockPlay(): Boolean {
+        mSettings?.let {
+            CRLog.d("getLockPlay: ${it.lockplay.toBoolean()}")
+            return it.lockplay.toBoolean()
+        }
+        return false
     }
 
     private fun onAutoPlayCheckClicked() {
-        var item: SettingsItem
-        if ( btn_autoplay.isChecked ) {
-            CRLog.d("set autoplay")
-            item = SettingsItem("true")
-        } else {
-            CRLog.d("cancel autoplay")
-            item = SettingsItem("false")
+        mSettings?.let {
+            if (btn_autoplay.isChecked) {
+                CRLog.d("set autoplay")
+            } else {
+                CRLog.d("cancel autoplay")
+            }
+            it.autoplay = btn_autoplay.isChecked.toString()
+            saveSettings(it)
         }
-
-        saveSettings(item)
     }
 
-    private fun saveSettings(item: SettingsItem) {
+    fun saveSettings(item: SettingsItem) {
         val gson = GsonBuilder().disableHtmlEscaping().create()
         val itemType: TypeToken<SettingsItem> = object : TypeToken<SettingsItem>() {}
         val jstr = gson.toJson(item, itemType.type)
+
+        mSettings = item
 
         CRLog.d("saveSettings json: ${jstr}")
         Program.WriteFile().execute(Program.DEFAULT_FILE_PATH + "settings.json", jstr.toString())
     }
 
-    private fun loadSettings() {
+    fun loadSettings(): SettingsItem? {
+        var settings: SettingsItem? = null
         val fileobj = File(Program.DEFAULT_FILE_PATH + "settings.json")
         if ( fileobj.exists() && fileobj.canRead() ) {
             val ins: InputStream = fileobj.inputStream()
             val content = ins.readBytes().toString(Charset.defaultCharset())
-            CRLog.d("loadSetting dump: ${content} ]")
+            CRLog.d("loadSetting dump: ${content}")
 
             val settingJson = Json.parseToJsonElement(content)
             val autoplay = settingJson.jsonObject["autoplay"].toString().replace("\"","").toBoolean()
+            val lockplay = settingJson.jsonObject["lockplay"].toString().replace("\"","").toBoolean()
+
             btn_autoplay.isChecked = autoplay
             CRLog.d("loadSetting.......... [ autoplay: ${autoplay} ]")
+            CRLog.d("loadSetting.......... [ lockplay: ${lockplay} ]")
+            settings = SettingsItem(autoplay.toString(), lockplay.toString())
         }
+        // setting 파일이 없는 경우 false 로 기본 저장을 해준다.
+        else {
+            CRLog.d("loadSetting create default settings.json")
+            settings = SettingsItem(false.toString(), false.toString())
+            saveSettings(settings)
+        }
+        return settings
     }
 
     private fun clearYtbText() {
@@ -550,7 +564,6 @@ object More : Fragment(), AsyncCallback {
         }
 
         seekbar.let {
-            btn_timer_start.isEnabled = true
             mInitialTimeValue += degree
             it.progress = mInitialTimeValue
             if ( mInitialTimeValue == 0 ) {
@@ -571,6 +584,10 @@ object More : Fragment(), AsyncCallback {
         mTimeMin = mInitialTimeValue -1
         mTimeSecond = 60
         var count = 0
+
+        seekbar.isEnabled = false
+        btn_timer_minus.isEnabled = false
+        btn_timer_plus.isEnabled = false
 
         mTimertask = timer(period = 1000) {
             val msg = more_handler.obtainMessage()
@@ -603,8 +620,12 @@ object More : Fragment(), AsyncCallback {
         Log.d(moreTag,"onTimerCancel: $mInitialTimeValue")
         mTimertask?.cancel()
         btn_timer_start.setText("시작")
-        btn_timer_start.isEnabled = false
 
+        seekbar.isEnabled = true
+        btn_timer_minus.isEnabled = true
+        btn_timer_plus.isEnabled = true
+
+        if ( mInitialTimeValue > 0 )  btn_timer_start.isEnabled = true
     }
 
     private fun getDPIText(density: Float): String {
