@@ -229,6 +229,10 @@ object More : Fragment(), AsyncCallback {
     var APK_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/AyHsyPHc/01_project/cloudradio/cloudradio.apk"
     var CHANNEL_FILE_URL = "http://zerolive7.iptime.org:9093/api/public/dl/z0Qmcjjq/01_project/cloudradio/channels.json"
 
+    // main version
+    lateinit var txt_main_version : TextView
+
+
     fun buttonUpdate(button: Button, text: String, enable: Boolean) {
         Log.d(moreTag,"buttonUpdate: $text ($enable)")
 
@@ -454,6 +458,10 @@ object More : Fragment(), AsyncCallback {
         btn_autoplay = view.findViewById(R.id.btn_autoplay_check)
         btn_autoplay.setOnClickListener { onAutoPlayCheckClicked() }
 
+        // main version
+        txt_main_version = view.findViewById(R.id.txt_main_version)
+        txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio))
+
         mSettings = loadSettings()
 
         bInitialized = true
@@ -515,6 +523,9 @@ object More : Fragment(), AsyncCallback {
             btn_autoplay.isChecked = autoplay
             CRLog.d("loadSetting.......... [ autoplay: ${autoplay} ]")
             CRLog.d("loadSetting.......... [ lockplay: ${lockplay} ]")
+            if ( lockplay ) {
+                txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio) + " ( Awesome! )")
+            }
             settings = SettingsItem(autoplay.toString(), lockplay.toString())
         }
         // setting 파일이 없는 경우 false 로 기본 저장을 해준다.

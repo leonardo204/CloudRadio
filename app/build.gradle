@@ -11,8 +11,8 @@ android {
         applicationId "com.zerolive.cloudradio"
         minSdkVersion 21
         targetSdkVersion 29
-        versionCode 9
-        versionName "9.0"
+        versionCode 10
+        versionName "10.0"
         ndk.abiFilters 'armeabi-v7a','arm64-v8a','x86','x86_64'
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"

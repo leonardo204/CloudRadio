@@ -274,7 +274,9 @@ object OnAir : Fragment() {
         // init 시점이 아닌 재생/정지/일시정지 타이밍에 불리면, 버튼을 복구해준다
         mCurrentPlayFilename?.let {
             val tt = RadioChannelResources.getTitleByFilename(it)
-            if ( onair_btnList.contains(tt) ) {
+            CRLog.d("updateOnAirPrograms current:" + tt)
+
+            if ( onair_btnList.containsKey(tt) ) {
                 if ( isPlayingRadioService() ) {
                     updateOnAirButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true)
                 } else {
@@ -289,7 +291,7 @@ object OnAir : Fragment() {
               현재 채널이 즐겨찾기에서 삭제된 경우.
              */
             else {
-                requestStopPauseRadioService()
+                requestStopCheckRadioService()
             }
         }
 
@@ -1342,6 +1344,8 @@ object OnAir : Fragment() {
             if (hiddenCount == 10) {
                 CRLog.d("Enable hidden")
                 MainActivity.getInstance().makeToast("Awesome enabled")
+                More.txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio) + " ( Awesome! )")
+
                 val item = More.loadSettings()
                 item?.let {
                     it.lockplay = true.toString()
