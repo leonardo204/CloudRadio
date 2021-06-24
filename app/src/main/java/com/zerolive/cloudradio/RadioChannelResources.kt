@@ -154,6 +154,8 @@ object RadioChannelResources: AsyncCallback {
 
     val mRadioCHResLock = Mutex()
 
+    var resourceInitCount = 0
+
     private fun getRadioChannelHttpAddress(filename: String): String? {
         for(i in RadioRawChannels.values().indices) {
             if ( RadioRawChannels.values()[i].getChannelFilename().equals(filename) ) {
@@ -429,11 +431,7 @@ object RadioChannelResources: AsyncCallback {
 
         // for radio
         for(i in RadioRawChannels.values().indices) {
-            Log.d(
-                resourceTag,
-                
-                "add radio channels ( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename()
-            )
+            Log.d(resourceTag,"add radio channels ( $i ) - " + DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
 
             var fileobj = File(DEFAULT_FILE_PATH + RadioRawChannels.values()[i].getChannelFilename())
             if (fileobj.exists()) {
@@ -441,6 +439,7 @@ object RadioChannelResources: AsyncCallback {
                 readChannelFile(fileobj)
             } else {
                 Log.d(resourceTag,  "File don't exist")
+                resourceInitCount++
 
                 // 파일이 없더라도 일단 빈 상태로 채널 맵을 채워둔다
                 // 다운로드 완료 되어 파일 읽는데 성공하면, 이것 지우고 새것으로 대체됨
@@ -474,15 +473,14 @@ object RadioChannelResources: AsyncCallback {
 
         if ( channelList.size == channelSize ) {
             initResourceComplete()
-
-            // 모든 채널 리소스 업데이트가 완료된 이후 AFN 주소들만 바꿔줌
-            AFNRadioResource.init()
+            resourceInitCount++
         }
     }
 
     private fun initResourceComplete() {
         Log.d(resourceTag,  "Resource init completed")
         bInitCompleted = true
+        Log.d(resourceTag,  "Call updateFavoriteList")
         OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
     }
 
@@ -658,6 +656,7 @@ object RadioChannelResources: AsyncCallback {
             "Download" -> OpenFileFromPath(this).execute(arg[1])
             "fileopen" -> {
                 setChannelsFromPlsFile(arg[1]!!)
+                Log.d(resourceTag,  "Call (fileopen) updateFavoriteList")
                 OnAir.notifyRadioResourceUpdate(null, RadioResource.SUCCESS)
             }
             "ParseUrl" -> {

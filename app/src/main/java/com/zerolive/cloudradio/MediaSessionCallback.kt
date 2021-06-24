@@ -46,7 +46,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     private fun requestPlayPause() {
         CRLog.d("requestPlayPause()")
         if ( OnAir.isPlayingRadioService() ) {
-            OnAir.requestStopRadioService()
+            OnAir.requestStopPauseRadioService()
             setStatePaused()
         } else {
             OnAir.requestStartRadioService()
@@ -55,7 +55,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     }
     private fun requestPause() {
         if ( OnAir.isPlayingRadioService() ) {
-            OnAir.requestStopRadioService()
+            OnAir.requestStopPauseRadioService()
             setStatePaused()
         }
     }

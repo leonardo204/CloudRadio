@@ -131,7 +131,7 @@ object : Handler() {
                 "finishTimer" -> {
                     More.btn_timer_start.setText("시작")
                     More.btn_timer_start.isEnabled = true
-                    OnAir.requestStopRadioService()
+                    OnAir.requestStopPauseRadioService()
                 }
             }
         }

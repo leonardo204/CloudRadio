@@ -176,53 +176,63 @@ object OnAir : Fragment() {
     // youtube background play 를 위한 hidden
     var hiddenCount = 0
 
+    var updateFavCount = 0
+
     // init resource 시점에만 단독으로 부름
     fun updateFavoriteList() {
-        MainActivity.getInstance().removeLoading()
+        updateFavCount++
+        CRLog.d("updateFavoriteList ${updateFavCount} / ${RadioChannelResources.resourceInitCount}")
 
         val fileObj = File(DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON)
-        if ( !fileObj.exists() && !fileObj.canRead() ) {
-            CRLog.d("Can't load ${DEFAULT_FILE_PATH + FAVORITE_CHANNEL_JSON}")
-            MainActivity.getInstance().makeToast("즐겨찾기가 없습니다.")
-            return
-        }
+        if ( fileObj.exists() && fileObj.canRead() ) {
+            val ins = fileObj.inputStream()
+            val content = ins.readBytes().toString(Charset.defaultCharset())
+            val list = ArrayList<String>()
 
-        val ins = fileObj.inputStream()
-        val content = ins.readBytes().toString(Charset.defaultCharset())
-        val list = ArrayList<String>()
+            val ele = Json.parseToJsonElement(content)
+            CRLog.d("updateFavoriteList size: ${ele.jsonArray.size}")
 
-        val ele = Json.parseToJsonElement(content)
-        CRLog.d("updateFavoriteList size: ${ele.jsonArray.size}")
-
-        for(i in 0..ele.jsonArray.size-1) {
-            val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
-            CRLog.d("updateFavoriteList: $title")
-            if ( list.contains(title) ) {
-                CRLog.d(" > skip duplication: ${title}")
-                continue
+            for(i in 0..ele.jsonArray.size-1) {
+                val title = ele.jsonArray[i].jsonObject["title"].toString().replace("\"", "")
+                CRLog.d("updateFavoriteList: $title")
+                if ( list.contains(title) ) {
+                    CRLog.d(" > skip duplication: ${title}")
+                    continue
+                }
+                list.add(title)
             }
-            list.add(title)
-        }
 
-        var realList = updateOnAirPrograms(list)
-        Program.updatePrograms(realList)
-        MainActivity.getInstance().makeToast("즐겨찾기 로딩이 성공적으로 완료되었습니다.")
+            val realList = updateOnAirPrograms(list)
+            Program.updatePrograms(realList)
 
-        bInitialized = true
-
-        MainActivity.mLastYtbPlsStatus?.let {
-            if ( it.state == PlayerConstants.PlayerState.PLAYING ) {
-                updateOnAirButtonText(it.filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
-                mCurrentPlayFilename = it.filename
-                mVideoId = it.videoId
-                playStopYoutube(it.filename, it.videoId, true)
-            } else if ( it.state == PlayerConstants.PlayerState.PAUSED ) {
-                updateOnAirButtonText(it.filename, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true)
+            MainActivity.mLastYtbPlsStatus?.let {
+                if ( it.state == PlayerConstants.PlayerState.PLAYING ) {
+                    updateOnAirButtonText(it.filename, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(), true)
+                    mCurrentPlayFilename = it.filename
+                    mVideoId = it.videoId
+                    playStopYoutube(it.filename, it.videoId, true)
+                } else if ( it.state == PlayerConstants.PlayerState.PAUSED ) {
+                    updateOnAirButtonText(it.filename, RADIO_BUTTON.PAUSED_MESSAGE.getMessage(), true)
+                }
             }
         }
 
-        // 이제 날씨, 주소 정보 로딩한다.
-        MainActivity.getInstance().checkPermissions()
+        if ( updateFavCount == RadioChannelResources.resourceInitCount ) {
+            // 모든 채널 리소스 업데이트가 완료된 이후 AFN 주소들만 바꿔줌
+            AFNRadioResource.init()
+
+            bInitialized = true
+            if ( !fileObj.exists() && !fileObj.canRead() ) {
+                MainActivity.getInstance().makeToast("즐겨찾기가 없습니다.")
+            } else {
+                MainActivity.getInstance().makeToast("즐겨찾기 로딩이 성공적으로 완료되었습니다.")
+            }
+
+            // 로딩바는 날씨까지 업데이트 되어야 없애준다.
+            if ( AirStatus.bWeatherLoaded ) {
+                MainActivity.getInstance().removeLoading()
+            }
+        }
     }
 
     private fun loadFavoriteList() {
@@ -263,32 +273,15 @@ object OnAir : Fragment() {
 
         // init 시점이 아닌 재생/정지/일시정지 타이밍에 불리면, 버튼을 복구해준다
         mCurrentPlayFilename?.let {
-            if ( favList.contains(it) ) {
-                if (RadioPlayer.isPlaying()) {
-                    updateOnAirButtonText(
-                        it,
-                        RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
-                        true
-                    )
+            val tt = RadioChannelResources.getTitleByFilename(it)
+            if ( onair_btnList.contains(tt) ) {
+                if ( isPlayingRadioService() ) {
+                    updateOnAirButtonText(it, RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true)
                 } else {
                     if (mYoutubeState == PlayerConstants.PlayerState.PAUSED) {
-                        updateOnAirButtonText(
-                            it,
-                            RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),
-                            true
-                        )
-                    } else if (mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
-                        updateOnAirButtonText(
-                            it,
-                            RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
-                            true
-                        )
+                        updateOnAirButtonText(it,RADIO_BUTTON.PAUSED_MESSAGE.getMessage(),true)
                     } else {
-                        updateOnAirButtonText(
-                            it,
-                            RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),
-                            true
-                        )
+                        updateOnAirButtonText(it,RADIO_BUTTON.STOPPED_MESSAGE.getMessage(),true)
                     }
                 }
             }
@@ -296,7 +289,7 @@ object OnAir : Fragment() {
               현재 채널이 즐겨찾기에서 삭제된 경우.
              */
             else {
-                requestStopRadioService()
+                requestStopPauseRadioService()
             }
         }
 
@@ -309,7 +302,7 @@ object OnAir : Fragment() {
 //        if ( mRadioStatus == RADIO_STATUS.PLAYING || mRadioStatus == RADIO_STATUS.PAUSED) {
 //            mCurrnetPlayFilename?.let { stopRadioForegroundService(it) }
 //        }
-        if ( !bInitialized ) requestStopRadioService()
+        if ( !bInitialized ) requestStopPauseRadioService()
         program_layout?.removeAllViews()
     }
 
@@ -448,11 +441,7 @@ object OnAir : Fragment() {
             PlayerConstants.PlayerState.PLAYING -> {
                 CRLog.d("state PLAYING")
                 mCurrentPlayFilename?.let {
-                    updateOnAirButtonText(
-                        it,
-                        RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
-                        true
-                    )
+                    updateOnAirButtonText(it,RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true)
 //                    setMetadata()
 
                     val state = PlaybackStateCompat.Builder()
@@ -977,25 +966,68 @@ object OnAir : Fragment() {
         }
     }
 
-    fun requestStopRadioService() {
-        Log.d(onairTag, "requestStopRadioService: ${mCurrentPlayFilename}")
-        if (RadioPlayer.isPlaying()) {
-            Log.d(onairTag, "stop radio")
-            weather_view.visibility = View.VISIBLE
-            mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
-        }
-        else {
+    fun requestStopCheckRadioService() {
+        Log.d(onairTag, "requestStopCheckRadioService: ${mCurrentPlayFilename}")
+        if ( isPlayingRadioService() ) {
             mCurrentPlayFilename?.let {
-                if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
-                    val type = RadioChannelResources.getMediaType(it)
-                    if ( type == MEDIATYPE.YOUTUBE_NORMAL || type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
-                        Log.d(onairTag, "pause youtube")
-                        youtubePlayer?.pause()
-                    } else {
-                        Log.d(onairTag, "stop youtube")
+                val type = RadioChannelResources.getMediaType(it)
+                val tt = RadioChannelResources.getTitleByFilename(it)
+                when (type) {
+                    MEDIATYPE.RADIO -> {
+                        if ( onair_btnList.contains(tt) ) {
+                            Log.d(onairTag, "keep radio status")
+                        } else {
+                            Log.d(onairTag, "stop radio")
+                            weather_view.visibility = View.VISIBLE
+                            mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
+                        }
+                    }
+                    MEDIATYPE.YOUTUBE_LIVE,
+                    MEDIATYPE.YOUTUBE_PLAYLIST,
+                    MEDIATYPE.YOUTUBE_NORMAL -> {
+                        if (onair_btnList.contains(tt)) {
+                            Log.d(onairTag, "keep youtube")
+                        } else {
+                            Log.d(onairTag, "stop youtube")
+                            weather_view.visibility = View.VISIBLE
+                            if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
+                            mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
+                        }
+                    }
+                    else -> {
+                        Log.d(onairTag, "unkonwn type: ${type}")
+                    }
+                }
+            }
+        }
+    }
+
+    fun requestStopPauseRadioService() {
+        Log.d(onairTag, "requestStopPauseRadioService: ${mCurrentPlayFilename}")
+        if ( isPlayingRadioService() ) {
+            mCurrentPlayFilename?.let {
+                val type = RadioChannelResources.getMediaType(it)
+                when (type) {
+                    MEDIATYPE.RADIO -> {
+                        Log.d(onairTag, "stop radio")
                         weather_view.visibility = View.VISIBLE
-                        if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
-                        mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
+                        mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
+                    }
+                    MEDIATYPE.YOUTUBE_LIVE,
+                    MEDIATYPE.YOUTUBE_PLAYLIST,
+                    MEDIATYPE.YOUTUBE_NORMAL -> {
+                        if (onair_btnList.contains(it)) {
+                            Log.d(onairTag, "pause youtube")
+                            youtubePlayer?.pause()
+                        } else {
+                            Log.d(onairTag, "stop youtube")
+                            weather_view.visibility = View.VISIBLE
+                            if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
+                            mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
+                        }
+                    }
+                    else -> {
+                        Log.d(onairTag, "unkonwn type: ${type}")
                     }
                 }
             }
@@ -1303,9 +1335,13 @@ object OnAir : Fragment() {
     private fun onClickHidden() {
         CRLog.d("onClickHidden ${hiddenCount++}")
         if ( More.getLockPlay() == false ) {
+            if (hiddenCount < 10) {
+                MainActivity.getInstance().makeToast(hiddenCount.toString())
+            }
+
             if (hiddenCount == 10) {
                 CRLog.d("Enable hidden")
-                MainActivity.getInstance().makeToast("Enable hidden")
+                MainActivity.getInstance().makeToast("Awesome enabled")
                 val item = More.loadSettings()
                 item?.let {
                     it.lockplay = true.toString()

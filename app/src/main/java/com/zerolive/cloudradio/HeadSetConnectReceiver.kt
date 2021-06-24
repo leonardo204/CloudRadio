@@ -36,6 +36,6 @@ object HeadSetConnectReceiver : BroadcastReceiver()
     }
 
     private fun doStop() {
-        OnAir.requestStopRadioService()
+        OnAir.requestStopPauseRadioService()
     }
 }

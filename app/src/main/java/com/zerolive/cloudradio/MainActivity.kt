@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
         // progress dialog
         customProgressDialog = ProgressDialog(this)
         customProgressDialog?.let {
-            it.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            it.init()
             it.show()
         }
 
@@ -186,7 +186,12 @@ class MainActivity : AppCompatActivity() {
 
     fun removeLoading() {
         CRLog.d("removeLoading")
-        customProgressDialog?.hide()
+        customProgressDialog?.let {
+            if ( it.isShowing() ) {
+                CRLog.d("removeLoading - ok")
+                it.hide()
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -341,7 +346,7 @@ class MainActivity : AppCompatActivity() {
 
         locationManager = this.getSystemService(LOCATION_SERVICE) as LocationManager
 
-//        checkPermissions()
+        checkPermissions()
 
         RadioPlayer.init()
 

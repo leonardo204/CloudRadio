@@ -190,6 +190,8 @@ data class PMData (
 
 object AirStatus {
 
+    var bWeatherLoaded = false
+
     fun getGradeString(grade: String?): String {
         when(grade) {
             "1" -> return "좋음"
@@ -214,6 +216,12 @@ object AirStatus {
 
             CRLog.d("update for ytb playlist")
             YoutubePlaylistUpdater.update()
+        }
+
+        bWeatherLoaded = true
+
+        if ( OnAir.updateFavCount == RadioChannelResources.resourceInitCount ) {
+            MainActivity.getInstance().removeLoading()
         }
     }
 
