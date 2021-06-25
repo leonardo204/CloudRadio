@@ -9,6 +9,8 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 
 object MediaSessoinCallback : MediaSessionCompat.Callback() {
+    var bPaused = false
+
     override fun onCommand(command: String?, extras: Bundle?, cb: ResultReceiver?) {
         super.onCommand(command, extras, cb)
         CRLog.d("onCommand: ${command}")
@@ -46,21 +48,25 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
     private fun requestPlayPause() {
         CRLog.d("requestPlayPause()")
         if ( OnAir.isPlayingRadioService() ) {
+            bPaused = true
             OnAir.requestStopPauseRadioService()
             setStatePaused()
         } else {
+            bPaused = false
             OnAir.requestStartRadioService()
             setStatePlaying()
         }
     }
     private fun requestPause() {
         if ( OnAir.isPlayingRadioService() ) {
+            bPaused = true
             OnAir.requestStopPauseRadioService()
             setStatePaused()
         }
     }
     private fun requestPlay() {
         if ( !OnAir.isPlayingRadioService() ) {
+            bPaused = false
             OnAir.requestStartRadioService()
             setStatePlaying()
         }
@@ -78,7 +84,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
             )
             .setActions(MainActivity.getInstance().getFullActions())
             .build()
-
+        CRLog.d("setPlaybackState: ${state.state}")
         MainActivity.mMediaSession?.setPlaybackState(state)
     }
 
@@ -95,7 +101,7 @@ object MediaSessoinCallback : MediaSessionCompat.Callback() {
             )
             .setActions(MainActivity.getInstance().getFullActions())
             .build()
-
+        CRLog.d("setPlaybackState: ${state.state}")
         MainActivity.mMediaSession?.setPlaybackState(state)
     }
 

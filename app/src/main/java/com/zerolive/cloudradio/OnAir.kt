@@ -454,7 +454,7 @@ object OnAir : Fragment() {
                             1.0f,
                             SystemClock.elapsedRealtime()
                         ).build()
-
+                    CRLog.d("setPlaybackState: ${state.state}")
                     MainActivity.mMediaSession?.setPlaybackState(state)
                 }
                 weather_view.visibility = View.GONE
@@ -481,7 +481,7 @@ object OnAir : Fragment() {
                             1.0f,
                             SystemClock.elapsedRealtime()
                         ).build()
-
+                    CRLog.d("setPlaybackState: ${state.state}")
                     MainActivity.mMediaSession?.setPlaybackState(state)
                 }
             }
@@ -544,8 +544,16 @@ object OnAir : Fragment() {
     // false 인 경우 vid 는 null 로 들어옴
     fun playStopYoutube(filename: String, videoId: String?, play: Boolean) {
         CRLog.d("playStopYoutube: filename=${filename} - videoId=${videoId} - play=${play}")
+        val type = RadioChannelResources.getMediaType(filename)
 
         if ( play ) {
+            if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
+                MainActivity.uiController?.showCustomAction1(true)
+                MainActivity.uiController?.showCustomAction2(true)
+            } else {
+                MainActivity.uiController?.showCustomAction1(false)
+                MainActivity.uiController?.showCustomAction2(false)
+            }
             val parent = MainActivity.youtubeView!!.parent as ViewGroup?
             parent?.removeView(MainActivity.youtubeView)
             youtube_layout?.addView(MainActivity.youtubeView)
@@ -976,7 +984,7 @@ object OnAir : Fragment() {
                 val tt = RadioChannelResources.getTitleByFilename(it)
                 when (type) {
                     MEDIATYPE.RADIO -> {
-                        if ( onair_btnList.contains(tt) ) {
+                        if ( onair_btnList.containsKey(tt) ) {
                             Log.d(onairTag, "keep radio status")
                         } else {
                             Log.d(onairTag, "stop radio")
@@ -987,7 +995,7 @@ object OnAir : Fragment() {
                     MEDIATYPE.YOUTUBE_LIVE,
                     MEDIATYPE.YOUTUBE_PLAYLIST,
                     MEDIATYPE.YOUTUBE_NORMAL -> {
-                        if (onair_btnList.contains(tt)) {
+                        if (onair_btnList.containsKey(tt)) {
                             Log.d(onairTag, "keep youtube")
                         } else {
                             Log.d(onairTag, "stop youtube")
@@ -1005,31 +1013,32 @@ object OnAir : Fragment() {
     }
 
     fun requestStopPauseRadioService() {
-        Log.d(onairTag, "requestStopPauseRadioService: ${mCurrentPlayFilename}")
+        CRLog.d("requestStopPauseRadioService: ${mCurrentPlayFilename}")
         if ( isPlayingRadioService() ) {
             mCurrentPlayFilename?.let {
                 val type = RadioChannelResources.getMediaType(it)
+                val title = RadioChannelResources.getTitleByFilename(it)
                 when (type) {
                     MEDIATYPE.RADIO -> {
-                        Log.d(onairTag, "stop radio")
+                        CRLog.d( "stop radio")
                         weather_view.visibility = View.VISIBLE
                         mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
                     }
                     MEDIATYPE.YOUTUBE_LIVE,
                     MEDIATYPE.YOUTUBE_PLAYLIST,
                     MEDIATYPE.YOUTUBE_NORMAL -> {
-                        if (onair_btnList.contains(it)) {
-                            Log.d(onairTag, "pause youtube")
+                        if (onair_btnList.containsKey(title)) {
+                            CRLog.d( "pause youtube")
                             youtubePlayer?.pause()
                         } else {
-                            Log.d(onairTag, "stop youtube")
+                            CRLog.d( "stop youtube")
                             weather_view.visibility = View.VISIBLE
                             if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()
                             mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
                         }
                     }
                     else -> {
-                        Log.d(onairTag, "unkonwn type: ${type}")
+                        CRLog.d( "unkonwn type: ${type}")
                     }
                 }
             }
@@ -1643,6 +1652,7 @@ object OnAir : Fragment() {
                         .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f, SystemClock.elapsedRealtime())
                         .setActions(MainActivity.getInstance().getFullActions())
                         .build()
+                    CRLog.d("setPlaybackState: ${state.state}")
                     MainActivity.mMediaSession?.setPlaybackState(state)
                 }
             }

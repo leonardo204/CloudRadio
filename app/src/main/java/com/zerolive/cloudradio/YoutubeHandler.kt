@@ -18,17 +18,20 @@ object YoutubeHandler: AbstractYouTubePlayerListener() {
         super.onCurrentSecond(youTubePlayer, second)
         //CRLog.d( "onCurrentSecond: "+second)
         OnAir.setCurrentSecond(second)
-        val state = PlaybackStateCompat.Builder()
-            .setState(
-                PlaybackStateCompat.STATE_PLAYING,
-                OnAir.getCurrentSecond(),
-                1.0f,
-                SystemClock.elapsedRealtime()
+        if ( !MediaSessoinCallback.bPaused ) {
+            val state = PlaybackStateCompat.Builder()
+                .setState(
+                    PlaybackStateCompat.STATE_PLAYING,
+                    OnAir.getCurrentSecond(),
+                    1.0f,
+                    SystemClock.elapsedRealtime()
 
-            )
-            .setActions(MainActivity.getInstance().getFullActions())
-            .build()
-        MainActivity.mMediaSession?.setPlaybackState(state)
+                )
+                .setActions(MainActivity.getInstance().getFullActions())
+                .build()
+//            CRLog.d("setPlaybackState: ${state.state}")
+            MainActivity.mMediaSession?.setPlaybackState(state)
+        }
     }
 
     override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
