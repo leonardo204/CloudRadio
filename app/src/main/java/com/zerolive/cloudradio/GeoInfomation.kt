@@ -12,6 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 // request location code
 /*
@@ -118,6 +119,8 @@ private fun httpLoggingInterceptor(): HttpLoggingInterceptor? {
 
 val client = OkHttpClient.Builder()
     .addInterceptor(FixEncodingInterceptor())
+    .connectTimeout(3000, TimeUnit.MILLISECONDS)
+    .readTimeout(3000, TimeUnit.MILLISECONDS)
     //.addInterceptor(httpLoggingInterceptor())         // http request inspector debugging
     .build()
 

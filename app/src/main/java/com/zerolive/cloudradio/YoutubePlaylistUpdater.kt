@@ -105,9 +105,10 @@ object YoutubePlaylistUpdater : AsyncCallback {
         CRLog.d("checkUrl: ${url}")
         if ( url.startsWith("https://youtube.com/playlist?list=") || url.startsWith("https://www.youtube.com/playlist?list=") ) {
             mPlayListId = url.substring(url.indexOf("playlist?list=") + 14)
-            MainActivity.getInstance().makeToast("${mPlayListId}")
+            MainActivity.getInstance().makeToast("재생목록 추가합니다. playlistId: ${mPlayListId}")
         } else {
-            MainActivity.getInstance().makeToast("입력한 URL이 올바르지 않습니다. 확인해 주세요.")
+            MainActivity.getInstance().makeToast("입력한 URL이 재생목록이 아닙니다. 확인해 주세요.")
+            return
         }
 
         // 처음 playlist 요청하는 시점

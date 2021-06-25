@@ -15,7 +15,6 @@
             android:id="@+id/txt_popup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="인터넷 연결 여부를 확인해주세요.\n확인 버튼을 누르면 앱을 다시 시작합니다."
             android:textAlignment="center"
             android:textSize="20dp"
             android:textStyle="bold"
@@ -27,10 +26,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="확인"
+            android:background="@android:color/holo_blue_light"
+            android:layout_marginTop="20sp"
+            app:layout_constraintTop_toBottomOf="@id/txt_popup"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

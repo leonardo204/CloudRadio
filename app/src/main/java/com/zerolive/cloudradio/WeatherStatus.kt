@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 var weatherTag = "CR_WeatherStatus"
 
@@ -64,6 +65,8 @@ val weatherClient = OkHttpClient.Builder()
 //    .addInterceptor(httpLoggingInterceptor())         // http request inspector debuggin
 //    .followRedirects(false)
 //    .followSslRedirects(false)
+    .connectTimeout(3000, TimeUnit.MILLISECONDS)
+    .readTimeout(3000, TimeUnit.MILLISECONDS)
     .build()
 
 private val retrofit = Retrofit.Builder()

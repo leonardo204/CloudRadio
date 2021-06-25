@@ -1,6 +1,7 @@
 package com.zerolive.cloudradio
 
 import android.Manifest
+import android.R.attr.phoneNumber
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
@@ -11,23 +12,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Configuration.ORIENTATION_LANDSCAPE
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.location.Location
 import android.location.LocationManager
-import android.os.AsyncTask
-import android.os.Build
-import android.os.Bundle
+import android.os.*
 import android.os.SystemClock.sleep
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.Surface
 import android.view.View
 import android.view.View.OnClickListener
-import android.view.ViewGroup
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
@@ -35,7 +33,6 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
@@ -43,7 +40,10 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstan
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.YouTubePlayerFullScreenListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.ui.PlayerUiController
-import java.io.File
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.NonCancellable.cancel
+import java.util.*
+import kotlin.concurrent.timer
 
 
 class GeoInfoTask: AsyncTask<Location, Void, Void>() {
@@ -105,14 +105,25 @@ class MainActivity : AppCompatActivity() {
                 }
 
         var customProgressDialog: ProgressDialog? = null
+
+        var packageInfo : PackageInfo? = null
+        var mainVersionString : String? = null
+        var bSkipWaitingGPS = false
+        var mGPStimer: Timer? = null
+        var mSystemRestartTimer: Timer? = null
+
     }
 
 
 
+    @InternalCoroutinesApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        CRLog.d("onCreate ${bInitialized}")
+        packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+        mainVersionString = getString(R.string.app_name) + " v" + packageInfo?.versionName
+
+        CRLog.d("onCreate [ ${mainVersionString} ] init: ${bInitialized}")
         CRLog.d("ReleaseType: ${ReleaseType.TYPE.value}")
 
         // 앱 자체는 세로모드로 고정시킨다
@@ -123,13 +134,6 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
         title = "CloudRadio"
-
-        // progress dialog
-        customProgressDialog = ProgressDialog(this)
-        customProgressDialog?.let {
-            it.init()
-            it.show()
-        }
 
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
@@ -235,7 +239,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun systemRestart() {
-        sleep(5000)
+        mSystemRestartTimer?.cancel()
         finishAffinity()
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
@@ -260,12 +264,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun makeNoticePopup() {
         val dlg = NoticePopupActivity(this)
-        dlg.setOnOKClickedListener{ content ->
+        dlg.setOnOKClickedListener { content ->
             CRLog.d("received message: " + content)
-            CRLog.d("received on OK Click event")
-            systemRestart()
+            var count = 0
+            dlg.setBtnEnable(false)
+
+            val systemRestartTimerTask = object : TimerTask() {
+                override fun run() {
+                    val hh = Handler(Looper.getMainLooper())
+                    hh.postDelayed(Runnable {
+                        dlg.setMessage("\n ${5 - count} 초 후 앱을 다시 시작합니다.")
+
+                        if (count == 5) {
+                            systemRestart()
+                        }
+                        count++
+                    }, 0)
+                }
+            }
+            mSystemRestartTimer = Timer()
+            mSystemRestartTimer?.schedule(systemRestartTimerTask, 0, 1000)
         }
-        dlg.start("인터넷 연결 확인 필요\n확인을 누르면 5초 후 앱을 다시 시작합니다.")
+
+        dlg.init()
+        dlg.setMessage("인터넷 연결 확인 필요\n\n확인을 누르면 5초 후 \n앱을 다시 시작합니다.")
+        dlg.show()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -332,8 +355,19 @@ class MainActivity : AppCompatActivity() {
     private fun init() {
         CRLog.d("MainActivity init")
 
+        // progress dialog
+        customProgressDialog = ProgressDialog(this)
+        customProgressDialog?.let {
+            it.init()
+            it.show()
+        }
+
         if ( bInitialized ) {
-            mLastYtbPlsStatus = LastYtbPlsStatus(OnAir.mCurrentPlayFilename!!, OnAir.mVideoId!!, OnAir.mYoutubeState!!)
+            mLastYtbPlsStatus = LastYtbPlsStatus(
+                OnAir.mCurrentPlayFilename!!,
+                OnAir.mVideoId!!,
+                OnAir.mYoutubeState!!
+            )
         }
 
         // 초기화
@@ -446,7 +480,10 @@ class MainActivity : AppCompatActivity() {
         CRLog.d("checkPermissions")
 
         val finePerm = mContext?.let{ ContextCompat.checkSelfPermission(it, REQUIRED_PERMISSIONS[0]) }
-        val coastPerm = mContext?.let{ ContextCompat.checkSelfPermission(it, REQUIRED_PERMISSIONS[1]) }
+        val coastPerm = mContext?.let{ ContextCompat.checkSelfPermission(
+            it,
+            REQUIRED_PERMISSIONS[1]
+        ) }
 
         if ( finePerm == PackageManager.PERMISSION_GRANTED
                 && coastPerm == PackageManager.PERMISSION_GRANTED )
@@ -456,14 +493,28 @@ class MainActivity : AppCompatActivity() {
         }
         else {
             val activity = mContext?.let { it as Activity }
-            if (activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, REQUIRED_PERMISSIONS[0]) } == true
-                    || activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, REQUIRED_PERMISSIONS[1]) } == true) {
+            if (activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(
+                    it,
+                    REQUIRED_PERMISSIONS[0]
+                ) } == true
+                    || activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(
+                    it,
+                    REQUIRED_PERMISSIONS[1]
+                ) } == true) {
 
                 CRLog.d("Permissions are requested 1")
-                activity?.let { ActivityCompat.requestPermissions(it, REQUIRED_PERMISSIONS, locationPermissionCode) }
+                activity?.let { ActivityCompat.requestPermissions(
+                    it,
+                    REQUIRED_PERMISSIONS,
+                    locationPermissionCode
+                ) }
             } else {
                 CRLog.d("Permissions are requested 2")
-                activity?.let { ActivityCompat.requestPermissions(it, REQUIRED_PERMISSIONS, locationPermissionCode) }
+                activity?.let { ActivityCompat.requestPermissions(
+                    it,
+                    REQUIRED_PERMISSIONS,
+                    locationPermissionCode
+                ) }
             }
         }
     }
@@ -489,26 +540,56 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     fun getGPSInfo() {
-        CRLog.d("getGPSInfo()")
 
-        locationManager?.requestLocationUpdates(
-            LocationManager.GPS_PROVIDER,
-            10000,
-            10f,
-            CRLocationListener
-        )
-        locationManager?.requestLocationUpdates(
-            LocationManager.NETWORK_PROVIDER,
-            10000,
-            10f,
-            CRLocationListener
-        )
-        CRLog.d("getGPSInfo end")
+        CRLog.d("getGPSInfo()")
+        val gpsTimerTask = object : TimerTask() {
+            var waitCountForGPS = 0
+            override fun run() {
+                if ( waitCountForGPS == 0 ) {
+                    val mHandler = Handler(Looper.getMainLooper())
+                    mHandler.postDelayed({
+                        locationManager?.requestLocationUpdates(
+                            LocationManager.GPS_PROVIDER,
+                            10000,
+                            10f,
+                            CRLocationListenerGPS
+                        )
+                        locationManager?.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER,
+                            10000,
+                            10f,
+                            CRLocationListenerNetwork
+                        )
+                        CRLog.d("getGPSInfo end")
+                    }, 0)
+                } else if ( waitCountForGPS == 10 ) {
+                    // 10초 안에 GPS 정보 미획득 시 실패로 간주
+                    removeGPSTracking(false)
+                    bSkipWaitingGPS = true
+                }
+                waitCountForGPS++
+                CRLog.d("wait to get GPS... ${waitCountForGPS} sec")
+            }
+        }
+
+        mGPStimer = Timer()
+        mGPStimer?.schedule(gpsTimerTask, 0, 1000)
     }
 
-    fun removeGPSTracking() {
-        CRLog.d("removeGPSTracking()")
-        locationManager?.removeUpdates(CRLocationListener)
+    fun removeGPSTracking(bSuccess: Boolean) {
+        CRLog.d("removeGPSTracking() ${bSuccess}")
+        locationManager?.removeUpdates(CRLocationListenerGPS)
+        locationManager?.removeUpdates(CRLocationListenerNetwork)
+        mGPStimer?.cancel()
+        mGPStimer = null
+
+        if ( !bSuccess ) {
+            val hh = Handler(Looper.getMainLooper())
+            hh.postDelayed(
+                {
+                    makeToast("현재 위치 정보 수신에 실패했습니다.")
+                }, 0 )
+        }
     }
 
     fun makeToast(message: String) {

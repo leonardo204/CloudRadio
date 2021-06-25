@@ -229,7 +229,7 @@ object OnAir : Fragment() {
             }
 
             // 로딩바는 날씨까지 업데이트 되어야 없애준다.
-            if ( AirStatus.bWeatherLoaded ) {
+            if ( AirStatus.bWeatherLoaded || MainActivity.bSkipWaitingGPS ) {
                 MainActivity.getInstance().removeLoading()
             }
         }
@@ -1337,14 +1337,10 @@ object OnAir : Fragment() {
     private fun onClickHidden() {
         CRLog.d("onClickHidden ${hiddenCount++}")
         if ( More.getLockPlay() == false ) {
-            if (hiddenCount < 10) {
-                MainActivity.getInstance().makeToast(hiddenCount.toString())
-            }
-
-            if (hiddenCount == 10) {
+            if (hiddenCount == 30) {
                 CRLog.d("Enable hidden")
                 MainActivity.getInstance().makeToast("Awesome enabled")
-                More.txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio) + " ( Awesome! )")
+                More.txt_main_version.setText(MainActivity.mainVersionString + " ( Awesome! )")
 
                 val item = More.loadSettings()
                 item?.let {

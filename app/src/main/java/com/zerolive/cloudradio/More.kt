@@ -460,7 +460,7 @@ object More : Fragment(), AsyncCallback {
 
         // main version
         txt_main_version = view.findViewById(R.id.txt_main_version)
-        txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio))
+        txt_main_version.setText(MainActivity.mainVersionString)
 
         mSettings = loadSettings()
 
@@ -524,7 +524,7 @@ object More : Fragment(), AsyncCallback {
             CRLog.d("loadSetting.......... [ autoplay: ${autoplay} ]")
             CRLog.d("loadSetting.......... [ lockplay: ${lockplay} ]")
             if ( lockplay ) {
-                txt_main_version.setText(getString(R.string.app_name) + " " + getString(R.string.version_cloudradio) + " ( Awesome! )")
+                txt_main_version.setText(MainActivity.mainVersionString + " ( Awesome! )")
             }
             settings = SettingsItem(autoplay.toString(), lockplay.toString())
         }
@@ -550,15 +550,17 @@ object More : Fragment(), AsyncCallback {
             when (str) {
                 "ok" -> {
                     YoutubePlaylistUpdater.checkUrl(DEFAULT_FILE_PATH, txt_ytb_title.text.toString(), txt_ytb_url.text.toString(), btn_check_random.isChecked)
+                    clearYtbText()
                 }
                 "cancel" -> {
                     MainActivity.getInstance().makeToast("추가 취소")
                 }
             }
         } else {
-            MainActivity.getInstance().makeToast("입력 칸을 모두 입력하세요.")
+            if (str.equals("ok")) {
+                MainActivity.getInstance().makeToast("입력 칸을 모두 입력하세요.")
+            }
         }
-        clearYtbText()
 
         // keyboard auto hiding
         val imm = mContext?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager

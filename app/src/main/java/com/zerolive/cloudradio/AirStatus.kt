@@ -8,6 +8,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.util.concurrent.TimeUnit
 
 /*
 // 동 이름으로 tmx, tmy  좌표를 얻어서
@@ -40,6 +41,8 @@ val airclient = OkHttpClient.Builder()
 //    .addInterceptor(httpLoggingInterceptor())         // http request inspector debuggin
     .followRedirects(false)
     .followSslRedirects(false)
+    .connectTimeout(3000, TimeUnit.MILLISECONDS)
+    .readTimeout(3000, TimeUnit.MILLISECONDS)
     .build()
 private val air_retrofit = Retrofit.Builder()
     .baseUrl("http://apis.data.go.kr/B552584/") // 마지막 / 반드시 들어가야 함
