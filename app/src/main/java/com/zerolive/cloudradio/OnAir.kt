@@ -249,20 +249,21 @@ object OnAir : Fragment() {
 
         val iter = favList.iterator()
         while( iter.hasNext() ) {
-            var title = iter.next()
+            val title = iter.next()
             CRLog.d("updateOnAirPrograms:" + title)
-            if ( RadioChannelResources.getDefaultTextByTitle(title).equals("Unknown Channel") ) {
-                CRLog.d(" > skip unknown channels.")
+            if ( RadioChannelResources.getDefaultTextByTitle(title).equals("Unknown Channel")
+                || onair_btnList.containsKey(title) ) {
+                CRLog.d(" > skip unknown or duplication channels.")
                 continue
             }
             list.add(title)
-            var btn = Button(mContext)
+            val btn = Button(mContext)
             onair_btnList.put(title, btn)
             btn.setOnClickListener { onRadioButton(title, CLICK_TYPE.CLICK) }
             program_layout?.addView(btn)
 
             val prefix = "ytbpls_"
-            var defaultText = RadioChannelResources.getDefaultTextByTitle(title).replace(prefix, "")
+            val defaultText = RadioChannelResources.getDefaultTextByTitle(title).replace(prefix, "")
 
             updateOnAirButtonText(
                 RadioChannelResources.getFilenameByTitle(title),
