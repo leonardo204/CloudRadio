@@ -534,6 +534,7 @@ class MainActivity : AppCompatActivity() {
             else {
                 CRLog.d("Permissions CB: Denied")
                 makeToast("앱을 정상적으로 실행하기 위해\n앱 설정에서 권한을 설정해 주세요.")
+                bSkipWaitingGPS = true
             }
         }
     }

@@ -45,7 +45,7 @@ import kotlin.concurrent.timer
 
 var onairTag = "CR_OnAir"
 
-val handler: Handler = @SuppressLint("HandlerLeak")
+val onair_handler: Handler = @SuppressLint("HandlerLeak")
 object : Handler() {
     override fun handleMessage(msg: Message) {
         Log.d(onairTag, "handler handleMessage: " + msg.data)
@@ -1663,9 +1663,9 @@ object OnAir : Fragment() {
                     RadioChannelResources.requestUpdateResource(filename)
                 } else {
                     CRLog.d("timer ~")
-                    var msg = handler.obtainMessage()
+                    var msg = onair_handler.obtainMessage()
                     timer(initialDelay = 3000, period = 10000) {
-                        handler.sendMessage(msg)
+                        onair_handler.sendMessage(msg)
                         cancel()
                     }
                 }
@@ -1725,12 +1725,12 @@ object OnAir : Fragment() {
         CRLog.d("resource update result: " + result + ", filename: " + filename)
         when(result) {
             RadioResource.SUCCESS -> {
-                val msg = handler.obtainMessage()
+                val msg = onair_handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
                     val bundle = Bundle()
                     bundle.putString("command", "RadioResource.SUCCESS")
                     msg.data = bundle
-                    handler.sendMessage(msg)
+                    onair_handler.sendMessage(msg)
                     cancel()
                 }
             }
@@ -1741,12 +1741,12 @@ object OnAir : Fragment() {
                 }
 
                 CRLog.d("timer ~")
-                val msg = handler.obtainMessage()
+                val msg = onair_handler.obtainMessage()
                 timer(initialDelay = 3000, period = 10000) {
                     val bundle = Bundle()
                     bundle.putString("command", "RadioResource.FAILED")
                     msg.data = bundle
-                    handler.sendMessage(msg)
+                    onair_handler.sendMessage(msg)
                     cancel()
                 }
             }
