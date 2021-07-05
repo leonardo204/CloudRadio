@@ -45,27 +45,28 @@ import kotlin.concurrent.timer
 
 var onairTag = "CR_OnAir"
 
-val onair_handler: Handler = @SuppressLint("HandlerLeak")
-object : Handler() {
-    override fun handleMessage(msg: Message) {
-        Log.d(onairTag, "handler handleMessage: " + msg.data)
+var onair_handler: Handler = Handler(object : Handler.Callback {
+    override fun handleMessage(msg: Message?): Boolean {
+        Log.d(onairTag, "handler handleMessage: " + msg?.data)
 
         //OnAir.stopRadioForegroundService()
         OnAir.resetAllButtonText(true)
 
-        val bundle = msg.data
-        val command = bundle.getString("command")
+        val bundle = msg?.data
+        val command = bundle?.getString("command")
 
         when(command) {
-//            "RadioResource.FAILED" -> OnAir.updateFavoriteList()
+            "RadioResource.FAILED" -> OnAir.updateFavoriteList()
             "RadioResource.SUCCESS" -> {
                 OnAir.updateFavoriteList()
 //                YoutubeLiveUpdater.update()
                 //YoutubePlaylistUpdater.update()
+                return true
             }
         }
+        return false
     }
-}
+})
 
 enum class CLICK_TYPE {
     CLICK, CALLBACK
@@ -1069,7 +1070,9 @@ object OnAir : Fragment() {
             updateOnAirButtonText(filename, "잠시만 기다려주십시오", false)
         }
 
-        val type = RadioChannelResources.getMediaType(filename)
+        val req_type = RadioChannelResources.getMediaType(filename)
+        var cur_type: MEDIATYPE? = null
+        mCurrentPlayFilename?.let { cur_type = RadioChannelResources.getMediaType(it) }
 
         // 재생 중인 경우 callback 을 받아서 처리한다.
         //  1. 서비스 중지
@@ -1079,10 +1082,11 @@ object OnAir : Fragment() {
         //     - 같으면 => 그냥 있음
         //     - 다르면 => 요청한 채널로 서비스 시작 (이거 1회 더 불러주면 됨)
         if (RadioPlayer.isPlaying()) {
+            CRLog.d("[1] stop previous service")
+
             clearYoutubePlayListItem()
 
             // 중지 후 처리 시작
-            CRLog.d("stop previous service")
             mCurrentPlayFilename?.let { stopRadioForegroundService(it) }
 
             // 요청한 채널 저장
@@ -1090,29 +1094,28 @@ object OnAir : Fragment() {
             mCurrentPlayFilename = filename
         }
         // youtube playlist/normal 재생 중인 경우에는 stop 대신 그냥 pause 를 함
-        else if ( (type == MEDIATYPE.YOUTUBE_PLAYLIST || type == MEDIATYPE.YOUTUBE_NORMAL) && mYoutubeState == PlayerConstants.PlayerState.PLAYING && filename.equals(
-                mCurrentPlayFilename
-            ) ) {
+        else if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING
+            && filename.equals( mCurrentPlayFilename ) ) {
+            CRLog.d("[2] JUST do pause for youtube playlist or normal contents")
+
             youtubePlayer?.pause()
             mRadioStatus = RADIO_STATUS.PAUSED
             setYoutubeStateManual(PlayerConstants.PlayerState.PAUSED)
         }
         // youtube pause 상태인 경우 + 같은 파일 요청이면 pause 파일 resume
-        else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED && filename.equals(
-                mCurrentPlayFilename
-            ) ) {
-            CRLog.d("play resume: $mCurrentPlayFilename")
+        else if ( mYoutubeState == PlayerConstants.PlayerState.PAUSED
+            && filename.equals( mCurrentPlayFilename ) ) {
+            CRLog.d("[3] resume youtube: $mCurrentPlayFilename")
             youtubePlayer?.play()
-            updateOnAirButtonText(
-                mCurrentPlayFilename!!,
-                RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),
-                true
-            )
+            updateOnAirButtonText(mCurrentPlayFilename!!,RADIO_BUTTON.PLAYING_MESSAGE.getMessage(),true)
             RadioNotification.updateNotification(mCurrentPlayFilename!!, true)
         }
         // youtube 실행/PAUSE 중 + 다른 파일 요청인 경우 youtube 중지
         // onDestroy callback 불려짐
-        else if (mYoutubeState == PlayerConstants.PlayerState.PAUSED || mYoutubeState == PlayerConstants.PlayerState.PLAYING) {
+        else if ( ( cur_type == MEDIATYPE.YOUTUBE_LIVE || cur_type == MEDIATYPE.YOUTUBE_NORMAL
+            || cur_type == MEDIATYPE.YOUTUBE_PLAYLIST )
+            && mYoutubeState != PlayerConstants.PlayerState.UNKNOWN ) {
+            CRLog.d("[4] stop youtube: $mCurrentPlayFilename state: ${mYoutubeState}")
 
             // stop 시 이전 채널로 요청해야 함
             mCurrentPlayFilename?.let { playStopYoutube(it, null, false) }
@@ -1124,18 +1127,21 @@ object OnAir : Fragment() {
             clearYoutubePlayListItem()
         }
         // play radio / youtube
+        // 여기는 현재 아무 것도 플레이 중이 아닌 경우에만 들어와야 한다
         else {
+            CRLog.d("[5] play channel: ${filename}")
+
             clearYoutubePlayListItem()
 
             // youtube play
-            if ( type == MEDIATYPE.YOUTUBE_LIVE || type == MEDIATYPE.YOUTUBE_NORMAL ) {
+            if ( req_type == MEDIATYPE.YOUTUBE_LIVE || req_type == MEDIATYPE.YOUTUBE_NORMAL ) {
                 val videoId = filename.substring(filename.indexOf("youtube_") + 8)
                 CRLog.d("youtube videoId: " + videoId)
                 createYoutubeView(filename, videoId)
                 return
             }
             // youtube playlist
-            else if ( type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
+            else if ( req_type == MEDIATYPE.YOUTUBE_PLAYLIST ) {
                 val videoId = getVideoId(filename)
                 CRLog.d("ytbpls videoId: " + videoId)
                 videoId?.let { createYoutubeView(filename, it) }

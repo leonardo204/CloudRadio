@@ -31,28 +31,33 @@ data class CurPlsUpdateItem(
     val num: Int
 )
 
-val pls_handler: Handler = @SuppressLint("HandlerLeak")
-object : Handler() {
-    override fun handleMessage(msg: Message) {
-        val bundle = msg.data
-        val message = bundle.getString("message")
-        val title = bundle.getString("title")
-        val url = bundle.getString("url")
-        val random = bundle.getString("random")
-        val filename = bundle.getString("filename")
-        val update = bundle.getString("update").toBoolean()
+val pls_handler: Handler = Handler(object : Handler.Callback {
+    override fun handleMessage(msg: Message?): Boolean {
+        val bundle = msg?.data
+        val message = bundle?.getString("message")
+        val title = bundle?.getString("title")
+        val url = bundle?.getString("url")
+        val random = bundle?.getString("random")
+        val filename = bundle?.getString("filename")
+        val update = bundle?.getString("update")
+
+        if ( filename == null || url == null || random == null || update == null ) {
+            Log.d(plstTag, "Ignore handler message, reason(NULL). check --> url:${url} filename:${filename} random:${random} update:${update}")
+            return false
+        }
 
         message?.let {
             Log.d(plstTag, "ytbpls_handler call updatePlayLists: ${it}")
-            YoutubePlaylistUpdater.updatePlayLists(it, filename!!, update)
+            YoutubePlaylistUpdater.updatePlayLists(it, filename, update.toBoolean())
         }
 
         title?.let {
             Log.d(plstTag, "ytbpls_handler title: ${it}, random: ${random}, url: ${url}")
-            Program.addProgramButtons(it, url!!, random!!)
+            Program.addProgramButtons(it, url, random)
         }
+        return true
     }
-}
+})
 
 object YoutubePlaylistUpdater : AsyncCallback {
 

@@ -27,13 +27,12 @@ import kotlin.concurrent.timer
 var moreTag = "CR_more"
 
 
-val more_handler: Handler = @SuppressLint("HandlerLeak")
-object : Handler() {
+var more_handler: Handler = Handler(object : Handler.Callback {
     @SuppressLint("SetTextI18n")
-    override fun handleMessage(msg: Message) {
-        val bundle = msg.data
-        val command = bundle.getString("command")
-        val value = bundle.getString("value")
+    override fun handleMessage(msg: Message?): Boolean {
+        val bundle = msg?.data
+        val command = bundle?.getString("command")
+        val value = bundle?.getString("value")
 
         Log.d(moreTag, "more_handler handleMessage: ${command} - ${value}")
 
@@ -97,7 +96,7 @@ object : Handler() {
                 }
             }
         } else if (value?.contains("app_version.json") == true) {
-            when(command) {
+            when (command) {
                 "success" -> {
                     More.buttonUpdate(More.btn_version_check, "업데이트 확인 완료", false)
                     More.reserveUpdate(
@@ -123,7 +122,7 @@ object : Handler() {
             }
         } else if (value?.contains("Timer") == true) {
             Log.d(moreTag, "timer button update ${command}")
-            when(command) {
+            when (command) {
                 "updateTimer" -> {
                     More.btn_timer_start.setText("${More.mTimeMin} 분  ${More.mTimeSecond} 초")
                     More.btn_timer_start.isEnabled = false
@@ -135,8 +134,9 @@ object : Handler() {
                 }
             }
         }
+        return true
     }
-}
+})
 
 object SeekBarHandler : SeekBar.OnSeekBarChangeListener {
     var mProgress: Int = 0

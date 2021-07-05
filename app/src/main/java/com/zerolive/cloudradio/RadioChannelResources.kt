@@ -127,19 +127,23 @@ enum class RadioRawChannels {
     abstract fun getDefaultButtonText(): String
 }
 
-val res_handler: Handler = @SuppressLint("HandlerLeak")
-object : Handler() {
-    override fun handleMessage(msg: Message) {
+val res_handler: Handler = Handler(object : Handler.Callback {
+    override fun handleMessage(msg: Message?): Boolean {
         Log.d(resourceTag, "handler handleMessage: " + msg)
 
-        val bundle = msg.data
-        val title = bundle.getString("title")
-        val url = bundle.getString("url")
-        val type = bundle.getString("type")
+        val bundle = msg?.data
+        val title = bundle?.getString("title")
+        val url = bundle?.getString("url")
+        val type = bundle?.getString("type")
+        if ( title == null || url == null || type == null ) {
+            Log.d(resourceTag, "Ignore handler message, reason(NULL). check --> url:${url} title:${title} type:${type}")
+            return false
+        }
         RadioChannelResources.makeChannelList(type!!, title!!, url!!)
         if (Program.bInitilized) Program.updateProgramButtons()
+        return true
     }
-}
+})
 
 
 @SuppressLint("StaticFieldLeak")
