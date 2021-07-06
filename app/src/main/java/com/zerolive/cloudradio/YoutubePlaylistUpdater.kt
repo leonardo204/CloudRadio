@@ -41,19 +41,21 @@ val pls_handler: Handler = Handler(object : Handler.Callback {
         val filename = bundle?.getString("filename")
         val update = bundle?.getString("update")
 
-        if ( filename == null || url == null || random == null || update == null ) {
-            Log.d(plstTag, "Ignore handler message, reason(NULL). check --> url:${url} filename:${filename} random:${random} update:${update}")
-            return false
-        }
+//        if ( filename == null || url == null || random == null || update == null ) {
+//            Log.d(plstTag, "Ignore handler message, reason(NULL). check --> url:${url} filename:${filename} random:${random} update:${update}")
+//            return false
+//        }
 
+        // always true
         message?.let {
             Log.d(plstTag, "ytbpls_handler call updatePlayLists: ${it}")
-            YoutubePlaylistUpdater.updatePlayLists(it, filename, update.toBoolean())
+            YoutubePlaylistUpdater.updatePlayLists(it, filename!!, update.toBoolean())
         }
 
+        // always true
         title?.let {
             Log.d(plstTag, "ytbpls_handler title: ${it}, random: ${random}, url: ${url}")
-            Program.addProgramButtons(it, url, random)
+            Program.addProgramButtons(it, url!!, random!!)
         }
         return true
     }
@@ -394,6 +396,8 @@ object YoutubePlaylistUpdater : AsyncCallback {
                     bundle.putString("filename", "N/A")
                 }
                 bundle.putString("update", update.toString())
+//                mUrl?.let { bundle.putString("url", it) }
+//                bundle.putString("random", mRandom.toString())
                 msg.data = bundle
                 pls_handler.sendMessage(msg)
             }

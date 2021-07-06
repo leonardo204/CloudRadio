@@ -69,8 +69,9 @@ val weatherClient = OkHttpClient.Builder()
     .readTimeout(3000, TimeUnit.MILLISECONDS)
     .build()
 
+// 20210705 API 2.0 으로 주소 변경
 private val retrofit = Retrofit.Builder()
-    .baseUrl("http://apis.data.go.kr/1360000/VilageFcstInfoService/") // 마지막 / 반드시 들어가야 함
+    .baseUrl("http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/") // 마지막 / 반드시 들어가야 함
     .addConverterFactory(GsonConverterFactory.create()) // converter 지정
     .client(weatherClient)
     .build() // retrofit 객체 생성
@@ -272,20 +273,17 @@ object WeatherStatus {
                     OnAir.setRainStatusImage(items.item[i].fcstValue.toInt())
                 }
                 "R06" -> {
-                    CRLog.d(
-
-                        "- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble())
-                    )
+                    CRLog.d("- 6시간 강수량(mm): " + getRainAmount(items.item[i].fcstValue.toDouble()))
+                }
+                "PCP" -> {
+                    CRLog.d("- 1시간 강수량(mm): ${items.item[i].fcstValue}")
                 }
                 "REH" -> {
                     CRLog.d("- 습도(%): " + items.item[i].fcstValue)
                     humidity = items.item[i].fcstValue
                 }
                 "S06" -> {
-                    CRLog.d(
-
-                        "- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble())
-                    )
+                    CRLog.d("- 6시간 신적설(mm): " + getSnowAmount(items.item[i].fcstValue.toDouble()))
                 }
                 "SKY" -> {
                     CRLog.d("- 하늘상태(code): " + getSkyType(items.item[i].fcstValue.toInt()))
@@ -296,12 +294,17 @@ object WeatherStatus {
                     currentTemperature = items.item[i].fcstValue;
                 }
                 "TMN" -> {
-                    CRLog.d("- 아침 최저 기온(℃): " + items.item[i].fcstValue)
+                    CRLog.d("-  최저 기온(℃): " + items.item[i].fcstValue)
                     lowerTempearture = items.item[i].fcstValue
                 }
                 "TMX" -> {
-                    CRLog.d("- 낮 최고 기온(℃): " + items.item[i].fcstValue)
+                    CRLog.d("- 일 최고 기온(℃): " + items.item[i].fcstValue)
                     higherTempearture = items.item[i].fcstValue
+                }
+                // version 2.0
+                "TMP" -> {
+                    CRLog.d("- 1시간 기온(℃): ${items.item[i].fcstValue}")
+                    currentTemperature = items.item[i].fcstValue;
                 }
                 "UUU" -> {
                     CRLog.d("- 풍속(동서성분)(m/s): " + items.item[i].fcstValue)
@@ -314,10 +317,7 @@ object WeatherStatus {
                         items.item[i].fcstValue.toDouble()
                 }
                 "VEC" -> {
-                    CRLog.d(
-
-                        "- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt())
-                    )
+                    CRLog.d("- 풍향: " + getWindDirectionString(items.item[i].fcstValue.toInt()))
                     windDirection = getWindDirectionString(items.item[i].fcstValue.toInt())
                 }
                 "WSD" -> {
@@ -355,6 +355,11 @@ object WeatherStatus {
     fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location
         CRLog.d("Check GPS. Latitude: " + lat + " , Longitude: " + lng)
+
+        // gps -> tm
+        val tmxy = ConvertGPSToTM.convert(lng, lat)
+        CRLog.d("convert tmxy: ${tmxy}")
+
         val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(lat), Math.abs(lng))
         CRLog.d("Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
         var nx = CurGPS.x.toInt().toString()

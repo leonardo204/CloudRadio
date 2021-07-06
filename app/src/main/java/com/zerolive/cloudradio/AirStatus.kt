@@ -8,6 +8,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.lang.Math.abs
 import java.util.concurrent.TimeUnit
 
 /*
@@ -231,21 +232,46 @@ object AirStatus {
     fun requestTMCoordination(umdName: String) {
         CRLog.d("umdName:(" + umdName + ")")
 
-        val call = AirTMXYObject.retrofitService.GetTMCoordination("json", 1, 1, umdName )
+        val call = AirTMXYObject.retrofitService.GetTMCoordination("json", 10, 1, umdName )
         CRLog.d("requestTMCoordination: " + call.request().url().toString())
         call.enqueue(object : retrofit2.Callback<GETTMXY> {
             override fun onResponse(call: Call<GETTMXY>, response: Response<GETTMXY>) {
                 if ( response.isSuccessful ) {
                     CRLog.d("TMXY: " + response.body())
-                    if ( response.body()!!.response.body.items.size > 0) {
-                        var tmx: String = response.body()!!.response.body.items[0].tmX
-                        var tmy: String = response.body()!!.response.body.items[0].tmY
-                        requestViewLocation(tmx, tmy)
-                    } else {
+                    val length = response.body()!!.response.body.items.size
+                    if ( length == 0) {
                         CRLog.d("There is no TM data")
                         MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
-                        var data = PMData("알 수 없음", "-", "알 수 없음", "-")
+                        val data = PMData("알 수 없음", "-", "알 수 없음", "-")
                         dumpAirStatus(data)
+                    } else {
+                        val tmpX = ConvertGPSToTM.tmxy?.tmX
+                        val tmpY = ConvertGPSToTM.tmxy?.tmY
+                        var lastSumValue: Double = 0.0
+                        var curIdx = 0
+
+                        for(i in response.body()!!.response.body.items.indices) {
+                            val x = response.body()!!.response.body.items[i].tmX.toDouble()
+                            val y = response.body()!!.response.body.items[i].tmY.toDouble()
+                            if (tmpX != null && tmpY != null ) {
+                                val curSumValue = abs(tmpX-x) + abs(tmpY-y)
+                                if ( lastSumValue != 0.0 ) {
+                                    if ( lastSumValue > curSumValue) {
+                                        lastSumValue = curSumValue
+                                        CRLog.d("replace curIdx: ${i}")
+                                        curIdx = i
+                                    }
+                                } else {
+                                    lastSumValue = curSumValue
+                                    CRLog.d("replace curIdx: ${i}")
+                                    curIdx = i
+                                }
+                            }
+                        }
+                        val finalX = response.body()!!.response.body.items[curIdx].tmX
+                        val finalY = response.body()!!.response.body.items[curIdx].tmY
+
+                        requestViewLocation(finalX, finalY)
                     }
                 }
             }

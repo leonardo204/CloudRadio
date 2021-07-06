@@ -968,7 +968,7 @@ object OnAir : Fragment() {
         }
         else {
             mCurrentPlayFilename?.let {
-                if ( mYoutubeState == PlayerConstants.PlayerState.PLAYING ) {
+                if ( mYoutubeState != PlayerConstants.PlayerState.UNKNOWN ) {
                     Log.d(onairTag, "stop youtube")
                     weather_view.visibility = View.VISIBLE
                     if ( FullScreenHelper.mFullScreen ) MainActivity.getInstance().exitFullScreen()

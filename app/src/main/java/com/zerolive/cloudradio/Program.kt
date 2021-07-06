@@ -13,6 +13,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -135,6 +136,9 @@ object Program : Fragment(), ListViewAdaptor.ListBtnClickListener {
 
             listViewAdaptor.removeItem(item.defaultText)
             listViewAdaptor.notifyDataSetChanged()
+
+            // stopBroadcasting if it is playing
+            OnAir.requestDestroyRadioService()
 
             // write json
             var list: List<YtbListItem> = listOf()

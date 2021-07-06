@@ -138,13 +138,14 @@ object geoObj {
 
 object GeoInfomation {
 
+    var umdName = "N/A"
+
     fun requestAddressInfo(lat: Double, lng: Double) {
         var call = geoObj.retrofitService.getGeoInfo(lat.toString() + "," + lng.toString())
         CRLog.d("req URL: " + call.request().url().toString())
         var findit: Boolean = false
         call.enqueue(object : retrofit2.Callback<GEO_RESPONSE> {
             override fun onResponse(call: Call<GEO_RESPONSE>, response: Response<GEO_RESPONSE>) {
-                var umdName: String = "N/A"
                 if (response.isSuccessful && response.body() != null) {
                     CRLog.d("address req. response: " + response.body())
                     for (i in response.body()!!.results.indices) {
@@ -179,7 +180,7 @@ object GeoInfomation {
                     OnAir.updateAddressView(true)
 
                     // air information
-                    AirStatus.requestTMCoordination(umdName)
+                    //AirStatus.requestTMCoordination(umdName)
                 }
             }
 
