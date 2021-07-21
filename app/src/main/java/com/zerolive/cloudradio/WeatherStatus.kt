@@ -1,5 +1,6 @@
 package com.zerolive.cloudradio
 
+import android.annotation.SuppressLint
 import android.icu.text.DecimalFormat
 import android.icu.text.NumberFormat
 import android.os.Build
@@ -50,13 +51,13 @@ data class WEATHER_ITEM(
 interface WeatherInterface {
     @GET("getVilageFcst?serviceKey=ZZSvyzoRPHWzl9Uj650WLGx37OJ%2FQA0VdvtKq4SD8K6au7LhEI4X1l2jx4J4iB05XOq9H%2BQGU%2FmvNTSkC22Fqg%3D%3D")
     fun GetWeather(
-        @Query("dataType") data_type: String,
+        @Query("dataType", encoded = true) data_type: String,
         @Query("numOfRows") num_of_rows: Int,
         @Query("pageNo") page_no: Int,
-        @Query("base_date") base_date: String,
-        @Query("base_time") base_time: String,
-        @Query("nx") nx: String,
-        @Query("ny") ny: String
+        @Query("base_date", encoded = true) base_date: String,
+        @Query("base_time", encoded = true) base_time: String,
+        @Query("nx", encoded = true) nx: String,
+        @Query("ny", encoded = true) ny: String
     ): Call<WEATHER>
 }
 
@@ -351,24 +352,24 @@ object WeatherStatus {
         return curdate
     }
 
+    @SuppressLint("SimpleDateFormat")
     @RequiresApi(Build.VERSION_CODES.O)
     fun requestWeather(lat: Double, lng: Double) {
         // get gps and x, y location
         CRLog.d("Check GPS. Latitude: " + lat + " , Longitude: " + lng)
 
         // gps -> tm
-        val tmxy = ConvertGPSToTM.convert(lng, lat)
-        CRLog.d("convert tmxy: ${tmxy}")
+        ConvertGPSToTM.convert(lng, lat)
 
         val CurGPS = convertGRID_GPS(TO_GRID, Math.abs(lat), Math.abs(lng))
         CRLog.d("Current Location.  x: " + CurGPS.x + ", y: " + CurGPS.y)
-        var nx = CurGPS.x.toInt().toString()
-        var ny = CurGPS.y.toInt().toString()
+        val nx = CurGPS.x.toInt().toString()
+        val ny = CurGPS.y.toInt().toString()
 
         // time
-        var curtime = getLastBaseTime(Calendar.getInstance())
-        var curtime2:String
-        var currdate1:String
+        val curtime = getLastBaseTime(Calendar.getInstance())
+        val curtime2:String
+        val currdate1:String
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         {
@@ -382,8 +383,8 @@ object WeatherStatus {
             var sdf = SimpleDateFormat("yyyyMMdd")
             currdate1 = sdf.format(Date())
             sdf = SimpleDateFormat("hh")
-            var hh:String
-            var mm:String
+            val hh:String
+            val mm:String
             if ( sdf.format(Date()).toInt() < 10 ) hh = "0"+sdf.format(Date())
             else hh = sdf.format(Date())
             sdf = SimpleDateFormat("mm")
@@ -392,8 +393,8 @@ object WeatherStatus {
             curtime2 = hh + mm
         }
 
-        var base_date = currdate1
-        var base_time = curtime2
+        val base_date = currdate1
+        val base_time = curtime2
 
         CRLog.d("- request weather - ")
         CRLog.d("data_type: ${OnAir.data_type}")

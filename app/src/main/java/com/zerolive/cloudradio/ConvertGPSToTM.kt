@@ -28,15 +28,21 @@ object ConvertGPSToTM {
         }
     }
 
-    private fun handleCoordinateResult(response: String): TMXY {
+    private fun handleCoordinateResult(response: String): TMXY? {
         val element = Json.parseToJsonElement(response)
         val result = Json.parseToJsonElement(element.jsonObject["result"].toString())
-        val posX = result.jsonObject["posX"].toString().replace("\"", "")
-        val posY = result.jsonObject["posY"].toString().replace("\"", "")
+        val errMsg = element.jsonObject["errMsg"].toString().replace("\"", "")
+        CRLog.d("handleCoordinateResult. errMsg=${errMsg}")
+        if ( errMsg.equals("Success") ) {
+            val posX = result.jsonObject["posX"].toString().replace("\"", "")
+            val posY = result.jsonObject["posY"].toString().replace("\"", "")
 
-        CRLog.d("handleCoordinateResult.  x:${posX} y:${posY}")
+            CRLog.d("handleCoordinateResult.  x:${posX} y:${posY}")
 
-        return TMXY(posX.toDouble(), posY.toDouble())
+            return TMXY(posX.toDouble(), posY.toDouble())
+        } else {
+            return null
+        }
     }
 
     fun convert(posX: Double, posY: Double) {
@@ -47,9 +53,11 @@ object ConvertGPSToTM {
                 val tmxyResult = getTMCoordination(posX, posY, it)
                 tmxy = tmxyResult?.let { it1 -> handleCoordinateResult(it1) }
 
-                // 정확한 tmxy 좌표를 얻었으면 이걸로 미세먼지 측정소 정보를 다시 얻어보자
-                CRLog.d("convert(GPS. ${posX}, ${posY} ) -> (TM. ${tmxy?.tmX}, ${tmxy?.tmY} )")
-                AirStatus.requestTMCoordination(GeoInfomation.umdName)
+                tmxy?.let {
+                    // 정확한 tmxy 좌표를 얻었으면 이걸로 미세먼지 측정소 정보를 다시 얻어보자
+                    CRLog.d("convert(GPS. ${posX}, ${posY} ) -> (TM. ${it.tmX}, ${it.tmY} )")
+                    AirStatus.requestTMCoordination(GeoInfomation.umdName)
+                }
             }
         }
     }

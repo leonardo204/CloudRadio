@@ -78,10 +78,10 @@ data class AIR_TMXY_ITEM(
 interface AirTMXYInterface {
     @GET("MsrstnInfoInqireSvc/getTMStdrCrdnt?serviceKey=ZZSvyzoRPHWzl9Uj650WLGx37OJ%2FQA0VdvtKq4SD8K6au7LhEI4X1l2jx4J4iB05XOq9H%2BQGU%2FmvNTSkC22Fqg%3D%3D")
     fun GetTMCoordination(
-        @Query("returnType") returnType: String,
+        @Query("returnType", encoded = true) returnType: String,
         @Query("numOfRows") numOfRows: Int,
         @Query("pageNo") pageNo: Int,
-        @Query("umdName") umdName: String,
+        @Query("umdName", encoded = true) umdName: String,
     ): Call<GETTMXY>
 }
 object AirTMXYObject {
@@ -113,9 +113,9 @@ data class AIR_VIEWLOCATION_ITEM(
 interface AirViewLocatoinInterface {
     @GET("MsrstnInfoInqireSvc/getNearbyMsrstnList?serviceKey=ZZSvyzoRPHWzl9Uj650WLGx37OJ%2FQA0VdvtKq4SD8K6au7LhEI4X1l2jx4J4iB05XOq9H%2BQGU%2FmvNTSkC22Fqg%3D%3D")
     fun GetViewLocation(
-        @Query("returnType") returnType: String,
-        @Query("tmX") tmX: String,
-        @Query("tmY") tmY: String,
+        @Query("returnType", encoded = true) returnType: String,
+        @Query("tmX", encoded = true) tmX: String,
+        @Query("tmY", encoded = true) tmY: String,
     ): Call<GETVIEWLOCATION>
 }
 object AirViewLocationObject {
@@ -169,12 +169,12 @@ data class AIR_PMDATA_ITEM(
 interface AirPMDataInterface {
     @GET("ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=ZZSvyzoRPHWzl9Uj650WLGx37OJ%2FQA0VdvtKq4SD8K6au7LhEI4X1l2jx4J4iB05XOq9H%2BQGU%2FmvNTSkC22Fqg%3D%3D")
     fun GetPMData(
-        @Query("returnType") returnType: String,
-        @Query("dataTerm") dataTerm: String,
-        @Query("pageNo") pageNo: String,
-        @Query("numOfRows") numOfRows: String,
-        @Query("stationName") stationName: String,
-        @Query("ver") ver: String,
+        @Query("returnType", encoded = true) returnType: String,
+        @Query("dataTerm", encoded = true) dataTerm: String,
+        @Query("pageNo", encoded = true) pageNo: String,
+        @Query("numOfRows", encoded = true) numOfRows: String,
+        @Query("stationName", encoded = true) stationName: String,
+        @Query("ver", encoded = true) ver: String,
     ): Call<GETPMDATA>
 }
 object AirPMDataObject {
