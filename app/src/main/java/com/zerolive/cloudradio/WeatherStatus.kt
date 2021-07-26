@@ -420,8 +420,14 @@ object WeatherStatus {
                 if (response.isSuccessful) {
                     var bodyStr = response.body()
                     CRLog.d(bodyStr!!.toString())
-                    if (bodyStr!!.response.body != null) {
-                        parseItems(bodyStr!!.response.body.items)
+                    if ( bodyStr!!.response != null ) {
+                        if (bodyStr!!.response.body != null) {
+                            parseItems(bodyStr!!.response.body.items)
+                        }
+                    } else {
+                        CRLog.d("ERROR: request WEATHER was failed!!!!")
+                        MainActivity.getInstance().makeToast("날씨 정보 업데이트에 실패하였습니다.")
+                        MainActivity.getInstance().removeLoading()
                     }
                 }
             }

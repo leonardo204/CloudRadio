@@ -362,7 +362,8 @@ class MainActivity : AppCompatActivity() {
             it.show()
         }
 
-        if ( bInitialized ) {
+        if ( bInitialized && OnAir.mCurrentPlayFilename != null
+            && OnAir.mVideoId != null ) {
             mLastYtbPlsStatus = LastYtbPlsStatus(
                 OnAir.mCurrentPlayFilename!!,
                 OnAir.mVideoId!!,

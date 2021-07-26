@@ -238,40 +238,47 @@ object AirStatus {
             override fun onResponse(call: Call<GETTMXY>, response: Response<GETTMXY>) {
                 if ( response.isSuccessful ) {
                     CRLog.d("TMXY: " + response.body())
-                    val length = response.body()!!.response.body.items.size
-                    if ( length == 0) {
-                        CRLog.d("There is no TM data")
-                        MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
-                        val data = PMData("알 수 없음", "-", "알 수 없음", "-")
-                        dumpAirStatus(data)
-                    } else {
-                        val tmpX = ConvertGPSToTM.tmxy?.tmX
-                        val tmpY = ConvertGPSToTM.tmxy?.tmY
-                        var lastSumValue: Double = 0.0
-                        var curIdx = 0
+                    if ( response.body()!!.response.body.items != null ) {
+                        val length = response.body()!!.response.body.items.size
+                        if (length == 0) {
+                            CRLog.d("There is no TM data")
+                            MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
+                            val data = PMData("알 수 없음", "-", "알 수 없음", "-")
+                            dumpAirStatus(data)
+                        } else {
+                            val tmpX = ConvertGPSToTM.tmxy?.tmX
+                            val tmpY = ConvertGPSToTM.tmxy?.tmY
+                            var lastSumValue: Double = 0.0
+                            var curIdx = 0
 
-                        for(i in response.body()!!.response.body.items.indices) {
-                            val x = response.body()!!.response.body.items[i].tmX.toDouble()
-                            val y = response.body()!!.response.body.items[i].tmY.toDouble()
-                            if (tmpX != null && tmpY != null ) {
-                                val curSumValue = abs(tmpX-x) + abs(tmpY-y)
-                                if ( lastSumValue != 0.0 ) {
-                                    if ( lastSumValue > curSumValue) {
+                            for (i in response.body()!!.response.body.items.indices) {
+                                val x = response.body()!!.response.body.items[i].tmX.toDouble()
+                                val y = response.body()!!.response.body.items[i].tmY.toDouble()
+                                if (tmpX != null && tmpY != null) {
+                                    val curSumValue = abs(tmpX - x) + abs(tmpY - y)
+                                    if (lastSumValue != 0.0) {
+                                        if (lastSumValue > curSumValue) {
+                                            lastSumValue = curSumValue
+                                            CRLog.d("replace curIdx: ${i}")
+                                            curIdx = i
+                                        }
+                                    } else {
                                         lastSumValue = curSumValue
                                         CRLog.d("replace curIdx: ${i}")
                                         curIdx = i
                                     }
-                                } else {
-                                    lastSumValue = curSumValue
-                                    CRLog.d("replace curIdx: ${i}")
-                                    curIdx = i
                                 }
                             }
-                        }
-                        val finalX = response.body()!!.response.body.items[curIdx].tmX
-                        val finalY = response.body()!!.response.body.items[curIdx].tmY
+                            val finalX = response.body()!!.response.body.items[curIdx].tmX
+                            val finalY = response.body()!!.response.body.items[curIdx].tmY
 
-                        requestViewLocation(finalX, finalY)
+                            requestViewLocation(finalX, finalY)
+                        }
+                    } else {
+                        CRLog.d("There is no TM data")
+                        MainActivity.getInstance().makeToast("미세먼지 데이터를 찾을 수 없습니다.")
+                        val data = PMData("알 수 없음", "-", "알 수 없음", "-")
+                        dumpAirStatus(data)
                     }
                 }
             }
