@@ -434,6 +434,8 @@ object WeatherStatus {
 
             override fun onFailure(call: Call<WEATHER>, t: Throwable) {
                 CRLog.d("api fail : " + t.message)
+                MainActivity.getInstance().makeToast("날씨 정보 업데이트에 실패하였습니다.")
+                MainActivity.getInstance().removeLoading()
             }
         })
     }

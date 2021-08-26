@@ -120,6 +120,12 @@ enum class RadioRawChannels {
         override fun getChannelFilename(): String = "AFN_LGYP.pls"
         override fun getChannelAddress(): String = "http://playerservices.streamtheworld.com/pls/AFN_LGYP.pls"
         override fun getDefaultButtonText(): String = "AFN Legacy"
+    },
+    CBS_MUSIC {
+        override fun getChannelTitle(): String = "CBS 음악방송"
+        override fun getChannelFilename(): String = "cbs_939.pls"
+        override fun getChannelAddress(): String = "https://korradio.stream/cbs.pls"
+        override fun getDefaultButtonText(): String = "CBS 음악방송"
     };
     abstract fun getChannelAddress(): String
     abstract fun getChannelFilename(): String
@@ -558,7 +564,7 @@ object RadioChannelResources: AsyncCallback {
         }
 
         for(i in RadioRawChannels.values().indices) {
-            //Log.d(resourceTag,  "add resource compare for ($title)(len:${title.length}) - (${RadioRawChannels.values()[i].getChannelTitle()})(len:${RadioRawChannels.values()[i].getChannelTitle().length}): ${title.compareTo(RadioRawChannels.values()[i].getChannelTitle())} ")
+//            Log.d(resourceTag,  "add resource compare for ($title)(len:${title.length}) - (${RadioRawChannels.values()[i].getChannelTitle()})(len:${RadioRawChannels.values()[i].getChannelTitle().length}): ${title.compareTo(RadioRawChannels.values()[i].getChannelTitle())} ")
             if (title.compareTo(RadioRawChannels.values()[i].getChannelTitle()) == 0) {
                 var map = RadioCompletionMap(
                     RadioRawChannels.values()[i].getDefaultButtonText(), title, channelList.size,

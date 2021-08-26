@@ -1,7 +1,10 @@
 package com.zerolive.cloudradio
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.RecoverableSecurityException
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.database.Cursor
@@ -230,7 +233,7 @@ object OnAir : Fragment() {
             }
 
             // 로딩바는 날씨까지 업데이트 되어야 없애준다.
-            if ( AirStatus.bWeatherLoaded || MainActivity.bSkipWaitingGPS ) {
+            if ( /* AirStatus.bWeatherLoaded ||*/ 1==1 || MainActivity.bSkipWaitingGPS ) {
                 MainActivity.getInstance().removeLoading()
             }
         }
@@ -702,12 +705,42 @@ object OnAir : Fragment() {
 //        }
     }
 
+    //Make sure to call this function on a worker thread, else it will block main thread
+    fun saveImageInQ(inContext: Context, bitmap: Bitmap): String? {
+        val filename = "IMG_${System.currentTimeMillis()}.jpg"
+        var fos: OutputStream? = null
+        var imageUri: Uri? = null
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpg")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
+
+        //use application context to get contentResolver
+        val contentResolver = inContext.contentResolver
+
+        contentResolver.also { resolver ->
+            imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            fos = imageUri?.let { resolver.openOutputStream(it) }
+        }
+
+        fos?.use { bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it) }
+
+        contentValues.clear()
+        contentValues.put(MediaStore.Video.Media.IS_PENDING, 0)
+        imageUri?.let { contentResolver.update(it, contentValues, null, null) }
+
+        return imageUri.toString()
+    }
 
     fun getImageUri(inContext: Context, inImage: Bitmap): Uri? {
-        val bytes = ByteArrayOutputStream()
-        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
-        val path = MediaStore.Images.Media.insertImage(inContext.contentResolver, inImage, "CRIMG-"+getTitle() /*+"_"+WeatherStatus.getCurrentDatetime() */, null)
-        return Uri.parse(path)
+        val path = saveImageInQ(inContext, inImage)
+        if ( path != null ) {
+            return Uri.parse(path!!)
+        } else {
+            return null
+        }
     }
 
     fun getRealPathFromURI(context: Context, uri: Uri?): String? {
@@ -825,11 +858,15 @@ object OnAir : Fragment() {
                 if ( bit != null ) {
                     bThumbnailChanged = true
                     val uri: Uri? = mContext?.let{ getImageUri(it, bit) }
-                    mAlbumRealPath = mContext?.let { getRealPathFromURI(it, uri) }
-                    Log.d(onairTag, "GetBitmapFromUrl: url=${url}")
-                    Log.d(onairTag, "GetBitmapFromUrl: uri=${uri}")
-                    Log.d(onairTag, "GetBitmapFromUrl: path=${mAlbumRealPath}")
-                    setThumbnail(bit, uri)
+                    if ( uri != null ) {
+                        mAlbumRealPath = mContext?.let { getRealPathFromURI(it, uri) }
+                        Log.d(onairTag, "GetBitmapFromUrl: url=${url}")
+                        Log.d(onairTag, "GetBitmapFromUrl: uri=${uri}")
+                        Log.d(onairTag, "GetBitmapFromUrl: path=${mAlbumRealPath}")
+                        setThumbnail(bit, uri)
+                    } else {
+                        Log.d(onairTag, "GetBitmapFromUrl FAILED!!!")
+                    }
                 } else {
                     Log.d(onairTag, "GetBitmapFromUrl FAILED!!!")
                 }
@@ -1408,6 +1445,8 @@ object OnAir : Fragment() {
         MainActivity.getInstance().systmeDestroy()
     }
 
+    private const val DELETE_PERMISSION_REQUEST = 0x1033
+
     private fun removeThumbnails() {
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -1440,9 +1479,31 @@ object OnAir : Fragment() {
 
         // 찾은 Uri를 MediaStore에서 삭제
         contentUri?.let{
-            mContext?.contentResolver?.delete(it, null, null)
-            mAlbumUri.remove(it)
-            Log.d(onairTag, "Removed $displayName from MediaStore: $it  ( remains uri num: ${mAlbumUri.size} )")
+            try {
+                mContext?.contentResolver?.delete(it, null, null)
+                mAlbumUri.remove(it)
+                Log.d(
+                    onairTag,
+                    "Removed $displayName from MediaStore: $it  ( remains uri num: ${mAlbumUri.size} )"
+                )
+            } catch (e: RecoverableSecurityException) {
+                val intentSender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    e.userAction.actionIntent.intentSender
+                } else {
+                    TODO("VERSION.SDK_INT < O")
+                }
+                intentSender?.let {
+                    startIntentSenderForResult(
+                        it,
+                        DELETE_PERMISSION_REQUEST,
+                        null,
+                        0,
+                        0,
+                        0,
+                        null
+                    )
+                }
+            }
         }
     }
 
@@ -1583,6 +1644,7 @@ object OnAir : Fragment() {
         if ( serviceName.equals("radio") ) {
             weather_view.visibility = View.VISIBLE
             address = getRadioChannelHttpAddress(filename)
+            CRLog.d("address: ${address}")
         }
 
         Intent(mContext, RadioService::class.java).run {
